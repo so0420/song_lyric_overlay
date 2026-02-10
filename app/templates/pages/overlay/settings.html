@@ -1,0 +1,1061 @@
+{% extends "base/base.html" %}
+
+{% block title %}오버레이 설정 - Jamku Song{% endblock %}
+
+{% block extra_styles %}
+<style>
+.settings-layout {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 32px;
+    align-items: start;
+}
+
+@media (max-width: 1100px) {
+    .settings-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.preview-section {
+    position: sticky;
+    top: 20px;
+}
+
+/* 미리보기 - 예시 이미지 스타일 */
+.preview-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    position: relative;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+}
+
+.preview-label {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* 상단 좌측 - 노래 정보 */
+.preview-song-info {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+}
+
+.preview-now-badge {
+    display: inline-block;
+    background: #1a1a1a;
+    color: #FFE500;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+}
+
+.preview-song-title {
+    font-size: 28px;
+    font-weight: 800;
+    color: #FFFFFF;
+    -webkit-text-stroke: 3px #000000;
+    paint-order: stroke fill;
+    text-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    display: inline;
+}
+
+.preview-artist {
+    font-size: 18px;
+    font-weight: 600;
+    color: #FFFFFF;
+    -webkit-text-stroke: 3px #000000;
+    paint-order: stroke fill;
+    text-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    opacity: 0.9;
+    margin-left: 8px;
+}
+
+/* 하단 중앙 - 가사 */
+.preview-lyrics {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    width: 90%;
+}
+
+.preview-lyrics-line {
+    font-weight: 800;
+    line-height: 1.4;
+    margin: 4px 0;
+    -webkit-text-stroke: 3px #000000;
+    paint-order: stroke fill;
+    text-shadow: 0 4px 8px rgba(0,0,0,0.5);
+}
+
+.preview-lyrics-line.current {
+    font-size: 32px;
+    color: #FFE500;
+}
+
+.preview-lyrics-line.sub {
+    font-size: 22px;
+    color: #FFFFFF;
+    opacity: 0.6;
+}
+
+/* Settings Panel */
+.settings-panel {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.settings-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.settings-subtitle {
+    color: var(--text-sub);
+    font-size: 0.9rem;
+}
+
+.settings-body {
+    padding: 24px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.setting-group {
+    margin-bottom: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.setting-group:last-child {
+    margin-bottom: 0;
+}
+
+.setting-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: #f8fafc;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+}
+
+.setting-group-header:hover {
+    background: #f1f5f9;
+}
+
+.setting-group-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+
+.setting-group-title svg {
+    color: var(--accent);
+}
+
+.setting-group-toggle {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    transition: transform 0.3s ease;
+}
+
+.setting-group.collapsed .setting-group-toggle {
+    transform: rotate(-90deg);
+}
+
+.setting-group-content {
+    padding: 8px 20px 16px;
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
+    opacity: 1;
+}
+
+.setting-group.collapsed .setting-group-content {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+}
+
+.setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.setting-row:last-child {
+    border-bottom: none;
+}
+
+.setting-label {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.setting-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Form Controls */
+input[type="color"] {
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 2px;
+}
+
+input[type="range"] {
+    width: 100px;
+    cursor: pointer;
+}
+
+input[type="number"] {
+    width: 70px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    text-align: center;
+}
+
+select {
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    min-width: 140px;
+    cursor: pointer;
+    background: white;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    width: 48px;
+    height: 26px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #e2e8f0;
+    transition: 0.3s;
+    border-radius: 26px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    transition: 0.3s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input:checked + .toggle-slider {
+    background: var(--accent);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(22px);
+}
+
+/* URL Section */
+.url-section {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 24px;
+}
+
+.url-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-sub);
+    margin-bottom: 12px;
+}
+
+.url-input-group {
+    display: flex;
+    gap: 8px;
+}
+
+.url-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    background: white;
+}
+
+.copy-btn {
+    padding: 12px 20px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.copy-btn:hover {
+    background: var(--accent-hover);
+}
+
+.copy-btn.copied {
+    background: #059669;
+}
+
+/* Save Button */
+.save-section {
+    padding: 24px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 12px;
+}
+
+.save-btn {
+    flex: 1;
+    padding: 16px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.save-btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-2px);
+}
+
+.reset-btn {
+    padding: 16px 24px;
+    background: #f1f5f9;
+    color: var(--text-sub);
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.reset-btn:hover {
+    background: #e2e8f0;
+}
+
+/* Toast */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--text-main);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.toast.success {
+    background: #059669;
+}
+
+.value-display {
+    min-width: 45px;
+    text-align: right;
+    font-weight: 600;
+    color: var(--text-sub);
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 32px;">
+    <h1 class="page-title">오버레이 설정</h1>
+    <a href="/overlay" class="btn btn-outline" style="gap: 8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        노래하기로 돌아가기
+    </a>
+</div>
+
+<div class="settings-layout">
+    <!-- Preview -->
+    <div class="preview-section">
+        <div class="preview-container" id="previewContainer">
+            <span class="preview-label">미리보기</span>
+
+            <!-- 상단 좌측: 노래 정보 -->
+            <div class="preview-song-info" id="previewSongInfo">
+                <div class="preview-now-badge" id="previewNowBadge">NOW</div>
+                <div>
+                    <span class="preview-song-title" id="previewSongTitle">노래 제목</span>
+                    <span class="preview-artist" id="previewArtist">- 가수</span>
+                </div>
+            </div>
+
+            <!-- 하단 중앙: 가사 -->
+            <div class="preview-lyrics">
+                <p class="preview-lyrics-line sub" id="previewPrev">이전 가사</p>
+                <p class="preview-lyrics-line current" id="previewCurrent">현재 가사가 여기에</p>
+                <p class="preview-lyrics-line sub" id="previewNext">다음 가사</p>
+            </div>
+        </div>
+
+        <div class="url-section">
+            <div class="url-label">OBS 브라우저 소스 URL</div>
+            <div class="url-input-group">
+                <input type="text" class="url-input" id="overlayUrl" readonly>
+                <button class="copy-btn" id="copyBtn" onclick="copyUrl()">복사</button>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 12px;">
+                OBS에서 브라우저 소스를 추가하고 위 URL을 붙여넣으세요. (권장 크기: 1920x1080)
+            </p>
+        </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="settings-panel">
+        <div class="settings-header">
+            <h2 class="settings-title">디자인 설정</h2>
+            <p class="settings-subtitle">OBS 오버레이의 모양을 커스터마이즈하세요</p>
+        </div>
+
+        <div class="settings-body">
+            <!-- 가사 스타일 -->
+            <div class="setting-group" id="groupLyrics">
+                <div class="setting-group-header" onclick="toggleGroup('groupLyrics')">
+                    <div class="setting-group-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                            <line x1="9" y1="20" x2="15" y2="20"></line>
+                            <line x1="12" y1="4" x2="12" y2="20"></line>
+                        </svg>
+                        가사 스타일
+                    </div>
+                    <div class="setting-group-toggle">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="setting-group-content">
+                    <div class="setting-row">
+                    <span class="setting-label">글꼴</span>
+                    <select id="fontFamily" onchange="updatePreview()">
+                        <option value="Pretendard">Pretendard</option>
+                        <option value="Noto Sans KR">Noto Sans KR</option>
+                        <option value="Nanum Gothic">나눔고딕</option>
+                        <option value="Black Han Sans">Black Han Sans</option>
+                        <option value="Do Hyeon">도현</option>
+                    </select>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-label">가사 크기</span>
+                    <div class="setting-control">
+                        <input type="range" id="fontSize" min="32" max="80" value="52" oninput="updatePreview()">
+                        <span class="value-display" id="fontSizeValue">52px</span>
+                    </div>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-label">현재 가사 색상</span>
+                    <input type="color" id="highlightColor" value="#FFE500" onchange="updatePreview()">
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-label">현재 가사 굵기</span>
+                    <select id="currentLineWeight" onchange="updatePreview()">
+                        <option value="400">Regular</option>
+                        <option value="500">Medium</option>
+                        <option value="600">SemiBold</option>
+                        <option value="700">Bold</option>
+                        <option value="800" selected>ExtraBold</option>
+                        <option value="900">Black</option>
+                    </select>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-label">이전 가사 굵기</span>
+                    <select id="prevLineWeight" onchange="updatePreview()">
+                        <option value="400">Regular</option>
+                        <option value="500">Medium</option>
+                        <option value="600" selected>SemiBold</option>
+                        <option value="700">Bold</option>
+                        <option value="800">ExtraBold</option>
+                        <option value="900">Black</option>
+                    </select>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-label">다음 가사 굵기</span>
+                    <select id="nextLineWeight" onchange="updatePreview()">
+                        <option value="400">Regular</option>
+                        <option value="500">Medium</option>
+                        <option value="600" selected>SemiBold</option>
+                        <option value="700">Bold</option>
+                        <option value="800">ExtraBold</option>
+                        <option value="900">Black</option>
+                    </select>
+                </div>
+                </div>
+            </div>
+
+            <!-- 텍스트 외곽선 -->
+            <div class="setting-group" id="groupEffects">
+                <div class="setting-group-header" onclick="toggleGroup('groupEffects')">
+                    <div class="setting-group-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        </svg>
+                        텍스트 효과
+                    </div>
+                    <div class="setting-group-toggle">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="setting-group-content">
+                    <div class="setting-row">
+                        <span class="setting-label">외곽선</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="textStroke" checked onchange="updatePreview()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">외곽선 색상</span>
+                        <input type="color" id="strokeColor" value="#000000" onchange="updatePreview()">
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">현재 가사 외곽선</span>
+                        <div class="setting-control">
+                            <input type="range" id="currentLineStroke" min="0" max="8" value="3" oninput="updatePreview()">
+                            <span class="value-display" id="currentLineStrokeValue">3px</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">이전 가사 외곽선</span>
+                        <div class="setting-control">
+                            <input type="range" id="prevLineStroke" min="0" max="8" value="2" oninput="updatePreview()">
+                            <span class="value-display" id="prevLineStrokeValue">2px</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">다음 가사 외곽선</span>
+                        <div class="setting-control">
+                            <input type="range" id="nextLineStroke" min="0" max="8" value="2" oninput="updatePreview()">
+                            <span class="value-display" id="nextLineStrokeValue">2px</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">그림자</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="textShadow" checked onchange="updatePreview()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">애니메이션</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="animationEnabled" checked onchange="updatePreview()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 표시 옵션 -->
+            <div class="setting-group" id="groupDisplay">
+                <div class="setting-group-header" onclick="toggleGroup('groupDisplay')">
+                    <div class="setting-group-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        가사 표시
+                    </div>
+                    <div class="setting-group-toggle">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="setting-group-content">
+                    <div class="setting-row">
+                        <span class="setting-label">이전 가사 표시</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="showPrevLine" checked onchange="updatePreview()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">다음 가사 표시</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="showNextLine" checked onchange="updatePreview()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 노래 정보 -->
+            <div class="setting-group" id="groupSongInfo">
+                <div class="setting-group-header" onclick="toggleGroup('groupSongInfo')">
+                    <div class="setting-group-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 18V5l12-2v13"></path>
+                            <circle cx="6" cy="18" r="3"></circle>
+                            <circle cx="18" cy="16" r="3"></circle>
+                        </svg>
+                        노래 정보
+                    </div>
+                    <div class="setting-group-toggle">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="setting-group-content">
+                    <div class="setting-row">
+                        <span class="setting-label">NOW 배지 표시</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="showNowBadge" checked onchange="updatePreview()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-label">노래 제목 표시</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="showSongTitle" checked onchange="updatePreview()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-label">가수 표시</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="showArtist" checked onchange="updatePreview()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-label">노래 제목 크기</span>
+                    <div class="setting-control">
+                        <input type="range" id="songTitleSize" min="28" max="64" value="48" oninput="updatePreview()">
+                        <span class="value-display" id="songTitleSizeValue">48px</span>
+                    </div>
+                </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">노래 제목 굵기</span>
+                        <select id="songTitleWeight" onchange="updatePreview()">
+                            <option value="400">Regular</option>
+                            <option value="500">Medium</option>
+                            <option value="600">SemiBold</option>
+                            <option value="700">Bold</option>
+                            <option value="800" selected>ExtraBold</option>
+                            <option value="900">Black</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">노래 제목 외곽선</span>
+                        <div class="setting-control">
+                            <input type="range" id="songTitleStroke" min="0" max="8" value="3" oninput="updatePreview()">
+                            <span class="value-display" id="songTitleStrokeValue">3px</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">가수 크기</span>
+                        <div class="setting-control">
+                            <input type="range" id="artistSize" min="16" max="40" value="28" oninput="updatePreview()">
+                            <span class="value-display" id="artistSizeValue">28px</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">가수 굵기</span>
+                        <select id="artistWeight" onchange="updatePreview()">
+                            <option value="400">Regular</option>
+                            <option value="500">Medium</option>
+                            <option value="600" selected>SemiBold</option>
+                            <option value="700">Bold</option>
+                            <option value="800">ExtraBold</option>
+                            <option value="900">Black</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">가수 외곽선</span>
+                        <div class="setting-control">
+                            <input type="range" id="artistStroke" min="0" max="8" value="2" oninput="updatePreview()">
+                            <span class="value-display" id="artistStrokeValue">2px</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="save-section">
+            <button class="reset-btn" onclick="resetSettings()">초기화</button>
+            <button class="save-btn" onclick="saveSettings()">설정 저장</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const userId = {{ user.id }};
+const baseUrl = window.location.origin;
+
+// Default settings
+const defaultSettings = {
+    font_family: "Pretendard",
+    font_size: 52,
+    font_color: "#FFFFFF",
+    highlight_color: "#FFE500",
+    current_line_weight: 800,
+    prev_line_weight: 600,
+    next_line_weight: 600,
+    song_title_weight: 800,
+    artist_weight: 600,
+    text_stroke: true,
+    stroke_color: "#000000",
+    current_line_stroke: 3,
+    prev_line_stroke: 2,
+    next_line_stroke: 2,
+    song_title_stroke: 3,
+    artist_stroke: 2,
+    text_shadow: true,
+    animation_enabled: true,
+    show_prev_line: true,
+    show_next_line: true,
+    show_song_title: true,
+    show_artist: true,
+    show_now_badge: true,
+    song_title_size: 48,
+    artist_size: 28
+};
+
+// Set overlay URL
+document.getElementById('overlayUrl').value = `${baseUrl}/overlay/obs?uid=${userId}`;
+
+// Load settings on page load
+async function loadSettings() {
+    try {
+        const res = await fetch('/api/v1/overlay/settings');
+        if (res.ok) {
+            const settings = await res.json();
+            applySettingsToForm(settings);
+        }
+    } catch (e) {
+        console.error('Failed to load settings:', e);
+    }
+    updatePreview();
+}
+
+function applySettingsToForm(settings) {
+    document.getElementById('fontFamily').value = settings.font_family || defaultSettings.font_family;
+    document.getElementById('fontSize').value = settings.font_size || defaultSettings.font_size;
+    document.getElementById('highlightColor').value = settings.highlight_color || defaultSettings.highlight_color;
+    document.getElementById('currentLineWeight').value = settings.current_line_weight || defaultSettings.current_line_weight;
+    document.getElementById('prevLineWeight').value = settings.prev_line_weight || defaultSettings.prev_line_weight;
+    document.getElementById('nextLineWeight').value = settings.next_line_weight || defaultSettings.next_line_weight;
+    document.getElementById('textStroke').checked = settings.text_stroke !== false;
+    document.getElementById('strokeColor').value = settings.stroke_color || defaultSettings.stroke_color;
+    document.getElementById('currentLineStroke').value = settings.current_line_stroke ?? defaultSettings.current_line_stroke;
+    document.getElementById('prevLineStroke').value = settings.prev_line_stroke ?? defaultSettings.prev_line_stroke;
+    document.getElementById('nextLineStroke').value = settings.next_line_stroke ?? defaultSettings.next_line_stroke;
+    document.getElementById('textShadow').checked = settings.text_shadow !== false;
+    document.getElementById('animationEnabled').checked = settings.animation_enabled !== false;
+    document.getElementById('showPrevLine').checked = settings.show_prev_line !== false;
+    document.getElementById('showNextLine').checked = settings.show_next_line !== false;
+    document.getElementById('showSongTitle').checked = settings.show_song_title !== false;
+    document.getElementById('showArtist').checked = settings.show_artist !== false;
+    document.getElementById('showNowBadge').checked = settings.show_now_badge !== false;
+    document.getElementById('songTitleSize').value = settings.song_title_size || defaultSettings.song_title_size;
+    document.getElementById('songTitleWeight').value = settings.song_title_weight || defaultSettings.song_title_weight;
+    document.getElementById('songTitleStroke').value = settings.song_title_stroke ?? defaultSettings.song_title_stroke;
+    document.getElementById('artistSize').value = settings.artist_size || defaultSettings.artist_size;
+    document.getElementById('artistWeight').value = settings.artist_weight || defaultSettings.artist_weight;
+    document.getElementById('artistStroke').value = settings.artist_stroke ?? defaultSettings.artist_stroke;
+}
+
+function getSettingsFromForm() {
+    return {
+        font_family: document.getElementById('fontFamily').value,
+        font_size: parseInt(document.getElementById('fontSize').value),
+        font_color: "#FFFFFF",
+        highlight_color: document.getElementById('highlightColor').value,
+        current_line_weight: parseInt(document.getElementById('currentLineWeight').value),
+        prev_line_weight: parseInt(document.getElementById('prevLineWeight').value),
+        next_line_weight: parseInt(document.getElementById('nextLineWeight').value),
+        song_title_weight: parseInt(document.getElementById('songTitleWeight').value),
+        artist_weight: parseInt(document.getElementById('artistWeight').value),
+        text_stroke: document.getElementById('textStroke').checked,
+        stroke_color: document.getElementById('strokeColor').value,
+        current_line_stroke: parseInt(document.getElementById('currentLineStroke').value),
+        prev_line_stroke: parseInt(document.getElementById('prevLineStroke').value),
+        next_line_stroke: parseInt(document.getElementById('nextLineStroke').value),
+        song_title_stroke: parseInt(document.getElementById('songTitleStroke').value),
+        artist_stroke: parseInt(document.getElementById('artistStroke').value),
+        text_shadow: document.getElementById('textShadow').checked,
+        animation_enabled: document.getElementById('animationEnabled').checked,
+        show_prev_line: document.getElementById('showPrevLine').checked,
+        show_next_line: document.getElementById('showNextLine').checked,
+        show_song_title: document.getElementById('showSongTitle').checked,
+        show_artist: document.getElementById('showArtist').checked,
+        show_now_badge: document.getElementById('showNowBadge').checked,
+        song_title_size: parseInt(document.getElementById('songTitleSize').value),
+        artist_size: parseInt(document.getElementById('artistSize').value)
+    };
+}
+
+function updatePreview() {
+    const settings = getSettingsFromForm();
+
+    // Update value displays
+    document.getElementById('fontSizeValue').textContent = settings.font_size + 'px';
+    document.getElementById('currentLineStrokeValue').textContent = settings.current_line_stroke + 'px';
+    document.getElementById('prevLineStrokeValue').textContent = settings.prev_line_stroke + 'px';
+    document.getElementById('nextLineStrokeValue').textContent = settings.next_line_stroke + 'px';
+    document.getElementById('songTitleSizeValue').textContent = settings.song_title_size + 'px';
+    document.getElementById('songTitleStrokeValue').textContent = settings.song_title_stroke + 'px';
+    document.getElementById('artistSizeValue').textContent = settings.artist_size + 'px';
+    document.getElementById('artistStrokeValue').textContent = settings.artist_stroke + 'px';
+
+    const previewContainer = document.getElementById('previewContainer');
+    const songInfo = document.getElementById('previewSongInfo');
+    const nowBadge = document.getElementById('previewNowBadge');
+    const songTitle = document.getElementById('previewSongTitle');
+    const artist = document.getElementById('previewArtist');
+    const prevLine = document.getElementById('previewPrev');
+    const currentLine = document.getElementById('previewCurrent');
+    const nextLine = document.getElementById('previewNext');
+
+    // Font family
+    previewContainer.style.fontFamily = settings.font_family + ', sans-serif';
+
+    // Song info
+    nowBadge.style.display = settings.show_now_badge ? 'inline-block' : 'none';
+    songTitle.style.display = settings.show_song_title ? 'inline' : 'none';
+    artist.style.display = settings.show_artist ? 'inline' : 'none';
+    songInfo.style.display = (settings.show_song_title || settings.show_artist) ? 'block' : 'none';
+
+    // Song info sizes (scaled down for preview)
+    const titleScale = 0.6;
+    songTitle.style.fontSize = (settings.song_title_size * titleScale) + 'px';
+    songTitle.style.fontWeight = settings.song_title_weight;
+    artist.style.fontSize = (settings.artist_size * titleScale) + 'px';
+    artist.style.fontWeight = settings.artist_weight;
+
+    // Lyrics - 각 요소별 굵기 적용
+    const lyricsScale = 0.6;
+    currentLine.style.fontSize = (settings.font_size * lyricsScale) + 'px';
+    currentLine.style.fontWeight = settings.current_line_weight;
+    currentLine.style.color = settings.highlight_color;
+
+    prevLine.style.fontSize = (settings.font_size * 0.7 * lyricsScale) + 'px';
+    prevLine.style.fontWeight = settings.prev_line_weight;
+    prevLine.style.display = settings.show_prev_line ? 'block' : 'none';
+
+    nextLine.style.fontSize = (settings.font_size * 0.7 * lyricsScale) + 'px';
+    nextLine.style.fontWeight = settings.next_line_weight;
+    nextLine.style.display = settings.show_next_line ? 'block' : 'none';
+
+    // Text stroke using -webkit-text-stroke (요소별 두께 적용)
+    const sc = settings.stroke_color;
+    const shadowStyle = settings.text_shadow ? '0 4px 8px rgba(0,0,0,0.5)' : 'none';
+
+    if (settings.text_stroke) {
+        currentLine.style.webkitTextStroke = `${settings.current_line_stroke}px ${sc}`;
+        prevLine.style.webkitTextStroke = `${settings.prev_line_stroke}px ${sc}`;
+        nextLine.style.webkitTextStroke = `${settings.next_line_stroke}px ${sc}`;
+        songTitle.style.webkitTextStroke = `${settings.song_title_stroke}px ${sc}`;
+        artist.style.webkitTextStroke = `${settings.artist_stroke}px ${sc}`;
+    } else {
+        [currentLine, prevLine, nextLine, songTitle, artist].forEach(el => {
+            el.style.webkitTextStroke = '0px';
+        });
+    }
+
+    [currentLine, prevLine, nextLine, songTitle, artist].forEach(el => {
+        el.style.paintOrder = 'stroke fill';
+        el.style.textShadow = shadowStyle;
+    });
+}
+
+async function saveSettings() {
+    const settings = getSettingsFromForm();
+
+    try {
+        const res = await fetch('/api/v1/overlay/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+
+        if (res.ok) {
+            showToast('설정이 저장되었습니다', 'success');
+        } else {
+            showToast('저장에 실패했습니다', 'error');
+        }
+    } catch (e) {
+        showToast('오류가 발생했습니다', 'error');
+    }
+}
+
+function resetSettings() {
+    if (!confirm('설정을 초기화하시겠습니까?')) return;
+    applySettingsToForm(defaultSettings);
+    updatePreview();
+    showToast('초기화되었습니다');
+}
+
+function copyUrl() {
+    const urlInput = document.getElementById('overlayUrl');
+    urlInput.select();
+    document.execCommand('copy');
+
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '복사됨!';
+    btn.classList.add('copied');
+
+    setTimeout(() => {
+        btn.textContent = '복사';
+        btn.classList.remove('copied');
+    }, 2000);
+}
+
+function showToast(message, type = '') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = 'toast show ' + type;
+
+    setTimeout(() => {
+        toast.className = 'toast';
+    }, 3000);
+}
+
+// Toggle setting group
+function toggleGroup(groupId) {
+    const group = document.getElementById(groupId);
+    group.classList.toggle('collapsed');
+
+    // 상태 저장
+    const collapsedGroups = JSON.parse(localStorage.getItem('overlaySettingsCollapsed') || '{}');
+    collapsedGroups[groupId] = group.classList.contains('collapsed');
+    localStorage.setItem('overlaySettingsCollapsed', JSON.stringify(collapsedGroups));
+}
+
+// Restore collapsed state
+function restoreCollapsedState() {
+    const collapsedGroups = JSON.parse(localStorage.getItem('overlaySettingsCollapsed') || '{}');
+    Object.keys(collapsedGroups).forEach(groupId => {
+        if (collapsedGroups[groupId]) {
+            const group = document.getElementById(groupId);
+            if (group) group.classList.add('collapsed');
+        }
+    });
+}
+
+// Initialize
+restoreCollapsedState();
+loadSettings();
+</script>
+{% endblock %}

@@ -1,9 +1,7 @@
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict
 from pydantic_settings import BaseSettings
-import json
 from dotenv import load_dotenv
 
-# 환경변수 로드
 load_dotenv()
 
 class Settings(BaseSettings):
@@ -28,20 +26,9 @@ class Settings(BaseSettings):
     naver_redirect_uri: str
     naver_withdraw_url: str
 
-    # Chzzk Oauth
-    chzzk_redirect_uri: str
-    chzzk_default_app_id: str
-    chzzk_refresh_interval: int
-    chzzk_refresh_buffer: int
-
     # YouTube API
     youtube_api_key: str
 
-    # Google App Key for Email Verification
-    google_app_key: str
-    email_smtp_address: str
-    email_sender: str
-    
     # Log
     log_file_path: str
 
@@ -74,23 +61,11 @@ class Settings(BaseSettings):
     meilisearch_api_key: str
     meilisearch_index_name: str
 
-    # Cloudflare R2
-    cloudflare_endpoint_url: str
-    cloudflare_access_key: str
-    cloudflare_secret_key: str
-    cloudflare_bucket_name: str
-    cloudflare_public_url: str
-
-    # Chzzk Connection Socket
-    chzzk_app_ids: str
-    socket_server_port: int
-    socket_server_master_token: str
-
     class Config:
         env_file = ".env"
-        case_sensitive = False # 대소문자 구분 여부
+        case_sensitive = False
+        extra = "ignore"
 
-#######################################################################################
 
 class AppConfig(BaseModel):
     """
@@ -100,10 +75,8 @@ class AppConfig(BaseModel):
     version: str
     app_url: str
 
-    model_config = ConfigDict(extra="ignore")  # json에 추가 키가 있어도 무시
+    model_config = ConfigDict(extra="ignore")
 
-
-#######################################################################################
 
 def reload():
     """

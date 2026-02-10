@@ -600,8 +600,9 @@
         <div class="card song-info-card">
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">
                 <div style="display: flex; align-items: center; gap: 16px; min-width: 0;">
-                    <img src="{{ user.picture or '/static/default_avatar.png' }}"
-                        style="width: 54px; height: 54px; flex-shrink: 0; border-radius: 14px; object-fit: cover; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);">
+                    <img id="target-song-image" src="{% if song and song.cover_image_url %}{{ song.cover_image_url }}{% endif %}"
+                        style="width: 54px; height: 54px; flex-shrink: 0; border-radius: 14px; object-fit: cover; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3); background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);"
+                        onerror="this.style.visibility='hidden'">
                     <div style="min-width: 0;">
                         <div id="target-song-title"
                             style="font-weight: 800; font-size: 1.15rem; color: #1e293b; letter-spacing: -0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
@@ -1448,11 +1449,8 @@
 
         try {
             console.log("Fetching songs for query:", q);
-            const res = await fetch(`/api/v1/search/?q=${encodeURIComponent(q)}`);
-            const searchData = await res.json();
-
-            // Combine results for a flat list in the editor
-            const data = [...(searchData.itunes || []), ...(searchData.local || [])];
+            const res = await fetch(`/api/v1/songs/search?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
             console.log("Search results received:", data.length);
 
             window.songSearchResults = data;
@@ -1463,10 +1461,10 @@
 
             resultsDiv.innerHTML = data.map((s, idx) => `
                 <div class="video-result-item" style="cursor: pointer;" onclick="selectSongByIndex(${idx})">
-                    <img src="${streamerProfilePic}" class="video-result-thumb" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" onerror="this.src='/static/default_album.png'">
+                    <img src="${s.cover_image_url || ''}" class="video-result-thumb" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);" onerror="this.style.visibility='hidden'">
                     <div class="video-result-info">
                         <div style="font-weight:700; color: #1e293b;">${s.title}</div>
-                        <div style="color:var(--text-sub);font-size:0.85rem">${s.artist}</div>
+                        <div style="color:var(--text-sub);font-size:0.85rem">${s.artist_name || ''}</div>
                     </div>
                 </div>
             `).join('');
@@ -1482,12 +1480,20 @@
     function selectSongByIndex(idx) {
         const song = window.songSearchResults[idx];
         if (!song) return;
-        selectSong(song.title, song.artist, song.song_external_id, song.image_url);
+        selectSong(song.title, song.artist_name, song.song_external_id, song.cover_image_url);
     }
 
     function selectSong(title, artist, extId, imageUrl) {
         document.getElementById('target-song-title').innerText = title;
-        document.getElementById('target-song-artist').innerText = artist;
+        document.getElementById('target-song-artist').innerText = artist || '';
+        const imgEl = document.getElementById('target-song-image');
+        if (imageUrl) {
+            imgEl.src = imageUrl;
+            imgEl.style.visibility = 'visible';
+        } else {
+            imgEl.src = '';
+            imgEl.style.visibility = 'hidden';
+        }
 
         // 곡 선택 시 비디오 정보 초기화
         currentVideoId = '';
@@ -1597,14 +1603,9 @@
         resultsDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">검색 중...</div>';
 
         try {
-            const res = await fetch(`/api/v1/search/?q=${encodeURIComponent(q)}`);
-            const searchData = await res.json();
-
-            // Combine and filter items with lyrics
-            const data = [...(searchData.itunes || []), ...(searchData.local || [])]
-                .filter(s => s.lyrics_count > 0);
-
-            console.log("Public song results after filtering:", data.length);
+            const res = await fetch(`/api/v1/lyrics/search?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            console.log("Public lyrics search results:", data.length);
 
             window.publicSearchResults = data;
             if (data.length === 0) {
@@ -1615,13 +1616,13 @@
             resultsDiv.innerHTML = data.map((s, idx) => `
                 <div class="public-song-card" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: white; transition: all 0.2s;">
                     <div style="display: flex; align-items: center; gap: 12px; padding: 12px;">
-                        <img src="${streamerProfilePic}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; background: #f1f5f9;" onerror="this.src='/static/default_album.png'">
+                        <img src="${s.artwork_url || s.cover_image_url || ''}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);" onerror="this.style.visibility='hidden'">
                         <div style="flex: 1; min-width: 0;">
                             <div style="font-weight:700; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1e293b;">
-                                ${s.title}
+                                ${s.track_name || s.title}
                                 <span style="color:var(--accent); font-size: 0.8rem; margin-left: 4px;">(${s.lyrics_count})</span>
                             </div>
-                            <div style="color:var(--text-sub); font-size: 0.85rem;">${s.artist}</div>
+                            <div style="color:var(--text-sub); font-size: 0.85rem;">${s.artist_name || ''}</div>
                         </div>
                         <div style="display: flex; gap: 6px;">
                             <button onclick="loadPublicLyricsListByIndex(${idx}, this)" class="btn btn-outline" style="padding: 6px 10px; font-size: 0.75rem;">
@@ -1873,8 +1874,8 @@
 
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
             if (e.key === 'Enter' && e.target.classList.contains('text-input')) {
-                // Ignore search inputs to allow their own onkeydown or default behavior
-                if (e.target.id.includes('search-input')) return;
+                // Ignore search inputs and bulk import textarea
+                if (e.target.id.includes('search-input') || e.target.id === 'bulk-import-text') return;
 
                 e.preventDefault();
                 addNewSegment();

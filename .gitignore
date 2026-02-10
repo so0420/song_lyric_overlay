@@ -1,54 +1,79 @@
-# env
+# ===== Environment =====
 .env
 .env.*
 !.env.example
 
-# keys
+# ===== Secrets & Keys =====
 *.pem
 *.key
 *.crt
 secrets/
 
-# Virtual environments
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# ===== Virtual Environments =====
 .venv/
 venv/
 ENV/
 env/
 
-# Logs
+# ===== Logs =====
 *.log
 logs/
 log/
 
-# IDE
-.idea
-.vscode
+# ===== IDE =====
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
 
-# Fastapi
+# ===== OS =====
+.DS_Store
+Thumbs.db
+Desktop.ini
+nul
+
+# ===== FastAPI / Server =====
 instance/
 .local/
 
-# Cache file
-.DS_Store
-Thumbs.db
-__pycache__/
-*.py[cod]
-*.pyd
+# ===== Node.js =====
+node_modules/
+package-lock.json
 
-# backup
+# ===== Config (runtime) =====
+config.json
+
+# ===== Archives =====
 *.zip
+*.tar.gz
+*.rar
 
-# Utils and memo
+# ===== Utils & Memo =====
 activate_venv.bat
 open_editor.bat
 memo.txt
 *.md
+!README.md
 !readme.md
 
-# test
+# ===== Test files (root only) =====
 /test_*.*
 /test*.*
 /test.*
 
-# nodejs
-node_modules/
+# ===== AI / Agent =====
+.claude/
+.gemini/

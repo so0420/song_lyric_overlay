@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>가사 오버레이</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Nanum+Gothic:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        @font-face {
+            font-family: 'Pretendard';
+            src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+        }
+
+        .overlay-wrapper {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* 상단 좌측 - 노래 정보 */
+        .song-info-box {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: all 0.4s ease;
+        }
+
+        .song-info-box.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .now-badge {
+            display: inline-block;
+            background: #1a1a1a;
+            color: #FFE500;
+            font-size: 14px;
+            font-weight: 800;
+            padding: 6px 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .song-title-row {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .song-title {
+            font-size: 48px;
+            font-weight: 800;
+            color: #FFFFFF;
+            -webkit-text-stroke: 3px #000000;
+            paint-order: stroke fill;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            line-height: 1.2;
+        }
+
+        .artist-name {
+            font-size: 28px;
+            font-weight: 600;
+            color: #FFFFFF;
+            -webkit-text-stroke: 3px #000000;
+            paint-order: stroke fill;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            opacity: 0.9;
+        }
+
+        /* 하단 중앙 - 가사 */
+        .lyrics-box {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            width: 90%;
+            max-width: 1200px;
+        }
+
+        .lyrics-line {
+            font-size: 52px;
+            font-weight: 800;
+            color: #FFFFFF;
+            line-height: 1.4;
+            margin: 8px 0;
+            -webkit-text-stroke: 3px #000000;
+            paint-order: stroke fill;
+            text-shadow: 0 6px 12px rgba(0,0,0,0.6);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+        }
+
+        .lyrics-line.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .lyrics-line.highlight {
+            color: #FFE500;
+        }
+
+        .lyrics-line.sub {
+            font-size: 36px;
+            opacity: 0.6;
+        }
+
+        /* 연결 상태 */
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .connection-status.disconnected {
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            opacity: 1;
+        }
+
+        .connection-status.connecting {
+            background: rgba(245, 158, 11, 0.9);
+            color: white;
+            opacity: 1;
+        }
+
+        /* 대기 메시지 */
+        .idle-message {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 24px;
+            display: none;
+        }
+
+        .idle-message.visible {
+            display: block;
+        }
+
+        /* 애니메이션 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.4s ease forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay-wrapper">
+        <!-- 상단 좌측: 노래 정보 -->
+        <div class="song-info-box" id="songInfoBox">
+            <div class="now-badge">NOW</div>
+            <div class="song-title-row">
+                <span class="song-title" id="songTitle"></span>
+                <span class="artist-name" id="artistName"></span>
+            </div>
+        </div>
+
+        <!-- 하단 중앙: 가사 -->
+        <div class="lyrics-box" id="lyricsBox">
+            <p class="lyrics-line sub" id="prevLine"></p>
+            <p class="lyrics-line highlight" id="currentLine"></p>
+            <p class="lyrics-line sub" id="nextLine"></p>
+        </div>
+
+        <!-- 대기 메시지 -->
+        <p class="idle-message visible" id="idleMessage">노래하기 페이지에서 재생을 시작하세요</p>
+    </div>
+
+    <div class="connection-status" id="connectionStatus">연결 중...</div>
+
+    <script>
+        const userId = {{ user_id }};
+        const initialSettings = {{ settings | tojson if settings else 'null' }};
+
+        // Default settings
+        const defaultSettings = {
+            font_family: "Pretendard",
+            font_size: 52,
+            font_color: "#FFFFFF",
+            highlight_color: "#FFE500",
+            current_line_weight: 800,
+            prev_line_weight: 600,
+            next_line_weight: 600,
+            song_title_weight: 800,
+            artist_weight: 600,
+            text_stroke: true,
+            stroke_color: "#000000",
+            current_line_stroke: 3,
+            prev_line_stroke: 2,
+            next_line_stroke: 2,
+            song_title_stroke: 3,
+            artist_stroke: 2,
+            text_shadow: true,
+            animation_enabled: true,
+            show_prev_line: true,
+            show_next_line: true,
+            show_song_title: true,
+            show_artist: true,
+            show_now_badge: true,
+            song_title_size: 48,
+            artist_size: 28,
+            lyrics_position: "bottom"
+        };
+
+        let settings = { ...defaultSettings, ...initialSettings };
+        let ws = null;
+        let reconnectTimeout = null;
+        let currentSongTitle = '';
+        let currentArtist = '';
+
+        const songInfoBox = document.getElementById('songInfoBox');
+        const songTitleEl = document.getElementById('songTitle');
+        const artistNameEl = document.getElementById('artistName');
+        const lyricsBox = document.getElementById('lyricsBox');
+        const prevLine = document.getElementById('prevLine');
+        const currentLine = document.getElementById('currentLine');
+        const nextLine = document.getElementById('nextLine');
+        const idleMessage = document.getElementById('idleMessage');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const nowBadge = document.querySelector('.now-badge');
+
+        function applySettings(s) {
+            settings = { ...defaultSettings, ...s };
+
+            // Song title styles
+            songTitleEl.style.fontSize = settings.song_title_size + 'px';
+            songTitleEl.style.fontWeight = settings.song_title_weight || 800;
+            artistNameEl.style.fontSize = settings.artist_size + 'px';
+            artistNameEl.style.fontWeight = settings.artist_weight || 600;
+
+            // Lyrics styles - 각 요소별 굵기 적용
+            currentLine.style.fontSize = settings.font_size + 'px';
+            currentLine.style.fontWeight = settings.current_line_weight || 800;
+            currentLine.style.color = settings.highlight_color || '#FFE500';
+
+            prevLine.style.fontSize = (settings.font_size * 0.7) + 'px';
+            prevLine.style.fontWeight = settings.prev_line_weight || 600;
+
+            nextLine.style.fontSize = (settings.font_size * 0.7) + 'px';
+            nextLine.style.fontWeight = settings.next_line_weight || 600;
+
+            // Text stroke using -webkit-text-stroke (요소별 두께 적용)
+            const sc = settings.stroke_color || '#000000';
+            const shadowStyle = settings.text_shadow ? '0 6px 12px rgba(0,0,0,0.6)' : 'none';
+
+            if (settings.text_stroke) {
+                currentLine.style.webkitTextStroke = `${settings.current_line_stroke || 3}px ${sc}`;
+                prevLine.style.webkitTextStroke = `${settings.prev_line_stroke || 2}px ${sc}`;
+                nextLine.style.webkitTextStroke = `${settings.next_line_stroke || 2}px ${sc}`;
+                songTitleEl.style.webkitTextStroke = `${settings.song_title_stroke || 3}px ${sc}`;
+                artistNameEl.style.webkitTextStroke = `${settings.artist_stroke || 2}px ${sc}`;
+            } else {
+                [currentLine, prevLine, nextLine, songTitleEl, artistNameEl].forEach(el => {
+                    el.style.webkitTextStroke = '0px';
+                });
+            }
+
+            // Apply paint-order and shadow to all text elements
+            [currentLine, prevLine, nextLine, songTitleEl, artistNameEl].forEach(el => {
+                el.style.paintOrder = 'stroke fill';
+                el.style.textShadow = shadowStyle;
+            });
+
+            // Show/hide elements
+            prevLine.style.display = settings.show_prev_line ? 'block' : 'none';
+            nextLine.style.display = settings.show_next_line ? 'block' : 'none';
+            nowBadge.style.display = settings.show_now_badge ? 'inline-block' : 'none';
+
+            updateSongInfoDisplay();
+        }
+
+        function updateSongInfoDisplay() {
+            const showTitle = settings.show_song_title && currentSongTitle;
+            const showArtist = settings.show_artist && currentArtist;
+
+            if (!showTitle && !showArtist) {
+                songInfoBox.classList.remove('visible');
+                return;
+            }
+
+            songTitleEl.textContent = showTitle ? currentSongTitle : '';
+            artistNameEl.textContent = showArtist ? `- ${currentArtist}` : '';
+            songInfoBox.classList.add('visible');
+        }
+
+        function updateLyrics(data) {
+            idleMessage.classList.remove('visible');
+
+            // Update song info
+            if (data.songTitle !== undefined) {
+                currentSongTitle = data.songTitle || '';
+            }
+            if (data.artist !== undefined) {
+                currentArtist = data.artist || '';
+            }
+            updateSongInfoDisplay();
+
+            const prev = data.prev || '';
+            const current = data.current || '';
+            const next = data.next || '';
+
+            // Update lyrics with animation
+            if (settings.animation_enabled && currentLine.textContent !== current) {
+                currentLine.classList.remove('visible');
+
+                setTimeout(() => {
+                    currentLine.textContent = current;
+                    currentLine.classList.add('visible');
+                }, 150);
+            } else {
+                currentLine.textContent = current;
+                currentLine.classList.add('visible');
+            }
+
+            prevLine.textContent = prev;
+            nextLine.textContent = next;
+
+            if (prev) prevLine.classList.add('visible');
+            else prevLine.classList.remove('visible');
+
+            if (next) nextLine.classList.add('visible');
+            else nextLine.classList.remove('visible');
+        }
+
+        function clearLyrics() {
+            prevLine.textContent = '';
+            currentLine.textContent = '';
+            nextLine.textContent = '';
+            prevLine.classList.remove('visible');
+            currentLine.classList.remove('visible');
+            nextLine.classList.remove('visible');
+            songInfoBox.classList.remove('visible');
+            currentSongTitle = '';
+            currentArtist = '';
+            idleMessage.classList.add('visible');
+        }
+
+        function connect() {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${window.location.host}/api/v1/overlay/ws/${userId}`;
+
+            connectionStatus.textContent = '연결 중...';
+            connectionStatus.className = 'connection-status connecting';
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                connectionStatus.className = 'connection-status';
+                console.log('WebSocket connected');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+
+                    switch (message.type) {
+                        case 'lyrics_update':
+                            updateLyrics(message.data);
+                            break;
+
+                        case 'settings_update':
+                            applySettings(message.settings);
+                            break;
+
+                        case 'clear':
+                        case 'song_change':
+                            clearLyrics();
+                            break;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse message:', e);
+                }
+            };
+
+            ws.onclose = () => {
+                connectionStatus.textContent = '연결 끊김 - 재연결 중...';
+                connectionStatus.className = 'connection-status disconnected';
+                reconnectTimeout = setTimeout(connect, 3000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                ws.close();
+            };
+        }
+
+        // Ping to keep connection alive
+        setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'ping' }));
+            }
+        }, 30000);
+
+        // Initialize
+        applySettings(settings);
+        connect();
+    </script>
+</body>
+</html>

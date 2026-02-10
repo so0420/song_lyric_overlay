@@ -1,0 +1,141 @@
+{% extends "base/base.html" %}
+{% block title %}개인정보처리방침 - PlayList{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .policy-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .policy-header {
+        margin-bottom: 40px;
+    }
+
+    .policy-header h1 {
+        font-size: 2rem;
+        color: var(--text-main);
+        margin-bottom: 12px;
+    }
+
+    .policy-header .updated-date {
+        color: var(--text-dim);
+        font-size: 0.9rem;
+    }
+
+    .policy-section {
+        margin-bottom: 32px;
+    }
+
+    .policy-section h2 {
+        font-size: 1.25rem;
+        color: var(--text-main);
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid var(--accent);
+    }
+
+    .policy-section p,
+    .policy-section li {
+        color: var(--text-sub);
+        line-height: 1.8;
+        margin-bottom: 12px;
+    }
+
+    .policy-section ul {
+        padding-left: 24px;
+    }
+
+    .policy-section li {
+        margin-bottom: 8px;
+    }
+
+    .highlight-box {
+        background: var(--accent-light);
+        border-left: 4px solid var(--accent);
+        padding: 16px 20px;
+        border-radius: 0 8px 8px 0;
+        margin: 16px 0;
+    }
+
+    .highlight-box p {
+        color: var(--text-main);
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="policy-container card">
+    <div class="policy-header">
+        <h1>개인정보처리방침</h1>
+        <p class="updated-date">최종 수정일: 2026년 1월 22일</p>
+    </div>
+
+    <div class="policy-section">
+        <h2>제1조 (개인정보의 처리 목적)</h2>
+        <p>PlayList(이하 "서비스")는 다음의 목적을 위하여 개인정보를 처리합니다. 처리하고 있는 개인정보는 다음의 목적 이외의 용도로는 이용되지 않으며, 이용 목적이 변경되는 경우에는 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.</p>
+        <ul>
+            <li>회원 가입 및 관리: 회원 가입의사 확인, 회원자격 유지·관리, 서비스 부정이용 방지</li>
+            <li>서비스 제공: 맞춤 서비스 제공, 콘텐츠 제공, 본인인증</li>
+            <li>고충처리: 민원인의 신원 확인, 민원사항 확인, 처리결과 통보</li>
+        </ul>
+    </div>
+
+    <div class="policy-section">
+        <h2>제2조 (수집하는 개인정보 항목)</h2>
+        <p>서비스는 회원가입, 서비스 이용 등을 위해 아래와 같은 개인정보를 수집하고 있습니다.</p>
+        <ul>
+            <li>필수항목: 이메일 주소, 이름(닉네임), 프로필 이미지</li>
+            <li>자동수집항목: 접속 IP 주소, 접속 일시, 서비스 이용 기록</li>
+        </ul>
+    </div>
+
+    <div class="policy-section">
+        <h2>제3조 (개인정보의 처리 및 보유 기간)</h2>
+        <p>서비스는 법령에 따른 개인정보 보유·이용기간 또는 정보주체로부터 개인정보를 수집 시에 동의 받은 개인정보 보유·이용기간 내에서 개인정보를 처리·보유합니다.</p>
+        <ul>
+            <li>회원 정보: 회원 탈퇴 시까지</li>
+            <li>문의 기록: 문의 처리 완료 후 3년간 보관</li>
+        </ul>
+    </div>
+
+    <div class="policy-section">
+        <h2>제4조 (개인정보의 제3자 제공)</h2>
+        <p>서비스는 정보주체의 개인정보를 제1조에서 명시한 범위 내에서만 처리하며, 정보주체의 동의, 법률의 특별한 규정 등의 경우에만 개인정보를 제3자에게 제공합니다.</p>
+    </div>
+
+    <div class="policy-section">
+        <h2>제5조 (정보주체의 권리·의무)</h2>
+        <p>이용자는 개인정보주체로서 다음과 같은 권리를 행사할 수 있습니다.</p>
+        <ul>
+            <li>개인정보 열람 요구</li>
+            <li>오류 등이 있을 경우 정정 요구</li>
+            <li>삭제 요구</li>
+            <li>처리정지 요구</li>
+        </ul>
+    </div>
+
+    <div class="policy-section">
+        <h2>제6조 (개인정보의 안전성 확보 조치)</h2>
+        <p>서비스는 개인정보의 안전성 확보를 위해 다음과 같은 조치를 취하고 있습니다.</p>
+        <ul>
+            <li>개인정보의 암호화</li>
+            <li>해킹 등에 대비한 기술적 대책</li>
+            <li>접근권한 관리</li>
+        </ul>
+    </div>
+
+    <div class="policy-section">
+        <h2>제7조 (개인정보 보호책임자)</h2>
+        <div class="highlight-box">
+            <p>개인정보 보호에 관한 문의사항이 있으시면 <a href="/contact" style="color: var(--accent); font-weight: 600;">문의하기</a> 페이지를 통해 연락해 주시기 바랍니다.</p>
+        </div>
+    </div>
+
+    <div class="policy-section">
+        <h2>제8조 (개인정보처리방침 변경)</h2>
+        <p>이 개인정보처리방침은 시행일로부터 적용되며, 법령 및 방침에 따른 변경내용의 추가, 삭제 및 정정이 있는 경우에는 변경사항의 시행 7일 전부터 공지사항을 통하여 고지할 것입니다.</p>
+    </div>
+</div>
+{% endblock %}

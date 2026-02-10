@@ -1,0 +1,502 @@
+<!-- 사이드바 컴포넌트 -->
+<aside class="sidebar" id="sidebar">
+    <!-- 로고 영역 -->
+    <div class="sidebar-brand">
+        <a href="/" class="brand-link">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" class="brand-icon"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+            <span class="brand-text brand-font">Jamku Song</span>
+        </a>
+        <button class="sidebar-close" id="sidebarClose" aria-label="사이드바 닫기">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+    </div>
+
+    <!-- 메인 네비게이션 -->
+    <nav class="sidebar-nav">
+        <a href="/" class="nav-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            홈
+        </a>
+        <a href="/notices" class="nav-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            공지사항
+        </a>
+        <a href="/lyrics" class="nav-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            가사 에디터
+        </a>
+        {% if user and user.get('is_admin') %}
+        <a href="/admin" class="nav-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"></path><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"></path></svg>
+            관리자
+        </a>
+        {% endif %}
+    </nav>
+
+    <!-- 검색 섹션 -->
+    <div class="sidebar-section">
+        <div class="quick-search-container">
+            <div class="quick-search">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="sidebarSearch" placeholder="검색..." autocomplete="off" />
+            </div>
+            <div id="streamerSearchResults" class="search-results"></div>
+        </div>
+    </div>
+
+    <!-- 즐겨찾기 -->
+    <div class="sidebar-section">
+        <div class="section-header">
+            <span class="section-title">즐겨찾기</span>
+            <a href="/favorites" class="section-link">더보기</a>
+        </div>
+        <div id="favoriteStreamers" class="streamer-list">
+            {% if user %}
+            <div class="sidebar-loading">로딩 중...</div>
+            {% else %}
+            <div class="sidebar-login-prompt">
+                <p>로그인 필요</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 최근 방문 -->
+    <div class="sidebar-section" style="flex: 1;">
+        <div class="section-header">
+            <span class="section-title">최근 방문</span>
+        </div>
+        <div id="recentStreamers" class="streamer-list">
+            <div class="sidebar-empty">기록 없음</div>
+        </div>
+    </div>
+
+    <!-- 사용자 프로필 (하단 고정) -->
+    <div class="sidebar-footer">
+        {% if user %}
+        <div class="user-profile-mini">
+            <img src="{{ user.get('picture', '/static/default_avatar.png') }}" class="user-avatar-mini" alt="profile">
+            <div class="user-info-mini">
+                <div class="user-name">{{ user.name }}</div>
+                <a href="/api/v1/oauth/logout" class="user-logout">로그아웃</a>
+            </div>
+            <a href="/mypage" class="btn-icon-mini" title="마이페이지">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </a>
+        </div>
+        {% else %}
+        <a href="/login" class="btn btn-primary" style="width: 100%; justify-content: center;">
+            로그인 / 가입
+        </a>
+        {% endif %}
+    </div>
+</aside>
+
+<!-- 사이드바 오버레이 (모바일) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<style>
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 260px;
+    height: 100vh;
+    background: #f8fafc;
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    z-index: 1001; /* Header보다 위 */
+    transition: transform 0.3s ease;
+}
+
+.sidebar-brand {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.brand-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-main);
+    text-decoration: none;
+}
+
+.brand-icon {
+    color: var(--accent);
+}
+
+.sidebar-close {
+    display: none; /* Desktop hidden */
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-sub);
+}
+
+.sidebar-nav {
+    padding: 24px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    color: var(--text-sub);
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.nav-item:hover {
+    background: white;
+    color: var(--accent);
+    box-shadow: var(--shadow-sm);
+}
+
+.nav-item svg {
+    opacity: 0.8;
+}
+
+.sidebar-section {
+    padding: 16px 24px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.section-link {
+    font-size: 0.75rem;
+    color: var(--accent);
+}
+
+/* Quick Search */
+.quick-search {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-dim);
+    box-shadow: var(--shadow-sm);
+}
+
+.quick-search input {
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+/* User Profile Footer */
+.sidebar-footer {
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+    background: white;
+}
+
+.user-profile-mini {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-avatar-mini {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border-color);
+}
+
+.user-info-mini {
+    flex: 1;
+    overflow: hidden;
+}
+
+.user-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-logout {
+    font-size: 0.75rem;
+    color: var(--text-sub);
+    display: block;
+}
+
+.btn-icon-mini {
+    color: var(--text-dim);
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.btn-icon-mini:hover {
+    background: var(--bg-body);
+    color: var(--text-main);
+}
+
+/* Streamer List */
+.streamer-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    color: var(--text-main);
+    font-weight: 500;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.streamer-item:hover {
+    background: transparent;
+    color: var(--accent);
+}
+
+.streamer-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border-color);
+}
+
+/* Sidebar Empty States */
+.sidebar-empty, .sidebar-loading {
+    padding: 24px 0;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+}
+
+.sidebar-login-prompt {
+    text-align: center;
+    padding: 16px 0;
+}
+
+.sidebar-login-prompt p {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 0;
+}
+
+/* Mobile */
+@media (max-width: 1024px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    .sidebar-close {
+        display: block;
+    }
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+    }
+    .sidebar-overlay.open {
+        display: block;
+    }
+}
+</style>
+
+<script>
+// 사이드바 토글
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('open');
+}
+
+document.getElementById('sidebarClose')?.addEventListener('click', toggleSidebar);
+document.getElementById('sidebarOverlay')?.addEventListener('click', toggleSidebar);
+
+// 즐겨찾기 스트리머 로드
+async function loadFavoriteStreamers() {
+    const container = document.getElementById('favoriteStreamers');
+    if (!container) return;
+    
+    // 로그인 체크
+    {% if not user %}
+    return;
+    {% endif %}
+    
+    try {
+        const res = await fetch('/api/v1/follows');
+        if (!res.ok) {
+            container.innerHTML = '<div class="sidebar-login-prompt"><p>로그인 필요</p></div>';
+            return;
+        }
+        
+        const streamers = await res.json();
+        
+        if (streamers.length === 0) {
+            container.innerHTML = '<div class="sidebar-empty">즐겨찾기 없음</div>';
+            return;
+        }
+        
+        // 최대 5개만 표시
+        const displayStreamers = streamers.slice(0, 5);
+        container.innerHTML = displayStreamers.map(s => `
+            <a href="/@${s.slug}" class="streamer-item">
+                <img src="${s.picture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + s.name}" class="streamer-avatar" alt="${s.name}">
+                <span class="streamer-name">${s.name}</span>
+            </a>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = '<div class="sidebar-empty">로드 실패</div>';
+    }
+}
+
+// 최근 방문 스트리머 로드 (localStorage)
+function loadRecentStreamers() {
+    const container = document.getElementById('recentStreamers');
+    if (!container) return;
+    
+    try {
+        const recent = JSON.parse(localStorage.getItem('recentStreamers') || '[]');
+        
+        if (recent.length === 0) {
+            container.innerHTML = '<div class="sidebar-empty">기록 없음</div>';
+            return;
+        }
+        
+        container.innerHTML = recent.slice(0, 3).map(s => `
+            <a href="/@${s.slug}" class="streamer-item">
+                <img src="${s.picture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + s.name}" class="streamer-avatar" alt="${s.name}">
+                <span class="streamer-name">${s.name}</span>
+            </a>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = '<div class="sidebar-empty">기록 없음</div>';
+    }
+}
+
+// 스트리머 방문 기록 저장
+function saveRecentStreamer(streamer) {
+    try {
+        let recent = JSON.parse(localStorage.getItem('recentStreamers') || '[]');
+        
+        // 기존에 있으면 제거
+        recent = recent.filter(s => s.slug !== streamer.slug);
+        
+        // 맨 앞에 추가
+        recent.unshift(streamer);
+        
+        // 최대 10개 유지
+        recent = recent.slice(0, 10);
+        
+        localStorage.setItem('recentStreamers', JSON.stringify(recent));
+    } catch (e) {
+        console.error('Failed to save recent streamer', e);
+    }
+}
+
+// 빠른 검색
+let searchTimeout;
+document.getElementById('sidebarSearch')?.addEventListener('input', function(e) {
+    const query = e.target.value.trim();
+    const resultsContainer = document.getElementById('streamerSearchResults');
+    
+    clearTimeout(searchTimeout);
+    
+    if (query.length < 2) {
+        resultsContainer.innerHTML = '';
+        resultsContainer.style.display = 'none';
+        return;
+    }
+    
+    searchTimeout = setTimeout(async () => {
+        try {
+            const res = await fetch(`/api/v1/streamers/?q=${encodeURIComponent(query)}`);
+            const streamers = await res.json();
+            
+            if (streamers.length === 0) {
+                resultsContainer.innerHTML = '<div class="search-no-result">검색 결과가 없습니다</div>';
+            } else {
+                resultsContainer.innerHTML = streamers.slice(0, 5).map(s => `
+                    <a href="/@${s.slug}" class="search-result-item">
+                        <img src="${s.picture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + s.name}" class="search-result-avatar" alt="${s.name}">
+                        <span class="search-result-name">${s.name}</span>
+                    </a>
+                `).join('');
+            }
+            resultsContainer.style.display = 'block';
+        } catch (e) {
+            resultsContainer.innerHTML = '<div class="search-no-result">오류가 발생했습니다</div>';
+            resultsContainer.style.display = 'block';
+        }
+    }, 300);
+});
+
+document.getElementById('sidebarSearch')?.addEventListener('blur', function(e) {
+    // 결과 클릭 가능하도록 약간의 지연
+    setTimeout(() => {
+        document.getElementById('streamerSearchResults').style.display = 'none';
+    }, 200);
+});
+
+document.getElementById('sidebarSearch')?.addEventListener('focus', function(e) {
+    const resultsContainer = document.getElementById('streamerSearchResults');
+    if (resultsContainer.innerHTML) {
+        resultsContainer.style.display = 'block';
+    }
+});
+
+document.getElementById('sidebarSearch')?.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        const query = e.target.value.trim();
+        if (query) {
+            window.location.href = `/search?q=${encodeURIComponent(query)}`;
+        }
+    }
+});
+
+// 초기화
+document.addEventListener('DOMContentLoaded', () => {
+    loadFavoriteStreamers();
+    loadRecentStreamers();
+});
+</script>

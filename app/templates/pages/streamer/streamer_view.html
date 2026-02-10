@@ -1,0 +1,529 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ streamer.name }}의 노래책 - Jamku Songbook{% endblock %}
+
+{% block extra_styles %}
+<style>
+    /* 2-Column Profile Layout */
+    .profile-layout {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 40px;
+        align-items: start;
+    }
+
+    /* Left: Profile Sidebar */
+    .profile-sidebar {
+        position: sticky;
+        top: 40px;
+        /* Header height + spacing if needed */
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .profile-avatar-large {
+        width: 100%;
+        aspect-ratio: 1/1;
+        border-radius: 20px;
+        object-fit: cover;
+        border: 1px solid var(--border-color);
+        background: white;
+    }
+
+    .profile-info h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+        margin-bottom: 8px;
+        line-height: 1.2;
+    }
+
+    .profile-desc {
+        color: var(--text-sub);
+        font-size: 1rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+
+    .action-btn-group {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn-follow {
+        flex: 1;
+        padding: 12px;
+        border-radius: 12px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+    }
+
+    .btn-follow.active {
+        background: white;
+        border-color: var(--border-color);
+        color: var(--text-main);
+    }
+
+    .btn-follow:not(.active) {
+        background: var(--text-main);
+        color: white;
+    }
+
+    .btn-follow:not(.active):hover {
+        background: black;
+    }
+
+    /* Right: Main Content */
+    .profile-main {
+        min-width: 0;
+        /* Flex/Grid child overflow fix */
+    }
+
+    /* Search Area */
+    .search-wrapper {
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 8px 8px 8px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .search-input {
+        border: none;
+        outline: none;
+        font-size: 1rem;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .category-select {
+        background: var(--bg-body);
+        border: none;
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text-sub);
+        cursor: pointer;
+    }
+
+    /* Song Grid */
+    .song-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 16px;
+    }
+
+    .song-card {
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .song-card:hover {
+        border-color: var(--accent);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    .sc-art {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        object-fit: cover;
+        background: var(--bg-body);
+        flex-shrink: 0;
+    }
+
+    .sc-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .sc-title {
+        font-weight: 700;
+        font-size: 1rem;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sc-artist {
+        font-size: 0.9rem;
+        color: var(--text-sub);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sc-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 6px;
+    }
+
+    .badge-pill {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        border-radius: 99px;
+        font-weight: 600;
+    }
+
+    .bg-easy {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .bg-medium {
+        background: #fef9c3;
+        color: #854d0e;
+    }
+
+    .bg-hard {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .icon-mr {
+        color: #ff0000;
+    }
+
+    /* YouTube Red for MR */
+
+    /* Responsive */
+    @media (max-width: 840px) {
+        .profile-layout {
+            grid-template-columns: 1fr;
+            gap: 32px;
+        }
+
+        .profile-sidebar {
+            position: static;
+            flex-direction: row;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .profile-avatar-large {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+        }
+
+        .profile-info {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .profile-desc {
+            display: none;
+            /* Hide desc on mobile header to save space, or limit lines */
+        }
+
+        .action-btn-group {
+            width: 100%;
+            margin-top: 12px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-layout">
+    <!-- Left Sidebar -->
+    <aside class="profile-sidebar">
+        <img src="{{ streamer.picture or 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + streamer.name }}"
+            class="profile-avatar-large" alt="Profile">
+
+        <div class="profile-info">
+            <h1>{{ streamer.name }}</h1>
+            <p class="profile-desc">{{ streamer.description or '소개가 없습니다.' }}</p>
+
+            {% if streamer.links %}
+            <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+                {% for link in streamer.links %}
+                <a href="{{ link.url }}" target="_blank" class="btn btn-outline"
+                    style="padding: 6px 12px; font-size: 0.8rem;">
+                    {{ link.name }}
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="action-btn-group">
+            <button id="favoriteBtn" class="btn-follow" onclick="toggleFavorite()">
+                <svg id="starIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <polygon
+                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                    </polygon>
+                </svg>
+                <span id="favoriteLabel">즐겨찾기</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Right Content -->
+    <main class="profile-main">
+        <div class="search-wrapper">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="color: var(--text-dim);">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchInput" class="search-input" placeholder="노래 제목, 가수 검색..."
+                oninput="handleSearch()">
+
+            <select id="categoryFilter" class="category-select" onchange="handleSearch()">
+                <option value="">전체</option>
+                {% for cat in streamer.tags %}
+                <option value="{{ cat.name }}">{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div id="songContainer" class="song-grid">
+            <!-- JS Rendered -->
+        </div>
+    </main>
+</div>
+
+<!-- Request Modal (Keep mostly same structure but update styles if needed) -->
+<style>
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-card {
+        background: white;
+        width: 90%;
+        max-width: 400px;
+        border-radius: 20px;
+        padding: 32px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        text-align: center;
+    }
+</style>
+
+<div id="requestModal" class="modal-overlay">
+    <div class="modal-card">
+        <h3 id="mTitle" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 4px;">Title</h3>
+        <p id="mArtist" style="color: var(--text-sub); margin-bottom: 32px;">Artist</p>
+
+        <div id="mrContainer" style="margin-bottom: 24px;">
+            <a id="mrLink" href="#" target="_blank" class="btn"
+                style="width: 100%; background: #f8fafc; border: 1px solid #e2e8f0; color: var(--text-main); justify-content: center; gap: 8px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#ff0000">
+                    <path
+                        d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 4-8 4z" />
+                </svg>
+                MR 영상 보기
+            </a>
+        </div>
+
+        <div style="margin-bottom: 24px; text-align: left;">
+            <label
+                style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-sub); margin-bottom: 8px;">신청자
+                이름</label>
+            <input type="text" id="requesterName"
+                style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); outline: none;"
+                placeholder="닉네임을 입력해 주세요.">
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+            <button class="btn btn-outline" style="flex: 1;" onclick="closeModal()">닫기</button>
+            <button class="btn btn-primary" style="flex: 2;" onclick="submitRequest()">노래 신청하기</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const streamerId = '{{ streamer.id }}';
+    const streamerProfilePic = '{{ streamer.picture }}' || 'https://via.placeholder.com/150';
+    let allSongs = [];
+
+    async function loadSongs() {
+        const res = await fetch(`/api/v1/songbook/${streamerId}`);
+        allSongs = await res.json();
+        renderSongs(allSongs);
+    }
+
+    function renderSongs(songs) {
+        const container = document.getElementById('songContainer');
+        container.innerHTML = '';
+
+        if (songs.length === 0) {
+            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);">등록된 노래가 없습니다.</div>';
+            return;
+        }
+
+        songs.forEach((s, idx) => {
+            const diffClass = s.difficulty <= 3 ? 'bg-easy' : (s.difficulty <= 7 ? 'bg-medium' : 'bg-hard');
+            const hasMr = s.mr_youtube_video_id ? '<svg class="icon-mr" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 4-8 4z"/></svg>' : '';
+
+            const div = document.createElement('div');
+            div.className = 'song-card';
+            div.onclick = () => openRequestModalByIndex(idx);
+            div.innerHTML = `
+                <img src="${s.cover_image_url || streamerProfilePic}" class="sc-art">
+                <div class="sc-info">
+                    <div class="sc-title">${s.music_name}</div>
+                    <div class="sc-artist">${s.artist_name}</div>
+                    <div class="sc-meta">
+                        <span class="badge-pill ${diffClass}">Lv.${s.difficulty}</span>
+                        ${hasMr}
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function handleSearch() {
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        const cat = document.getElementById('categoryFilter').value;
+
+        const filtered = allSongs.filter(s => {
+            const matchesQuery = s.music_name.toLowerCase().includes(q) || s.artist_name.toLowerCase().includes(q);
+            const matchesCat = !cat || (s.tags && s.tags.includes(cat));
+            return matchesQuery && matchesCat;
+        });
+        renderSongs(filtered);
+    }
+
+    function openRequestModalByIndex(idx) {
+        const s = allSongs[idx];
+        if (!s) return;
+        document.getElementById('mTitle').innerText = s.music_name;
+        document.getElementById('mArtist').innerText = s.artist_name;
+        document.getElementById('requesterName').value = '';
+
+        const mrCont = document.getElementById('mrContainer');
+        if (s.mr_youtube_video_id) {
+            mrCont.style.display = 'block';
+            document.getElementById('mrLink').href = `https://www.youtube.com/watch?v=${s.mr_youtube_video_id}`;
+        } else {
+            mrCont.style.display = 'none';
+        }
+
+        window.selectedSongForRequest = s;
+        document.getElementById('requestModal').style.display = 'flex';
+    }
+
+    async function submitRequest() {
+        const requester = document.getElementById('requesterName').value.trim();
+        if (!requester) return alert('신청자 이름을 입력해 주세요.');
+        if (!window.selectedSongForRequest) return;
+
+        const s = window.selectedSongForRequest;
+        try {
+            const res = await fetch('/api/v1/song-requests/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    requester: requester,
+                    requester_type: 'WEB',
+                    requester_platform: 'Web',
+                    streamer_id: parseInt(streamerId),
+                    song_id: s.id,
+                    title: s.music_name,
+                    artist: s.artist_name
+                })
+            });
+            if (res.ok) {
+                alert('신청이 완료되었습니다!');
+                closeModal();
+            } else {
+                const data = await res.json();
+                alert(data.detail || '신청에 실패했습니다.');
+            }
+        } catch (e) {
+            alert('오류가 발생했습니다.');
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('requestModal').style.display = 'none';
+    }
+
+    let isFollowing = false;
+    async function checkFollowStatus() {
+        try {
+            const res = await fetch(`/api/v1/follows/${streamerId}/status`);
+            const data = await res.json();
+            isFollowing = data.is_following;
+            updateFavoriteButton();
+        } catch (e) { }
+    }
+
+    function updateFavoriteButton() {
+        const btn = document.getElementById('favoriteBtn');
+        const icon = document.getElementById('starIcon');
+        const label = document.getElementById('favoriteLabel');
+
+        if (isFollowing) {
+            btn.classList.add('active');
+            icon.setAttribute('fill', 'currentColor');
+            label.textContent = '구독중';
+        } else {
+            btn.classList.remove('active');
+            icon.setAttribute('fill', 'none');
+            label.textContent = '즐겨찾기';
+        }
+    }
+
+    async function toggleFavorite() {
+        {% if not user %}
+        if (confirm('로그인이 필요합니다.')) window.location.href = '/login';
+        return;
+        {% endif %}
+        try {
+            const method = isFollowing ? 'DELETE' : 'POST';
+            const res = await fetch(`/api/v1/follows/${streamerId}`, { method });
+            if (res.ok) {
+                isFollowing = !isFollowing;
+                updateFavoriteButton();
+                if (typeof loadFavoriteStreamers === 'function') loadFavoriteStreamers();
+            }
+        } catch (e) { }
+    }
+
+    // Init
+    loadSongs();
+    checkFollowStatus();
+</script>
+{% endblock %}

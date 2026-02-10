@@ -1,0 +1,362 @@
+{% extends "base/base.html" %}
+
+{% block title %}PlayList - 좋아하는 스트리머의 노래책{% endblock %}
+
+{% block extra_styles %}
+<style>
+/* Viewer-Focused Home Layout */
+.home-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding-top: 60px;
+    text-align: center;
+}
+
+/* Hero Section */
+.home-hero {
+    margin-bottom: 80px;
+}
+
+.home-title {
+    font-size: 3rem;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    margin-bottom: 16px;
+    color: var(--text-main);
+    line-height: 1.2;
+}
+
+.home-subtitle {
+    font-size: 1.2rem;
+    color: var(--text-sub);
+    margin-bottom: 40px;
+    font-weight: 500;
+}
+
+/* Big Search Bar */
+.big-search-box {
+    position: relative;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.big-search-input {
+    width: 100%;
+    padding: 20px 24px 20px 60px;
+    font-size: 1.1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 99px;
+    outline: none;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* Bouncy transition */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.big-search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 20px 40px -10px rgba(37, 99, 235, 0.3); /* Colorful glow */
+    transform: scale(1.02); /* Subtle expansion */
+}
+
+.search-icon {
+    position: absolute;
+    left: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    width: 24px;
+    height: 24px;
+    pointer-events: none;
+    transition: color 0.2s;
+}
+
+.big-search-input:focus + .search-icon {
+    color: var(--accent);
+}
+
+/* Sections */
+.home-section {
+    text-align: left;
+    margin-bottom: 60px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    padding: 0 8px;
+}
+
+.section-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Streamer Grid (Horizontal Scroll on Mobile) */
+.streamer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+}
+
+.streamer-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.streamer-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--accent-light);
+}
+
+.sc-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 16px;
+    border: 1px solid var(--border-color);
+}
+
+.sc-name {
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+    color: var(--text-main);
+}
+
+.sc-desc {
+    font-size: 0.85rem;
+    color: var(--text-sub);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+
+/* Recent Songs List */
+.recent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.recent-item {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    gap: 16px;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: inherit;
+}
+
+.recent-item:hover {
+    border-color: var(--accent);
+    background-color: #f8fafc;
+}
+
+.ri-art {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: #f1f5f9;
+}
+
+.ri-info {
+    flex: 1;
+}
+
+.ri-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-main);
+}
+
+.ri-artist {
+    font-size: 0.9rem;
+    color: var(--text-sub);
+}
+
+.ri-streamer {
+    font-size: 0.8rem;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-weight: 600;
+}
+
+/* Empty State */
+.empty-placeholder {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px dashed var(--border-color);
+}
+
+/* CTA Footer */
+.home-cta {
+    margin-top: 80px;
+    padding: 40px;
+    background: var(--text-main);
+    border-radius: 24px;
+    color: white;
+    text-align: center;
+}
+
+.home-cta h3 {
+    font-size: 1.5rem;
+    margin-bottom: 12px;
+    color: white;
+}
+
+.home-cta p {
+    color: #94a3b8;
+    margin-bottom: 24px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .home-container {
+        padding-top: 40px;
+    }
+    .home-title {
+        font-size: 2.2rem;
+    }
+    .streamer-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <!-- Hero -->
+    <div class="home-hero">
+        <h1 class="home-title brand-font" style="color: var(--accent); font-size: 4rem;">Jamku Song</h1>
+        <p class="home-subtitle">좋아하는 스트리머의 모든 노래, 잼쿠송</p>
+        
+        <div class="big-search-box">
+            <input type="text" id="mainSearch" class="big-search-input" placeholder="스트리머 이름을 검색해보세요" onkeydown="if(event.key === 'Enter') goSearch()">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </div>
+    </div>
+
+    <!-- How to Enjoy (Guide Section) -->
+    <div class="home-section">
+        <div class="section-header" style="justify-content: center; margin-bottom: 40px;">
+            <h2 class="section-title">이렇게 즐겨보세요</h2>
+        </div>
+        <div class="guide-grid">
+            <div class="guide-card">
+                <div class="guide-icon-box">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </div>
+                <h3>스트리머 검색</h3>
+                <p>좋아하는 스트리머의 이름을<br>검색하여 노래책을 찾아보세요.</p>
+            </div>
+            <div class="guide-card">
+                <div class="guide-icon-box">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                </div>
+                <h3>신청곡 확인</h3>
+                <p>스트리머가 부를 수 있는<br>다양한 노래 목록을 확인하세요.</p>
+            </div>
+            <div class="guide-card">
+                <div class="guide-icon-box">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                </div>
+                <h3>소통하며 즐기기</h3>
+                <p>방송에서 노래를 신청하고<br>함께 음악을 즐겨보세요.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="home-cta">
+        <h3>스트리머이신가요?</h3>
+        <p>나만의 노래책을 만들고 시청자들과 더 가까워지세요.</p>
+        {% if not user %}
+        <a href="/login" class="btn" style="background: white; color: var(--text-main);">지금 시작하기</a>
+        {% else %}
+        <a href="/mypage" class="btn" style="background: white; color: var(--text-main);">대시보드로 이동</a>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    /* Guide Grid Styles */
+    .guide-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 32px;
+        text-align: center;
+    }
+
+    .guide-card {
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        padding: 40px 24px;
+        /* Removed hover effects to avoid False Affordance (Don Norman's principle) */
+    }
+
+    .guide-icon-box {
+        width: 64px;
+        height: 64px;
+        background: var(--accent-light);
+        color: var(--accent);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+    }
+
+    .guide-card h3 {
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: var(--text-main);
+    }
+
+    .guide-card p {
+        font-size: 0.95rem;
+        color: var(--text-sub);
+        line-height: 1.6;
+    }
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function goSearch() {
+        const q = document.getElementById('mainSearch').value.trim();
+        if(q) window.location.href = `/search?q=${encodeURIComponent(q)}`;
+    }
+</script>
+{% endblock %}
+

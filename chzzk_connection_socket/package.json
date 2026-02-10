@@ -1,0 +1,17 @@
+{
+  "name": "chzzk-connection-socket",
+  "version": "1.0.0",
+  "description": "Chzzk chat connection manager with external socket server",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "socket.io-client": "2.0.3",
+    "socket.io": "^4.8.0",
+    "mysql2": "^3.11.0",
+    "axios": "^1.7.0",
+    "dotenv": "^16.4.0"
+  }
+}

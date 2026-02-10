@@ -1,0 +1,253 @@
+{% extends "base/base.html" %}
+
+{% block title %}로그인 - Jamku Songbook{% endblock %}
+
+{% block extra_styles %}
+<style>
+/* Split Layout */
+.split-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: calc(100vh - 40px); /* Adjust for potential padding */
+    width: 100%;
+    overflow: hidden;
+}
+
+/* Left: Brand Area */
+.brand-side {
+    background: var(--accent);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px;
+    position: relative;
+    overflow: hidden;
+}
+
+.brand-content {
+    position: relative;
+    z-index: 10;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.brand-logo {
+    font-size: 2.5rem;
+    font-weight: 900;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand-slogan {
+    font-size: 1.25rem;
+    line-height: 1.5;
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+/* Decorative Pattern (SVG) */
+.brand-pattern {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    opacity: 0.1;
+    pointer-events: none;
+    background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0);
+    background-size: 40px 40px;
+}
+
+/* Right: Form Area */
+.form-side {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    background: white;
+}
+
+.login-box {
+    width: 100%;
+    max-width: 400px;
+}
+
+.login-header {
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.login-header h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 12px;
+    color: var(--text-main);
+}
+
+.login-header p {
+    color: var(--text-sub);
+    font-size: 1rem;
+}
+
+/* Auth Buttons */
+.auth-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.btn-auth {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.btn-naver {
+    background-color: #03C75A;
+    color: white;
+}
+.btn-naver:hover {
+    background-color: #02b351;
+    box-shadow: 0 4px 12px rgba(3, 199, 90, 0.2);
+}
+
+.btn-google {
+    background-color: white;
+    color: #374151;
+    border: 1px solid var(--border-color);
+}
+.btn-google:hover {
+    background-color: #f9fafb;
+    border-color: var(--text-dim);
+}
+
+.brand-icon-img {
+    width: 20px;
+    height: 20px;
+}
+
+/* Error Message */
+.error-message {
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    font-size: 0.9rem;
+    display: none;
+    line-height: 1.5;
+}
+
+/* Mobile Responsive */
+@media (max-width: 1024px) {
+    .split-layout {
+        grid-template-columns: 1fr;
+        min-height: auto;
+    }
+    
+    .brand-side {
+        padding: 40px 24px;
+        min-height: 200px;
+    }
+    
+    .brand-content {
+        text-align: center;
+    }
+    
+    .brand-logo {
+        justify-content: center;
+        font-size: 2rem;
+    }
+    
+    .form-side {
+        padding: 40px 24px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="split-layout">
+    <!-- Left Side -->
+    <div class="brand-side">
+        <div class="brand-pattern"></div>
+        <div class="brand-content">
+            <div class="brand-logo">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                PlayList
+            </div>
+            <p class="brand-slogan">
+                시청자와 함께 만드는<br>
+                실시간 신청곡 & 노래책 플랫폼
+            </p>
+        </div>
+    </div>
+
+    <!-- Right Side -->
+    <div class="form-side">
+        <div class="login-box">
+            <div class="login-header">
+                <h1>반가워요!</h1>
+                <p>소셜 계정으로 간편하게 시작하세요.</p>
+            </div>
+
+            <div id="errorMessage" class="error-message"></div>
+
+            <div class="auth-buttons">
+                <a href="/api/v1/oauth/naver/login" class="btn-auth btn-naver">
+                    <svg class="brand-icon-img" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M16.273 12.845L7.376 0H0v24h7.726V11.155L16.624 24H24V0h-7.727v12.845z"/>
+                    </svg>
+                    네이버로 시작하기
+                </a>
+                
+                <a href="/api/v1/oauth/google/login" class="btn-auth btn-google">
+                    <svg class="brand-icon-img" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Google로 시작하기
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('error');
+    if (error) {
+        const errorDiv = document.getElementById('errorMessage');
+        let message = '';
+        switch(error) {
+            case 'email_exists':
+                message = '이미 가입된 이메일입니다.';
+                break;
+            case 'account_already_linked':
+                message = '이미 연결된 계정입니다.';
+                break;
+            case 'email_mismatch':
+                message = '이메일 정보가 일치하지 않습니다.';
+                break;
+            default:
+                message = '로그인 중 오류가 발생했습니다.';
+        }
+        errorDiv.innerHTML = message;
+        errorDiv.style.display = 'block';
+    }
+</script>
+{% endblock %}

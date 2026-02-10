@@ -1,0 +1,628 @@
+{% extends "base/base.html" %}
+
+{% block title %}마이페이지 - PlayList{% endblock %}
+
+{% block extra_styles %}
+<style>
+.mypage-layout {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.profile-section {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    padding: 40px;
+    margin-bottom: 32px;
+    text-align: center;
+}
+
+.profile-large-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 24px;
+    border: 4px solid var(--accent-light);
+    cursor: pointer;
+    transition: filter 0.2s;
+}
+
+.profile-large-avatar:hover {
+    filter: brightness(0.8);
+}
+
+.profile-avatar-container {
+    position: relative;
+    display: inline-block;
+}
+
+.avatar-edit-icon {
+    position: absolute;
+    bottom: 24px;
+    right: 0;
+    background: var(--accent);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+    font-size: 0.8rem;
+    pointer-events: none;
+}
+
+.user-info-grid {
+    display: grid;
+    gap: 20px;
+    text-align: left;
+    margin-top: 32px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.info-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-sub);
+}
+
+.info-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.actions-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+@media (max-width: 600px) {
+    .actions-section {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Tab Navigation */
+.tab-container {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 32px;
+    background: #f3f4f6;
+    padding: 6px;
+    border-radius: 16px;
+    position: sticky;
+    top: 20px;
+    z-index: 10;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    background: transparent;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-sub);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.tab-btn.active {
+    background: white;
+    color: var(--accent);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.action-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 32px;
+    text-align: center;
+    transition: all 0.2s;
+    height: 100%;
+}
+
+.action-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.05);
+}
+
+.action-icon {
+    font-size: 2.5rem;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.action-title {
+    font-weight: 800;
+    font-size: 1.25rem;
+    margin-bottom: 8px;
+}
+
+.action-desc {
+    font-size: 0.9rem;
+    color: var(--text-sub);
+    margin-bottom: 24px;
+}
+
+/* Social Connection Section */
+.social-connect-section {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    padding: 32px;
+    margin-top: 32px;
+}
+
+.social-title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin-bottom: 20px;
+}
+
+.social-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.social-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--bg-main);
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+}
+
+.social-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+}
+
+.unlink-btn {
+    color: #ef4444;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.unlink-btn:hover {
+    background: #fef2f2;
+}
+
+.social-btn-mini {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.social-btn-mini.naver { background: #03C75A; color: white; }
+.social-btn-mini.google { background: white; color: #374151; border: 1px solid #e5e7eb; }
+.social-btn-mini:hover { transform: translateY(-2px); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mypage-layout">
+    <div class="tab-container">
+        <button class="tab-btn active" onclick="showTab('profile')">👤 프로필</button>
+        <button class="tab-btn" onclick="showTab('streamer')">🎤 스트리머</button>
+        <button class="tab-btn" onclick="showTab('settings')">⚙️ 계정</button>
+    </div>
+
+    <!-- Profile Tab -->
+    <div id="tab-profile" class="tab-content active">
+        <div class="profile-section">
+            <div class="profile-avatar-container" onclick="document.getElementById('profileInput').click()">
+                <img id="profileImage" src="{{ user.get('picture', '/static/default_avatar.png') or '/static/default_avatar.png' }}" class="profile-large-avatar" alt="profile">
+                <div class="avatar-edit-icon">📷</div>
+                <input type="file" id="profileInput" style="display: none;" accept="image/*" onchange="uploadPicture(this)">
+            </div>
+            <h1 style="font-size: 2rem; letter-spacing: -1px;">{{ user.get('name') }}님, 안녕하세요!</h1>
+            
+            <div class="user-info-grid">
+                <div class="info-item">
+                    <span class="info-label">이메일</span>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="email" id="editEmail" class="btn btn-outline" style="flex: 1; text-align:left; font-size:1.1rem; padding:12px;" value="{{ user.get('email') }}" oninput="checkEmailChanged()">
+                        <button id="otpSendBtn" class="btn btn-outline" style="display: none; padding: 0 16px; font-weight: 700; white-space: nowrap;" onclick="sendOTP()">인증 번호 발송</button>
+                    </div>
+                </div>
+                <div id="otpSection" class="info-item" style="display: none; margin-top: 8px; animation: fadeIn 0.3s ease-out;">
+                    <span class="info-label">인증 번호</span>
+                    <input type="text" id="otpCode" class="btn btn-outline" style="text-align:left; font-size:1.1rem; padding:12px;" placeholder="인증 번호 6자리 입력">
+                </div>
+                <div class="info-item">
+                    <span class="info-label">닉네임</span>
+                    <input type="text" id="editName" class="btn btn-outline" style="text-align:left; font-size:1.1rem; padding:12px;" value="{{ user.get('name') }}">
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" style="margin-top:32px; width:100%; padding:16px;" onclick="updateProfile()">변경사항 저장</button>
+        </div>
+    </div>
+
+    <!-- Streamer Tab -->
+    <div id="tab-streamer" class="tab-content">
+        <div class="actions-section">
+            <div class="action-card">
+                <span class="action-icon">🎤</span>
+                {% if is_streamer %}
+                    <h3 class="action-title">노래책 관리</h3>
+                    <p class="action-desc">내 노래책 리스트를 관리하고 상세 설정을 변경하세요.</p>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <a href="/@{{ streamer.slug }}" class="btn btn-primary" style="width:100%;">내 노래책 보기</a>
+                        <a href="/manage" class="btn btn-outline" style="width:100%;">관리 페이지로 이동</a>
+                        <button class="btn btn-outline" style="width:100%; color:#ef4444; border-color:#fee2e2;" onclick="deleteStreamerProfile()">노래책 삭제</button>
+                    </div>
+                {% else %}
+                    <h3 class="action-title">스트리머 등록</h3>
+                    <p class="action-desc">나만의 노래책을 만들고 시청자들의 신청곡을 받아보세요!</p>
+                    <button class="btn btn-primary" style="width:100%;" onclick="registerStreamer()">지금 바로 등록하기</button>
+                {% endif %}
+            </div>
+
+            <div class="action-card">
+                <span class="action-icon">📝</span>
+                <h3 class="action-title">가사 자막 편집기</h3>
+                <p class="action-desc">노래의 가사 정보를 직접 입력하고 타이밍을 편집할 수 있습니다.</p>
+                <a href="/lyrics" class="btn btn-primary" style="width:100%;">편집기 열기</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="tab-settings" class="tab-content">
+        <div class="social-connect-section" style="margin-top: 0;">
+            <h3 class="social-title">소셜 계정 연결 관리</h3>
+            <div id="socialList" class="social-list">
+                <!-- JS will render Google and Naver items here -->
+            </div>
+        </div>
+
+        <div class="social-connect-section" style="margin-top: 24px;">
+            <h3 class="social-title">방송 플랫폼 연동</h3>
+            <div id="platformList" class="social-list">
+                <!-- JS will render platform integration items here -->
+            </div>
+        </div>
+
+        <div class="action-card" style="margin-top: 24px;">
+            <h3 class="action-title" style="color: #ef4444; text-align: left;">위험 영역</h3>
+            <p class="action-desc" style="text-align: left;">계정을 삭제하면 모든 데이터가 복구 불가능하게 삭제됩니다.</p>
+            <button class="btn btn-outline" style="width:100%; color:#ef4444; border-color:#fee2e2;" onclick="withdrawAccount()">회원 탈퇴</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showTab(tabName) {
+        // Tab contents
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+
+        // Tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.currentTarget.classList.add('active');
+        
+        // Load data if needed
+        if (tabName === 'settings') {
+            loadSocialAccounts();
+        }
+    }
+
+    async function loadSocialAccounts() {
+        const res = await fetch('/api/v1/users/me/social-accounts');
+        const connectedAccounts = await res.json();
+        const connectedProviders = connectedAccounts.map(acc => acc.provider);
+        
+        const list = document.getElementById('socialList');
+        list.innerHTML = '';
+        
+        const providers = [
+            { id: 'google', name: 'Google', icon: '🌐', loginUrl: '/api/v1/oauth/google/login' },
+            { id: 'naver', name: 'Naver', icon: '🟢', loginUrl: '/api/v1/oauth/naver/login' }
+        ];
+
+        providers.forEach(p => {
+            const isConnected = connectedProviders.includes(p.id);
+            const item = document.createElement('div');
+            item.className = 'social-item';
+            
+            item.innerHTML = `
+                <div class="social-info">
+                    <span>${p.icon}</span>
+                    <span style="color: ${isConnected ? 'var(--text-main)' : 'var(--text-dim)'}">${p.name}</span>
+                    ${isConnected ? '<span style="font-size: 0.75rem; color: var(--accent); background: var(--accent-light); padding: 2px 8px; border-radius: 20px;">연결됨</span>' : ''}
+                </div>
+                ${isConnected ? 
+                    `<button class="unlink-btn" onclick="unlinkAccount('${p.id}')">연결 해제</button>` : 
+                    `<a href="${p.loginUrl}" class="unlink-btn" style="color: var(--accent); text-decoration: none;">계정 연결</a>`
+                }
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    async function unlinkAccount(provider) {
+        if (!confirm(`${provider} 계정 연결을 해제하시겠습니까?`)) return;
+        
+        const res = await fetch(`/api/v1/users/me/social-accounts/${provider}`, {
+            method: 'DELETE'
+        });
+        
+        if (res.ok) {
+            alert('연결이 해제되었습니다.');
+            loadSocialAccounts();
+        } else {
+            const err = await res.json();
+            alert(err.detail || '실패했습니다.');
+        }
+    }
+
+    loadSocialAccounts();
+    loadPlatformIntegrations();
+
+    const originalEmail = "{{ user.get('email') }}";
+
+    function checkEmailChanged() {
+        const currentEmail = document.getElementById('editEmail').value;
+        const otpSendBtn = document.getElementById('otpSendBtn');
+        const otpSection = document.getElementById('otpSection');
+        
+        if (currentEmail !== originalEmail) {
+            otpSendBtn.style.display = 'block';
+        } else {
+            otpSendBtn.style.display = 'none';
+            otpSection.style.display = 'none';
+        }
+    }
+
+    async function sendOTP() {
+        const email = document.getElementById('editEmail').value;
+        if (!email) return alert('이메일을 입력해주세요.');
+        
+        const btn = document.getElementById('otpSendBtn');
+        btn.disabled = true;
+        btn.innerText = '발송 중...';
+
+        try {
+            const res = await fetch('/api/v1/users/me/email-otp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email: email })
+            });
+            
+            if (res.ok) {
+                alert('인증 번호가 발송되었습니다. 메일함을 확인해주세요.');
+                document.getElementById('otpSection').style.display = 'flex';
+                btn.innerText = '재발송';
+            } else {
+                const err = await res.json();
+                alert(err.detail || '인증 번호 발송에 실패했습니다.');
+                btn.innerText = '인증 번호 발송';
+            }
+        } catch (e) {
+            alert('오류가 발생했습니다.');
+            btn.innerText = '인증 번호 발송';
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    async function updateProfile() {
+        const newName = document.getElementById('editName').value;
+        const newEmail = document.getElementById('editEmail').value;
+        const otpCode = document.getElementById('otpCode').value;
+        
+        if(!newName || !newEmail) return alert('이메일과 닉네임을 모두 입력해주세요.');
+        
+        // 이메일이 변경되었는데 OTP 코드가 없는 경우
+        if (newEmail !== originalEmail && !otpCode) {
+            return alert('이메일 변경을 위해 인증 번호를 입력해주세요.');
+        }
+        
+        const res = await fetch('/api/v1/users/me', {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                name: newName, 
+                email: newEmail,
+                otp_code: otpCode || null
+            })
+        });
+        
+        if(res.ok) {
+            alert('정보가 수정되었습니다.');
+            location.reload();
+        } else {
+            const err = await res.json();
+            alert(err.detail || '수정 중 오류가 발생했습니다.');
+        }
+    }
+
+    async function uploadPicture(input) {
+        if (!input.files || !input.files[0]) return;
+        
+        const file = input.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/api/v1/users/me/picture', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('profileImage').src = data.url;
+                alert('프로필 이미지가 변경되었습니다.');
+            } else {
+                const error = await res.json();
+                alert('업로드 실패: ' + (error.detail || '알 수 없는 오류'));
+            }
+        } catch (e) {
+            alert('업로드 중 오류가 발생했습니다.');
+        }
+    }
+
+    async function registerStreamer() {
+        if(!confirm('스트리머로 등록하시겠습니까?')) return;
+        
+        const res = await fetch('/api/v1/streamers/', {
+            method: 'POST'
+        });
+        
+        if(res.ok) {
+            alert('등록이 완료되었습니다! 관리 페이지로 이동합니다.');
+            window.location.href = '/manage';
+        } else {
+            alert('등록 중 오류가 발생했습니다.');
+        }
+    }
+
+    async function deleteStreamerProfile() {
+        if (!confirm('정말로 노래책을 삭제하시겠습니까?\n모든 노래책 설정과 리스트가 삭제됩니다.')) return;
+        
+        const res = await fetch('/api/v1/streamers/me', {
+            method: 'DELETE'
+        });
+        
+        if (res.ok) {
+            alert('노래책 배포가 중단되었습니다.');
+            location.reload();
+        } else {
+            const error = await res.json();
+            alert('삭제 실패: ' + (error.detail || '알 수 없는 오류'));
+        }
+    }
+
+    async function withdrawAccount() {
+        if (!confirm('정말로 탈퇴하시겠습니까?\n이 작업은 되돌릴 수 없으며 모든 데이터가 즉시 삭제됩니다.')) return;
+        if (!confirm('다시 한번 확인합니다. 정말로 삭제하시겠습니까?')) return;
+        
+        const res = await fetch('/api/v1/users/me', {
+            method: 'DELETE'
+        });
+        
+        if (res.ok) {
+            alert('그동안 이용해 주셔서 감사합니다. 계정이 삭제되었습니다.');
+            window.location.href = '/';
+        } else {
+            alert('탈퇴 처리 중 오류가 발생했습니다.');
+        }
+    }
+
+    async function loadPlatformIntegrations() {
+        const list = document.getElementById('platformList');
+        if (!list) return;
+        
+        list.innerHTML = '<p style="color: var(--text-dim);">연동 정보 로딩 중...</p>';
+
+        try {
+            const res = await fetch('/api/v1/integrations/chzzk/status');
+            const integrations = await res.json();
+            
+            list.innerHTML = '';
+            
+            // Chzzk integration
+            const chzzkItem = document.createElement('div');
+            chzzkItem.className = 'social-item';
+            
+            const isConnected = integrations && integrations.is_connected;
+            const channelName = integrations && integrations.channel_name;
+            
+            chzzkItem.innerHTML = `
+                <div class="social-info">
+                    <span style="font-size: 1.2rem;">🟢</span>
+                    <span style="color: ${isConnected ? 'var(--text-main)' : 'var(--text-dim)'}">치지직</span>
+                    ${isConnected ? `<span style="font-size: 0.75rem; color: var(--accent); background: var(--accent-light); padding: 2px 8px; border-radius: 20px;">연결됨: ${channelName || '채널'}</span>` : ''}
+                </div>
+                ${isConnected ? 
+                    `<button class="unlink-btn" onclick="unlinkChzzk()">연결 해제</button>` : 
+                    `<button class="unlink-btn" style="color: var(--accent);" onclick="connectChzzk()">계정 연결</button>`
+                }
+            `;
+            list.appendChild(chzzkItem);
+        } catch (e) {
+            list.innerHTML = '<p style="color: var(--text-dim);">연동 정보를 불러오는데 실패했습니다.</p>';
+        }
+    }
+
+    async function connectChzzk() {
+        const appId = '{{settings.chzzk_default_app_id}}';
+        const redirectTo = window.location.pathname;
+        window.location.href = `/api/v1/oauth/chzzk/login?app_id=${appId}&redirect_to=${redirectTo}`;
+    }
+
+    async function unlinkChzzk() {
+        if (!confirm('치지직 연동을 해제하시겠습니까?')) return;
+        
+        try {
+            const res = await fetch('/api/v1/integrations/chzzk', {
+                method: 'DELETE'
+            });
+            
+            if (res.ok) {
+                alert('치지직 연동이 해제되었습니다.');
+                loadPlatformIntegrations();
+            } else {
+                const err = await res.json();
+                alert(err.detail || '연동 해제에 실패했습니다.');
+            }
+        } catch (e) {
+            alert('오류가 발생했습니다.');
+        }
+    }
+</script>
+{% endblock %}

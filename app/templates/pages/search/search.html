@@ -1,0 +1,245 @@
+{% extends "base/base.html" %}
+
+{% block title %}{% if query %}"{{ query }}" 검색 결과{% else %}스트리머 검색{% endif %} - Jamku Songbook{% endblock %}
+
+{% block extra_styles %}
+<style>
+.search-page-header {
+    margin-bottom: 40px;
+}
+
+.search-page-header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text-main);
+}
+
+.search-page-header p {
+    color: var(--text-sub);
+    font-size: 1rem;
+}
+
+.search-page-header .highlight {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.search-input-box {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 40px;
+}
+
+.search-input-box input {
+    flex: 1;
+    padding: 14px 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.search-input-box input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
+}
+
+.search-input-box button {
+    padding: 14px 28px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.search-input-box button:hover {
+    opacity: 0.9;
+}
+
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.streamer-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+
+.streamer-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -8px rgba(0,0,0,0.1);
+}
+
+.streamer-card-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 16px;
+    border: 3px solid var(--accent-light);
+}
+
+.streamer-card-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text-main);
+}
+
+.streamer-card-desc {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.empty-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-dim);
+}
+
+.empty-results svg {
+    width: 64px;
+    height: 64px;
+    color: var(--border-color);
+    margin-bottom: 24px;
+}
+
+.empty-results h3 {
+    font-size: 1.25rem;
+    margin-bottom: 8px;
+    color: var(--text-sub);
+}
+
+.initial-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-sub);
+}
+
+.initial-state svg {
+    width: 48px;
+    height: 48px;
+    color: var(--accent);
+    margin-bottom: 16px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="search-page-header">
+    {% if query %}
+    <h1><span class="highlight">"{{ query }}"</span> 검색 결과</h1>
+    <p id="resultCount">검색 중...</p>
+    {% else %}
+    <h1>스트리머 검색</h1>
+    <p>찾고 싶은 스트리머의 이름을 입력하세요</p>
+    {% endif %}
+</div>
+
+<div class="search-input-box">
+    <input type="text" id="searchInput" placeholder="스트리머 이름을 입력하세요..." value="{{ query or '' }}" autofocus>
+    <button onclick="doSearch()">검색</button>
+</div>
+
+<div id="resultsContainer" class="results-grid">
+    {% if not query %}
+    <div class="initial-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <p>스트리머를 검색해 보세요</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const searchInput = document.getElementById('searchInput');
+    
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            doSearch();
+        }
+    });
+    
+    function doSearch() {
+        const query = searchInput.value.trim();
+        if (query) {
+            window.location.href = `/search?q=${encodeURIComponent(query)}`;
+        }
+    }
+    
+    {% if query %}
+    // 검색 결과 로드
+    async function loadResults() {
+        const container = document.getElementById('resultsContainer');
+        const countEl = document.getElementById('resultCount');
+        
+        try {
+            const res = await fetch(`/api/v1/streamers/?q={{ query | urlencode }}`);
+            const streamers = await res.json();
+            
+            countEl.textContent = `${streamers.length}명의 스트리머를 찾았습니다`;
+            
+            if (streamers.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-results">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <h3>검색 결과가 없습니다</h3>
+                        <p>다른 검색어를 시도해 보세요</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = streamers.map(s => `
+                <a href="/@${s.slug}" class="streamer-card">
+                    <img src="${s.picture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + s.name}" class="streamer-card-avatar" alt="${s.name}">
+                    <div class="streamer-card-name">${s.name}</div>
+                    <div class="streamer-card-desc">${s.description || '제 노래책에 오신 것을 환영합니다!'}</div>
+                </a>
+            `).join('');
+        } catch (e) {
+            container.innerHTML = `
+                <div class="empty-results">
+                    <h3>오류가 발생했습니다</h3>
+                    <p>잠시 후 다시 시도해 주세요</p>
+                </div>
+            `;
+        }
+    }
+    
+    loadResults();
+    {% endif %}
+</script>
+{% endblock %}

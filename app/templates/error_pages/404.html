@@ -1,0 +1,100 @@
+{% extends "base/base.html" %}
+
+{% block title %}404 - 페이지를 찾을 수 없습니다{% endblock %}
+
+{% block extra_styles %}
+<style>
+.error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - var(--header-height) - 160px);
+    text-align: center;
+    padding-bottom: 80px;
+}
+
+.error-code {
+    font-size: 10rem;
+    font-weight: 800;
+    line-height: 1;
+    margin: 0;
+    font-family: 'Outfit', sans-serif;
+    background: linear-gradient(135deg, var(--accent) 0%, #c084fc 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 10px 20px rgba(147, 51, 234, 0.1));
+    animation: float 6s ease-in-out infinite;
+}
+
+.error-message {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 24px 0 16px;
+    color: var(--text-main);
+}
+
+.error-description {
+    color: var(--text-sub);
+    max-width: 480px;
+    margin-bottom: 40px;
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.btn-home {
+    padding: 12px 32px;
+    font-size: 1rem;
+    box-shadow: 0 10px 20px rgba(147, 51, 234, 0.2);
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+.decoration {
+    position: absolute;
+    z-index: -1;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.15;
+}
+
+.decoration-1 {
+    width: 300px;
+    height: 300px;
+    background: var(--accent);
+    top: 20%;
+    left: 10%;
+}
+
+.decoration-2 {
+    width: 250px;
+    height: 250px;
+    background: #f472b6;
+    bottom: 20%;
+    right: 15%;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <div class="decoration decoration-1"></div>
+    <div class="decoration decoration-2"></div>
+    
+    <h1 class="error-code">404</h1>
+    <h2 class="error-message">길을 잃으신 것 같아요</h2>
+    <p class="error-description">
+        찾으시는 페이지가 이동되었거나 삭제된 것 같습니다.<br>
+        주소가 정확한지 다시 한번 확인해 주세요.
+    </p>
+    
+    <a href="/" class="btn btn-primary btn-home">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        메인으로 돌아가기
+    </a>
+</div>
+{% endblock %}

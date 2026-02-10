@@ -1,0 +1,132 @@
+{% extends "base/base.html" %}
+{% block title %}관리자 - PlayList{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .admin-layout {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        gap: 24px;
+        min-height: calc(100vh - var(--header-height) - 128px);
+    }
+
+    @media (max-width: 768px) {
+        .admin-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .admin-sidebar {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        height: fit-content;
+        position: sticky;
+        top: calc(var(--header-height) + 32px);
+    }
+
+    .admin-sidebar h3 {
+        font-size: 0.85rem;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .admin-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .admin-nav a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        color: var(--text-sub);
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .admin-nav a:hover {
+        background: #f1f5f9;
+        color: var(--text-main);
+    }
+
+    .admin-nav a.active {
+        background: var(--accent-light);
+        color: var(--accent);
+    }
+
+    .admin-nav svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+    }
+
+    .admin-content {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 24px;
+    }
+
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .admin-header h1 {
+        font-size: 1.5rem;
+        color: var(--text-main);
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+    <aside class="admin-sidebar">
+        <h3>관리자 메뉴</h3>
+        <nav class="admin-nav">
+            <a href="/admin" class="{{ 'active' if active_menu == 'dashboard' else '' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                대시보드
+            </a>
+            <a href="/admin/notices" class="{{ 'active' if active_menu == 'notices' else '' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                공지 관리
+            </a>
+            <a href="/admin/inquiries" class="{{ 'active' if active_menu == 'inquiries' else '' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                문의 관리
+            </a>
+        </nav>
+    </aside>
+
+    <main class="admin-content">
+        {% block admin_content %}{% endblock %}
+    </main>
+</div>
+{% endblock %}

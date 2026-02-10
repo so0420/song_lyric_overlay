@@ -1,0 +1,54 @@
+# env
+.env
+.env.*
+!.env.example
+
+# keys
+*.pem
+*.key
+*.crt
+secrets/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Logs
+*.log
+logs/
+log/
+
+# IDE
+.idea
+.vscode
+
+# Fastapi
+instance/
+.local/
+
+# Cache file
+.DS_Store
+Thumbs.db
+__pycache__/
+*.py[cod]
+*.pyd
+
+# backup
+*.zip
+
+# Utils and memo
+activate_venv.bat
+open_editor.bat
+memo.txt
+*.md
+!readme.md
+
+# test
+/test_*.*
+/test*.*
+/test.*
+
+# nodejs
+node_modules/

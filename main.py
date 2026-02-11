@@ -28,7 +28,7 @@ from app.utils.rate_limit import limiter, rate_limit_exceeded_handler
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from contextlib import asynccontextmanager
-from app.integrations.ITunes_search_api import itunes_api
+from app.integrations.itunes_search_api import itunes_api
 from app.integrations.youtube_api import youtube_api
 from app.database.mariadb import db_handler
 from app.database.meilisearch.meilisearch import meilisearch_handler

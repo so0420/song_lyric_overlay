@@ -1,53 +1,20 @@
 from fastapi import APIRouter, Request, HTTPException, Depends
-from pydantic import BaseModel, EmailStr
 from app.database.mariadb import db_handler
 from app.utils.mailer import send_email
 from app.utils.otp import otp_manager
 from app.utils.config import config
 from app.utils.rate_limit import limiter, RATE_LIMITS
-import bcrypt
+from app.utils.password import hash_password, verify_password
+from app.schemas.auth import (
+    RegisterSchema,
+    VerifyEmailSchema,
+    LoginSchema,
+    ResendVerificationSchema,
+    ForgotPasswordSchema,
+    ResetPasswordSchema
+)
 
 router = APIRouter()
-
-
-class RegisterSchema(BaseModel):
-    email: EmailStr
-    password: str
-    name: str
-
-
-class VerifyEmailSchema(BaseModel):
-    email: EmailStr
-    code: str
-
-
-class LoginSchema(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class ResendVerificationSchema(BaseModel):
-    email: EmailStr
-
-
-class ForgotPasswordSchema(BaseModel):
-    email: EmailStr
-
-
-class ResetPasswordSchema(BaseModel):
-    email: EmailStr
-    code: str
-    new_password: str
-
-
-def hash_password(password: str) -> str:
-    """비밀번호를 bcrypt로 해시"""
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-
-def verify_password(password: str, hashed: str) -> bool:
-    """비밀번호 검증"""
-    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
 
 @router.post("/register")

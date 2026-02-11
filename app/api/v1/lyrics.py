@@ -1,25 +1,13 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from app.core.auth import get_current_user_api, get_current_user
 from app.database.lyrics_repository import get_lyrics_repository, LyricsRepository
-from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from app.schemas.lyrics import LyricsCreateSchema, LyricsUpdateSchema
 
 router = APIRouter()
 
 # 페이지네이션 기본값
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 100
-
-class LyricsCreateSchema(BaseModel):
-    song_id: int
-    title: Optional[str] = None
-    mr_youtube_video_id: str
-    lyrics_data: str # JSON string or structured data
-
-class LyricsUpdateSchema(BaseModel):
-    title: Optional[str] = None
-    mr_youtube_video_id: str
-    lyrics_data: str
 
 @router.get("/search")
 async def search_lyrics(

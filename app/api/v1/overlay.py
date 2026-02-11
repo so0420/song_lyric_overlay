@@ -3,56 +3,10 @@ from app.core.auth import get_current_user_api
 from app.core.overlay_websocket import overlay_manager
 from app.database.mariadb import db_handler
 from app.utils.ws_token import generate_ws_token, verify_ws_token, verify_overlay_token
-from pydantic import BaseModel
-from typing import Optional
+from app.schemas.overlay import OverlaySettingsSchema, LyricsSyncSchema, PlaylistSyncSchema
 import json
 
 router = APIRouter()
-
-class OverlaySettingsSchema(BaseModel):
-    # 가사 스타일
-    font_family: str = "Pretendard"
-    font_size: int = 52
-    font_color: str = "#FFFFFF"
-    highlight_color: str = "#FFE500"
-    # 요소별 굵기
-    current_line_weight: int = 800
-    prev_line_weight: int = 600
-    next_line_weight: int = 600
-    song_title_weight: int = 800
-    artist_weight: int = 600
-    # 텍스트 외곽선
-    text_stroke: bool = True
-    stroke_color: str = "#000000"
-    # 요소별 외곽선 두께
-    current_line_stroke: int = 3
-    prev_line_stroke: int = 2
-    next_line_stroke: int = 2
-    song_title_stroke: int = 3
-    artist_stroke: int = 2
-    text_shadow: bool = True
-    # 표시 옵션
-    animation_enabled: bool = True
-    show_prev_line: bool = True
-    show_next_line: bool = True
-    # 노래 정보
-    show_song_title: bool = True
-    show_artist: bool = True
-    show_now_badge: bool = True
-    song_title_size: int = 48
-    artist_size: int = 28
-    song_info_position: str = "top-left"
-    # 재생목록 설정
-    show_playlist: bool = False
-    playlist_position: str = "right"
-    playlist_max_items: int = 5
-    playlist_font_size: int = 16
-    playlist_bg_color: str = "#000000"
-    playlist_bg_opacity: float = 0.7
-    playlist_text_color: str = "#FFFFFF"
-    playlist_highlight_color: str = "#FFE500"
-    playlist_show_thumbnail: bool = True
-    playlist_show_artist: bool = True
 
 @router.get("/settings")
 async def get_overlay_settings(user=Depends(get_current_user_api)):
@@ -103,25 +57,25 @@ async def save_overlay_settings(
 
 @router.post("/sync")
 async def sync_lyrics(
-    data: dict,
+    data: LyricsSyncSchema,
     user=Depends(get_current_user_api)
 ):
     """노래하기 페이지에서 가사 동기화 요청"""
     await overlay_manager.broadcast_to_user(user['id'], {
         "type": "lyrics_update",
-        "data": data
+        "data": data.model_dump()
     })
     return {"success": True}
 
 @router.post("/sync-playlist")
 async def sync_playlist(
-    data: dict,
+    data: PlaylistSyncSchema,
     user=Depends(get_current_user_api)
 ):
     """재생목록 동기화 요청"""
     await overlay_manager.broadcast_to_user(user['id'], {
         "type": "playlist_update",
-        "data": data
+        "data": data.model_dump()
     })
     return {"success": True}
 

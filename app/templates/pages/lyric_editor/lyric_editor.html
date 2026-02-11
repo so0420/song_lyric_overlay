@@ -1605,17 +1605,19 @@
 
         const qInput = document.getElementById('song-search-input');
         if (!qInput) return;
-        const q = qInput.value.trim();
-        if (!q) return;
 
         const btn = document.getElementById('song-search-btn');
         const resultsDiv = document.getElementById('song-search-results');
         if (!resultsDiv) return;
 
-        // Hide custom song section for iTunes search
-        document.getElementById('add-custom-song-section').style.display = 'none';
-
-        if (!loadMore) {
+        // Use saved query for loadMore, otherwise use current input
+        let q;
+        if (loadMore) {
+            q = lastSongSearchQuery;
+            if (!q) return;
+        } else {
+            q = qInput.value.trim();
+            if (!q) return;
             songSearchOffset = 0;
             window.songSearchResults = [];
             lastSongSearchQuery = q;
@@ -1623,6 +1625,9 @@
             btn.innerText = '검색 중...';
             resultsDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">검색 중...</div>';
         }
+
+        // Hide custom song section for iTunes search
+        document.getElementById('add-custom-song-section').style.display = 'none';
 
         songSearchLoading = true;
 
@@ -1667,14 +1672,19 @@
 
         const qInput = document.getElementById('song-search-input');
         if (!qInput) return;
-        const q = qInput.value.trim();
-        if (!q) return;
 
         const btn = document.getElementById('song-search-btn');
         const resultsDiv = document.getElementById('song-search-results');
         if (!resultsDiv) return;
 
-        if (!loadMore) {
+        // Use saved query for loadMore, otherwise use current input
+        let q;
+        if (loadMore) {
+            q = lastSongSearchQuery;
+            if (!q) return;
+        } else {
+            q = qInput.value.trim();
+            if (!q) return;
             songSearchOffset = 0;
             window.songSearchResults = [];
             lastSongSearchQuery = q;

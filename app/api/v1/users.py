@@ -1,37 +1,19 @@
 from fastapi import APIRouter, Request, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Optional
 from app.database.mariadb import db_handler
 from app.core.auth import get_current_user_api
 from app.utils.mailer import send_email
 from app.utils.otp import otp_manager
-import bcrypt
+from app.utils.password import hash_password, verify_password
+from app.schemas.users import ProfileUpdateSchema, PasswordChangeSchema, EmailOtpSchema
 
 router = APIRouter()
 
-class ProfileUpdateSchema(BaseModel):
-    name: str
-    email: str
-    otp_code: Optional[str] = None
-
-class PasswordChangeSchema(BaseModel):
-    current_password: Optional[str] = None
-    new_password: str
-
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
-
 @router.post("/me/email-otp")
 async def send_email_otp(
-    data: dict,
+    data: EmailOtpSchema,
     user=Depends(get_current_user_api)
 ):
-    email = data.get("email")
-    if not email:
-        raise HTTPException(status_code=400, detail="이메일 주소가 필요합니다.")
+    email = data.email
 
     # Check if duplicate email exists
     exists = await db_handler.fetch_one(

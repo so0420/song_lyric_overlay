@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Form, R
 from app.core.auth import get_current_user_api
 from typing import Optional
 from app.services.song_service import SongService, get_song_service
-from app.integrations.ITunes_search_api import itunes_api
+from app.integrations.itunes_search_api import itunes_api
 from app.database.mariadb import db_handler
 from app.database.meilisearch.meilisearch import meilisearch_handler
 from app.utils.csrf import verify_csrf

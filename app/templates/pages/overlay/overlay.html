@@ -1550,7 +1550,8 @@
         isMuted: false,
         autoRemoveCompleted: localStorage.getItem('overlay_auto_remove') === 'true',
         currentSearchTab: 'itunes',
-        lastSearchQuery: ''
+        lastSearchQuery: '',
+        lastLyricsIndex: -2  // -2로 초기화하여 첫 번째 업데이트가 항상 발생하도록
     };
 
     // DOM Elements
@@ -2364,13 +2365,18 @@
     function startLyricsSync() {
         stopLyricsSync();
 
-        let lastLyricsIndex = -1;
+        let lastTime = 0;
 
         function syncFrame() {
             if (!state.ytPlayer || !state.isPlaying) return;
 
             const currentTime = state.ytPlayer.getCurrentTime() * 1000;
             const duration = state.ytPlayer.getDuration();
+
+            // 시간 점프 감지 (1.5초 이상 차이나면 시크로 판단)
+            const timeDiff = Math.abs(currentTime - lastTime);
+            const isSeek = timeDiff > 1500 && lastTime > 0;
+            lastTime = currentTime;
 
             // Update progress
             const percent = (currentTime / (duration * 1000)) * 100;
@@ -2390,8 +2396,9 @@
                     }
                 }
 
-                if (currentIndex !== lastLyricsIndex) {
-                    lastLyricsIndex = currentIndex;
+                // 시크 발생 시 또는 인덱스가 변경되었을 때 가사 업데이트
+                if (isSeek || currentIndex !== state.lastLyricsIndex) {
+                    state.lastLyricsIndex = currentIndex;
                     renderCurrentLyrics(currentIndex, lyrics);
                 }
             }
@@ -2400,6 +2407,26 @@
         }
 
         state.animationFrameId = requestAnimationFrame(syncFrame);
+    }
+
+    // 시간 이동 시 가사 강제 업데이트
+    function forceUpdateLyrics() {
+        state.lastLyricsIndex = -2;  // 강제 업데이트를 위해 유효하지 않은 값으로 설정
+        if (state.currentLyrics?.parsedLyrics && state.ytPlayer) {
+            const currentTime = state.ytPlayer.getCurrentTime() * 1000;
+            const lyrics = state.currentLyrics.parsedLyrics;
+            let currentIndex = -1;
+
+            for (let i = 0; i < lyrics.length; i++) {
+                if (currentTime >= lyrics[i].start && currentTime < lyrics[i].end) {
+                    currentIndex = i;
+                    break;
+                }
+            }
+
+            state.lastLyricsIndex = currentIndex;
+            renderCurrentLyrics(currentIndex, lyrics);
+        }
     }
 
     function stopLyricsSync() {
@@ -2679,6 +2706,8 @@
             const rect = elements.progressBar.getBoundingClientRect();
             const percent = (e.clientX - rect.left) / rect.width;
             state.ytPlayer.seekTo(state.ytPlayer.getDuration() * percent);
+            // 시간 이동 후 가사 즉시 업데이트
+            setTimeout(forceUpdateLyrics, 100);
         });
 
         // Volume

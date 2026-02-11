@@ -611,8 +611,6 @@
         }
 
         function updateLyrics(data) {
-            idleMessage.classList.remove('visible');
-
             // Update song info
             if (data.songTitle !== undefined) {
                 currentSongTitle = data.songTitle || '';
@@ -626,17 +624,32 @@
             const current = data.current || '';
             const next = data.next || '';
 
+            // 모든 가사가 비어있으면 대기 메시지 표시
+            if (!prev && !current && !next) {
+                prevLine.textContent = '';
+                currentLine.textContent = '';
+                nextLine.textContent = '';
+                prevLine.classList.remove('visible');
+                currentLine.classList.remove('visible');
+                nextLine.classList.remove('visible');
+                idleMessage.classList.add('visible');
+                return;
+            }
+
+            idleMessage.classList.remove('visible');
+
             // Update lyrics with animation
             if (settings.animation_enabled && currentLine.textContent !== current) {
                 currentLine.classList.remove('visible');
 
                 setTimeout(() => {
                     currentLine.textContent = current;
-                    currentLine.classList.add('visible');
+                    if (current) currentLine.classList.add('visible');
                 }, 150);
             } else {
                 currentLine.textContent = current;
-                currentLine.classList.add('visible');
+                if (current) currentLine.classList.add('visible');
+                else currentLine.classList.remove('visible');
             }
 
             prevLine.textContent = prev;

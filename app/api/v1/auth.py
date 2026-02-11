@@ -173,7 +173,7 @@ async def login(request: Request, data: LoginSchema):
     """이메일 + 비밀번호 로그인"""
 
     user = await db_handler.fetch_one(
-        "SELECT * FROM users WHERE email = %s",
+        "SELECT * FROM users WHERE email = %s AND deleted_at IS NULL",
         (data.email,)
     )
 

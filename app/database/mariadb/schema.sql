@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS `users` (
     `last_login` TIMESTAMP NULL COMMENT '최근 로그인 일시',
     `ip` VARCHAR(45) COMMENT '최근 로그인 IP',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '가입 일시',
-    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '정보 수정 일시'
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '정보 수정 일시',
+    `deleted_at` TIMESTAMP NULL COMMENT '삭제 일시 (소프트 삭제)'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Social Accounts table: Support multiple OAuth providers (Google, Naver, etc.)
@@ -95,6 +96,7 @@ CREATE TABLE IF NOT EXISTS `song_lyrics` (
     `likes_count` INT DEFAULT 0 COMMENT '좋아요 수',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at` TIMESTAMP NULL COMMENT '삭제 일시 (소프트 삭제)',
 
     -- 외래 키 설정: 소유자 삭제 시 NULL로 변경
     CONSTRAINT `fk_lyrics_owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,

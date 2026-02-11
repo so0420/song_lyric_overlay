@@ -18,7 +18,7 @@ class LyricsRepository:
                 l.created_at
             FROM song_lyrics l
             LEFT JOIN users u ON l.owner_id = u.id
-            WHERE l.song_id = %s AND l.is_public = 1
+            WHERE l.song_id = %s AND l.is_public = 1 AND l.deleted_at IS NULL
             ORDER BY l.is_verified DESC, l.likes_count DESC, l.created_at DESC
         """
         return await self.db.fetch_all(query, (song_id,))
@@ -43,7 +43,7 @@ class LyricsRepository:
             LEFT JOIN users u ON l.owner_id = u.id
             LEFT JOIN user_lyrics_favorites fav ON l.id = fav.lyrics_id
             LEFT JOIN user_lyrics_favorites ulf ON l.id = ulf.lyrics_id AND ulf.user_id = %s
-            WHERE l.song_id = %s AND l.is_public = 1
+            WHERE l.song_id = %s AND l.is_public = 1 AND l.deleted_at IS NULL
             GROUP BY l.id, l.owner_id, u.name, l.title, l.mr_youtube_video_id,
                      l.is_verified, l.likes_count, l.created_at, l.updated_at
             ORDER BY l.is_verified DESC, l.likes_count DESC, l.created_at DESC
@@ -63,7 +63,7 @@ class LyricsRepository:
             FROM song_lyrics l
             JOIN songs s ON l.song_id = s.id
             LEFT JOIN artists a ON s.artist_id = a.id
-            WHERE l.id = %s
+            WHERE l.id = %s AND l.deleted_at IS NULL
         """
         return await self.db.fetch_one(query, (lyrics_id,))
 
@@ -74,14 +74,14 @@ class LyricsRepository:
             FROM song_lyrics l
             JOIN songs s ON l.song_id = s.id
             LEFT JOIN artists a ON s.artist_id = a.id
-            WHERE l.owner_id = %s
+            WHERE l.owner_id = %s AND l.deleted_at IS NULL
             ORDER BY l.updated_at DESC
             LIMIT %s OFFSET %s
         """
         items = await self.db.fetch_all(query, (owner_id, limit, offset))
 
         # 전체 개수 조회
-        count_query = "SELECT COUNT(*) as total FROM song_lyrics WHERE owner_id = %s"
+        count_query = "SELECT COUNT(*) as total FROM song_lyrics WHERE owner_id = %s AND deleted_at IS NULL"
         count_result = await self.db.fetch_one(count_query, (owner_id,))
         total = count_result['total'] if count_result else 0
 
@@ -93,14 +93,14 @@ class LyricsRepository:
             # 새로 생성할 때
             query = """
                 SELECT id FROM song_lyrics
-                WHERE owner_id = %s AND song_id = %s AND title = %s
+                WHERE owner_id = %s AND song_id = %s AND title = %s AND deleted_at IS NULL
             """
             params = (owner_id, song_id, title)
         else:
             # 수정할 때 (song_id 없이)
             query = """
                 SELECT id FROM song_lyrics
-                WHERE owner_id = %s AND title = %s
+                WHERE owner_id = %s AND title = %s AND deleted_at IS NULL
             """
             params = (owner_id, title)
 
@@ -128,7 +128,8 @@ class LyricsRepository:
         return True
 
     async def delete_lyrics(self, lyrics_id: int, owner_id: int) -> bool:
-        query = "DELETE FROM song_lyrics WHERE id = %s AND owner_id = %s"
+        """소프트 삭제: deleted_at 설정"""
+        query = "UPDATE song_lyrics SET deleted_at = NOW() WHERE id = %s AND owner_id = %s AND deleted_at IS NULL"
         await self.db.execute_query(query, (lyrics_id, owner_id))
         return True
 
@@ -141,7 +142,7 @@ class LyricsRepository:
             SELECT s.song_external_id, COUNT(l.id) as count
             FROM songs s
             JOIN song_lyrics l ON s.id = l.song_id
-            WHERE s.song_external_id IN ({format_strings}) AND l.is_public = 1
+            WHERE s.song_external_id IN ({format_strings}) AND l.is_public = 1 AND l.deleted_at IS NULL
             GROUP BY s.song_external_id
         """
         results = await self.db.fetch_all(query, tuple(external_ids))
@@ -189,7 +190,7 @@ class LyricsRepository:
             LEFT JOIN artists a ON s.artist_id = a.id
             LEFT JOIN users u ON l.owner_id = u.id
             LEFT JOIN user_lyrics_favorites fav ON l.id = fav.lyrics_id
-            WHERE ulf.user_id = %s AND l.is_public = 1
+            WHERE ulf.user_id = %s AND l.is_public = 1 AND l.deleted_at IS NULL
             GROUP BY l.id, l.owner_id, u.name, l.song_id, s.title, s.song_external_id,
                      a.name, l.title, l.mr_youtube_video_id, l.is_verified,
                      l.likes_count, l.updated_at, ulf.created_at
@@ -203,7 +204,7 @@ class LyricsRepository:
             SELECT COUNT(*) as total
             FROM user_lyrics_favorites ulf
             JOIN song_lyrics l ON ulf.lyrics_id = l.id
-            WHERE ulf.user_id = %s AND l.is_public = 1
+            WHERE ulf.user_id = %s AND l.is_public = 1 AND l.deleted_at IS NULL
         """
         count_result = await self.db.fetch_one(count_query, (user_id,))
         total = count_result['total'] if count_result else 0
@@ -229,7 +230,7 @@ class LyricsRepository:
                 a.artist_external_id as artist_id,
                 COUNT(l.id) as lyrics_count
             FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1
+            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE s.title LIKE %s OR a.name LIKE %s
             GROUP BY s.id
@@ -255,7 +256,7 @@ class LyricsRepository:
                 a.artist_external_id as artist_id,
                 COUNT(l.id) as lyrics_count
             FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1
+            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE s.song_external_id LIKE 'it_%%'
               AND (s.title LIKE %s OR a.name LIKE %s)
@@ -269,7 +270,7 @@ class LyricsRepository:
         itunes_count_query = """
             SELECT COUNT(DISTINCT s.id) as total
             FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1
+            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE s.song_external_id LIKE 'it_%%'
               AND (s.title LIKE %s OR a.name LIKE %s)
@@ -287,7 +288,7 @@ class LyricsRepository:
                 a.artist_external_id as artist_id,
                 COUNT(l.id) as lyrics_count
             FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1
+            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE s.song_external_id LIKE 'custom_%%'
               AND (s.title LIKE %s OR a.name LIKE %s)
@@ -301,7 +302,7 @@ class LyricsRepository:
         custom_count_query = """
             SELECT COUNT(DISTINCT s.id) as total
             FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1
+            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE s.song_external_id LIKE 'custom_%%'
               AND (s.title LIKE %s OR a.name LIKE %s)

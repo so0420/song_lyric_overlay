@@ -48,7 +48,7 @@ async def search_songs(request: Request, q: str, offset: int = 0, limit: int = 2
             query = f"""
                 SELECT s.song_external_id, COUNT(l.id) as cnt
                 FROM songs s
-                JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1
+                JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
                 WHERE s.song_external_id IN ({format_strings})
                 GROUP BY s.song_external_id
             """
@@ -181,7 +181,7 @@ async def search_custom_songs(request: Request, q: str, offset: int = 0, limit: 
         query = f"""
             SELECT s.song_external_id, COUNT(l.id) as cnt
             FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1
+            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             WHERE s.song_external_id IN ({format_strings})
             GROUP BY s.song_external_id
         """

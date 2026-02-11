@@ -170,9 +170,9 @@ async def withdraw_user(
     request: Request,
     user=Depends(get_current_user_api)
 ):
-    # DB에서 유저 삭제 (Cascading deletes)
+    # 소프트 삭제: deleted_at 설정 및 is_active 비활성화
     await db_handler.execute_query(
-        "DELETE FROM users WHERE id = %s",
+        "UPDATE users SET deleted_at = NOW(), is_active = 0 WHERE id = %s",
         (user['id'],)
     )
 

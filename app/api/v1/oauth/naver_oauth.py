@@ -55,7 +55,7 @@ async def naver_auth_callback(
 
     if social_account:
         # 이미 가입된 계정이면 해당 유저 정보 가져오기
-        user = await db.fetch_one("SELECT * FROM users WHERE id = %s", (social_account['user_id'],))
+        user = await db.fetch_one("SELECT * FROM users WHERE id = %s AND deleted_at IS NULL", (social_account['user_id'],))
 
         # 소셜 계정 정보 갱신
         await db.execute_query(
@@ -68,7 +68,7 @@ async def naver_auth_callback(
 
     else:
         # 2. 이메일로 중복 가입 확인
-        user = await db.fetch_one("SELECT * FROM users WHERE email = %s", (email,))
+        user = await db.fetch_one("SELECT * FROM users WHERE email = %s AND deleted_at IS NULL", (email,))
 
         existing_social = await db.fetch_one(
             "SELECT user_id FROM social_accounts WHERE provider_email = %s",

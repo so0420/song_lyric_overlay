@@ -207,5 +207,28 @@ class LyricsRepository:
         """
         return await self.db.fetch_all(query, (search_pattern, search_pattern, limit))
 
+    async def search_custom_songs_with_lyrics(self, query_term: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """공개된 가사가 있는 커스텀 노래 검색 (song_external_id가 'cs_'로 시작하는 노래)"""
+        search_pattern = f"%{query_term}%"
+        query = """
+            SELECT
+                s.id as song_id,
+                s.title as track_name,
+                s.song_external_id,
+                s.cover_image_url as artwork_url,
+                a.name as artist_name,
+                a.artist_external_id as artist_id,
+                COUNT(l.id) as lyrics_count
+            FROM songs s
+            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1
+            LEFT JOIN artists a ON s.artist_id = a.id
+            WHERE s.song_external_id LIKE 'cs_%%'
+              AND (s.title LIKE %s OR a.name LIKE %s)
+            GROUP BY s.id
+            ORDER BY lyrics_count DESC, s.title ASC
+            LIMIT %s
+        """
+        return await self.db.fetch_all(query, (search_pattern, search_pattern, limit))
+
 def get_lyrics_repository():
     return LyricsRepository()

@@ -309,6 +309,65 @@
         display: flex !important;
     }
 
+    /* Search Tabs */
+    .search-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+        background: #f1f5f9;
+        padding: 4px;
+        border-radius: 10px;
+    }
+
+    .search-tab-btn {
+        flex: 1;
+        padding: 10px 16px;
+        border: none;
+        background: transparent;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--text-sub);
+        transition: all 0.15s ease;
+        font-size: 0.9rem;
+    }
+
+    .search-tab-btn:hover {
+        background: rgba(255,255,255,0.5);
+    }
+
+    .search-tab-btn.active {
+        background: white;
+        color: var(--accent);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .add-custom-song-section {
+        border-top: 1px solid var(--border-color);
+        padding-top: 16px;
+        margin-top: 16px;
+        text-align: center;
+    }
+
+    .add-custom-song-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        background: #059669;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .add-custom-song-btn:hover {
+        background: #047857;
+        transform: translateY(-1px);
+    }
+
     .modal-content {
         background: white;
         padding: 28px;
@@ -751,12 +810,26 @@
             <h3 style="font-size: 1.25rem;">새로운 곡 검색</h3>
             <button onclick="hideModals()" class="btn-icon" style="font-size: 1.5rem;">&times;</button>
         </div>
+        <div class="search-tabs">
+            <button class="search-tab-btn active" data-song-search-tab="itunes" onclick="switchSongSearchTab('itunes')">음원</button>
+            <button class="search-tab-btn" data-song-search-tab="custom" onclick="switchSongSearchTab('custom')">커스텀</button>
+        </div>
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
             <input type="text" id="song-search-input" class="text-input" placeholder="제목 또는 가수를 입력하세요"
-                onkeydown="if(event.key==='Enter') searchSongs()">
-            <button onclick="searchSongs()" class="btn btn-primary">검색</button>
+                onkeydown="if(event.key==='Enter') searchSongsWithTab()">
+            <button onclick="searchSongsWithTab()" class="btn btn-primary" id="song-search-btn" style="flex-shrink: 0; white-space: nowrap;">검색</button>
         </div>
-        <div id="song-search-results" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        <div id="song-search-results" style="display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto;"></div>
+        <div id="add-custom-song-section" class="add-custom-song-section" style="display: none;">
+            <p style="color: var(--text-dim); margin-bottom: 12px; font-size: 0.9rem;">원하는 노래가 없나요?</p>
+            <button class="add-custom-song-btn" onclick="showCustomSongModal()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                커스텀 노래 추가
+            </button>
+        </div>
     </div>
 </div>
 
@@ -769,7 +842,7 @@
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
             <input type="text" id="video-search-input" class="text-input" placeholder="검색어를 입력하세요 (예: 제목 MR)"
                 onkeydown="if(event.key==='Enter') searchVideos()">
-            <button onclick="searchVideos()" class="btn btn-primary">검색</button>
+            <button onclick="searchVideos()" class="btn btn-primary" style="flex-shrink: 0; white-space: nowrap;">검색</button>
         </div>
         <div id="video-search-results" style="display: flex; flex-direction: column; gap: 8px;"></div>
     </div>
@@ -793,12 +866,16 @@
             <h3 style="font-size: 1.25rem;">공개 가사 검색 (다른 사람 작업물)</h3>
             <button onclick="hideModals()" class="btn-icon" style="font-size: 1.5rem;">&times;</button>
         </div>
+        <div class="search-tabs">
+            <button class="search-tab-btn active" data-public-search-tab="itunes" onclick="switchPublicSearchTab('itunes')">음원</button>
+            <button class="search-tab-btn" data-public-search-tab="custom" onclick="switchPublicSearchTab('custom')">커스텀</button>
+        </div>
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
             <input type="text" id="public-song-search-input" class="text-input" placeholder="곡 제목 또는 가수를 입력하세요"
-                onkeydown="if(event.key==='Enter') searchPublicSongs()">
-            <button onclick="searchPublicSongs()" class="btn btn-primary">검색</button>
+                onkeydown="if(event.key==='Enter') searchPublicSongsWithTab()">
+            <button onclick="searchPublicSongsWithTab()" class="btn btn-primary" id="public-search-btn" style="flex-shrink: 0; white-space: nowrap;">검색</button>
         </div>
-        <div id="public-lyrics-search-results" style="display: flex; flex-direction: column; gap: 12px;">
+        <div id="public-lyrics-search-results" style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto;">
             <!-- Results will appear here -->
         </div>
     </div>
@@ -864,6 +941,31 @@
         <div style="display: flex; gap: 10px;">
             <button onclick="applySyncRange()" class="btn btn-primary" style="flex: 1;">싱크 시작</button>
             <button onclick="hideModals()" class="btn btn-outline" style="flex: 1;">취소</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-custom-song" class="search-modal">
+    <div class="modal-content" style="width: 450px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="font-size: 1.25rem;">커스텀 노래 추가</h3>
+            <button onclick="hideModals()" class="btn-icon" style="font-size: 1.5rem;">&times;</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div>
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;">노래 제목 *</label>
+                <input type="text" id="custom-song-title" class="text-input" placeholder="노래 제목을 입력하세요" style="width: 100%;">
+            </div>
+            <div>
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;">가수 / 아티스트 *</label>
+                <input type="text" id="custom-song-artist" class="text-input" placeholder="가수 또는 아티스트 이름" style="width: 100%;">
+            </div>
+            <button onclick="registerCustomSong()" class="btn btn-primary" id="custom-song-submit-btn" style="width: 100%; padding: 14px;">
+                노래 등록
+            </button>
+            <p style="font-size: 0.8rem; color: var(--text-dim); text-align: center;">
+                등록한 노래는 모든 사용자가 "커스텀" 탭에서 검색할 수 있습니다
+            </p>
         </div>
     </div>
 </div>
@@ -1425,33 +1527,59 @@
         document.getElementById('video-search-input').focus();
     }
 
-    async function searchSongs() {
-        console.log("searchSongs: starting...");
-        const qInput = document.getElementById('song-search-input');
-        if (!qInput) {
-            console.error("song-search-input not found");
-            return;
+    function showCustomSongModal() {
+        hideModals();
+        showModal('modal-custom-song');
+        document.getElementById('custom-song-title').focus();
+    }
+
+    // Song search tab state
+    let currentSongSearchTab = 'itunes';
+
+    function switchSongSearchTab(tab) {
+        currentSongSearchTab = tab;
+        document.querySelectorAll('[data-song-search-tab]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.songSearchTab === tab);
+        });
+        // Re-search if there's a query
+        const q = document.getElementById('song-search-input').value.trim();
+        if (q) {
+            searchSongsWithTab();
+        } else {
+            // Clear results and show/hide custom section
+            document.getElementById('song-search-results').innerHTML = '';
+            document.getElementById('add-custom-song-section').style.display = tab === 'custom' ? 'block' : 'none';
         }
+    }
+
+    function searchSongsWithTab() {
+        if (currentSongSearchTab === 'itunes') {
+            searchSongs();
+        } else {
+            searchCustomSongs();
+        }
+    }
+
+    async function searchSongs() {
+        const qInput = document.getElementById('song-search-input');
+        if (!qInput) return;
         const q = qInput.value.trim();
-        console.log("searchSongs: query is", q);
         if (!q) return;
 
-        const btn = document.querySelector('#modal-song-search .btn-primary');
+        const btn = document.getElementById('song-search-btn');
         const resultsDiv = document.getElementById('song-search-results');
-        if (!resultsDiv) {
-            console.error("song-search-results not found");
-            return;
-        }
+        if (!resultsDiv) return;
+
+        // Hide custom song section for iTunes search
+        document.getElementById('add-custom-song-section').style.display = 'none';
 
         btn.disabled = true;
         btn.innerText = '검색 중...';
         resultsDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">검색 중...</div>';
 
         try {
-            console.log("Fetching songs for query:", q);
             const res = await fetch(`/api/v1/songs/search?q=${encodeURIComponent(q)}`);
             const data = await res.json();
-            console.log("Search results received:", data.length);
 
             window.songSearchResults = data;
             if (data.length === 0) {
@@ -1474,6 +1602,102 @@
         } finally {
             btn.disabled = false;
             btn.innerText = '검색';
+        }
+    }
+
+    async function searchCustomSongs() {
+        const qInput = document.getElementById('song-search-input');
+        if (!qInput) return;
+        const q = qInput.value.trim();
+        if (!q) return;
+
+        const btn = document.getElementById('song-search-btn');
+        const resultsDiv = document.getElementById('song-search-results');
+        if (!resultsDiv) return;
+
+        btn.disabled = true;
+        btn.innerText = '검색 중...';
+        resultsDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">검색 중...</div>';
+
+        try {
+            const res = await fetch(`/api/v1/songs/search/custom?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+
+            window.songSearchResults = data;
+
+            // Always show custom song section for custom tab
+            document.getElementById('add-custom-song-section').style.display = 'block';
+
+            if (data.length === 0) {
+                resultsDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">등록된 커스텀 노래가 없습니다.</div>';
+                return;
+            }
+
+            resultsDiv.innerHTML = data.map((s, idx) => `
+                <div class="video-result-item" style="cursor: pointer;" onclick="selectSongByIndex(${idx})">
+                    <img src="${s.cover_image_url || ''}" class="video-result-thumb" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; background: linear-gradient(135deg,#10b981 0%,#059669 100%);" onerror="this.style.visibility='hidden'">
+                    <div class="video-result-info">
+                        <div style="font-weight:700; color: #1e293b;">${s.title}</div>
+                        <div style="color:var(--text-sub);font-size:0.85rem">${s.artist_name || ''}</div>
+                    </div>
+                    <span style="font-size: 0.7rem; color: #059669; background: #d1fae5; padding: 4px 8px; border-radius: 12px; font-weight: 600;">커스텀</span>
+                </div>
+            `).join('');
+        } catch (err) {
+            console.error("Custom search failed:", err);
+            resultsDiv.innerHTML = '<div style="text-align:center; padding:20px; color:#ef4444;">검색 중 오류가 발생했습니다.</div>';
+            document.getElementById('add-custom-song-section').style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.innerText = '검색';
+        }
+    }
+
+    async function registerCustomSong() {
+        const title = document.getElementById('custom-song-title').value.trim();
+        const artist = document.getElementById('custom-song-artist').value.trim();
+        const submitBtn = document.getElementById('custom-song-submit-btn');
+
+        if (!title || !artist) {
+            alert('제목과 가수를 모두 입력해주세요.');
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = '등록 중...';
+
+        try {
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('artist', artist);
+
+            const res = await fetch('/api/v1/songs/custom', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) throw new Error('등록 실패');
+
+            const result = await res.json();
+            alert(`"${title}" 노래가 등록되었습니다.`);
+
+            // Clear form
+            document.getElementById('custom-song-title').value = '';
+            document.getElementById('custom-song-artist').value = '';
+
+            // Close modal and switch to custom tab
+            hideModals();
+            showModal('modal-song-search');
+            switchSongSearchTab('custom');
+            document.getElementById('song-search-input').value = title;
+            searchCustomSongs();
+
+        } catch (err) {
+            console.error('Failed to register custom song:', err);
+            alert('노래 등록에 실패했습니다.');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = '노래 등록';
         }
     }
 
@@ -1595,17 +1819,44 @@
 
     function showPublicLyricsSearchModal() { showModal('modal-public-lyrics-search'); document.getElementById('public-song-search-input').focus(); }
 
+    // Public lyrics search tab state
+    let currentPublicSearchTab = 'itunes';
+
+    function switchPublicSearchTab(tab) {
+        currentPublicSearchTab = tab;
+        document.querySelectorAll('[data-public-search-tab]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.publicSearchTab === tab);
+        });
+        // Re-search if there's a query
+        const q = document.getElementById('public-song-search-input').value.trim();
+        if (q) {
+            searchPublicSongsWithTab();
+        } else {
+            document.getElementById('public-lyrics-search-results').innerHTML = '';
+        }
+    }
+
+    function searchPublicSongsWithTab() {
+        if (currentPublicSearchTab === 'itunes') {
+            searchPublicSongs();
+        } else {
+            searchPublicCustomSongs();
+        }
+    }
+
     async function searchPublicSongs() {
-        console.log("searchPublicSongs called");
         const q = document.getElementById('public-song-search-input').value.trim();
         if (!q) return;
         const resultsDiv = document.getElementById('public-lyrics-search-results');
+        const btn = document.getElementById('public-search-btn');
+
+        btn.disabled = true;
+        btn.innerText = '검색 중...';
         resultsDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">검색 중...</div>';
 
         try {
             const res = await fetch(`/api/v1/lyrics/search?q=${encodeURIComponent(q)}`);
             const data = await res.json();
-            console.log("Public lyrics search results:", data.length);
 
             window.publicSearchResults = data;
             if (data.length === 0) {
@@ -1630,7 +1881,6 @@
                             </button>
                         </div>
                     </div>
-                    <!-- 가사 목록 컨테이너 복구 -->
                     <div class="public-lyrics-list" style="display: none; background: #f8fafc; border-top: 1px solid #f1f5f9; padding: 12px; flex-direction: column; gap: 8px;">
                         <div style="font-size: 0.75rem; color: var(--text-dim); text-align: center; padding: 10px;">불러오는 중...</div>
                     </div>
@@ -1639,6 +1889,61 @@
         } catch (err) {
             console.error("Public search failed:", err);
             resultsDiv.innerHTML = '<div style="text-align:center; padding:20px; color:#ef4444;">검색 중 오류가 발생했습니다.</div>';
+        } finally {
+            btn.disabled = false;
+            btn.innerText = '검색';
+        }
+    }
+
+    async function searchPublicCustomSongs() {
+        const q = document.getElementById('public-song-search-input').value.trim();
+        if (!q) return;
+        const resultsDiv = document.getElementById('public-lyrics-search-results');
+        const btn = document.getElementById('public-search-btn');
+
+        btn.disabled = true;
+        btn.innerText = '검색 중...';
+        resultsDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">검색 중...</div>';
+
+        try {
+            const res = await fetch(`/api/v1/lyrics/search/custom?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+
+            window.publicSearchResults = data;
+            if (data.length === 0) {
+                resultsDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">등록된 커스텀 노래 가사가 없습니다.</div>';
+                return;
+            }
+
+            resultsDiv.innerHTML = data.map((s, idx) => `
+                <div class="public-song-card" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: white; transition: all 0.2s;">
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 12px;">
+                        <img src="${s.artwork_url || s.cover_image_url || ''}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; background: linear-gradient(135deg,#10b981 0%,#059669 100%);" onerror="this.style.visibility='hidden'">
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight:700; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1e293b;">
+                                ${s.track_name || s.title}
+                                <span style="color:var(--accent); font-size: 0.8rem; margin-left: 4px;">(${s.lyrics_count})</span>
+                            </div>
+                            <div style="color:var(--text-sub); font-size: 0.85rem;">${s.artist_name || ''}</div>
+                        </div>
+                        <span style="font-size: 0.7rem; color: #059669; background: #d1fae5; padding: 4px 8px; border-radius: 12px; font-weight: 600; flex-shrink: 0;">커스텀</span>
+                        <div style="display: flex; gap: 6px;">
+                            <button onclick="loadPublicLyricsListByIndex(${idx}, this)" class="btn btn-outline" style="padding: 6px 10px; font-size: 0.75rem;">
+                                가사 보기
+                            </button>
+                        </div>
+                    </div>
+                    <div class="public-lyrics-list" style="display: none; background: #f8fafc; border-top: 1px solid #f1f5f9; padding: 12px; flex-direction: column; gap: 8px;">
+                        <div style="font-size: 0.75rem; color: var(--text-dim); text-align: center; padding: 10px;">불러오는 중...</div>
+                    </div>
+                </div>
+            `).join('');
+        } catch (err) {
+            console.error("Custom public search failed:", err);
+            resultsDiv.innerHTML = '<div style="text-align:center; padding:20px; color:#ef4444;">검색 중 오류가 발생했습니다.</div>';
+        } finally {
+            btn.disabled = false;
+            btn.innerText = '검색';
         }
     }
 

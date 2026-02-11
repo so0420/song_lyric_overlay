@@ -25,6 +25,14 @@ async def search_lyrics(
     """공개된 가사가 있는 노래 검색"""
     return await repo.search_songs_with_lyrics(q)
 
+@router.get("/search/custom")
+async def search_custom_lyrics(
+    q: str = Query(..., min_length=1),
+    repo: LyricsRepository = Depends(get_lyrics_repository)
+):
+    """공개된 가사가 있는 커스텀 노래 검색"""
+    return await repo.search_custom_songs_with_lyrics(q)
+
 @router.get("/")
 async def get_available_lyrics(
     song_external_id: str = Query(...),

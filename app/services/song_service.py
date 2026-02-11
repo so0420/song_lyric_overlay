@@ -1,6 +1,7 @@
 from typing import Optional
 from fastapi import UploadFile, Depends
 from app.database.song_repository import SongRepository, get_song_repository
+from app.database.meilisearch.meilisearch import meilisearch_handler
 
 class SongService:
     def __init__(self, repo: SongRepository):
@@ -21,7 +22,18 @@ class SongService:
         # Get External ID (generated in Repo/DB)
         song_external_id = await self.repo.get_song_external_id(song_id)
 
-
+        # Meilisearch에도 추가
+        try:
+            await meilisearch_handler.add_documents([{
+                "id": song_external_id,
+                "title": title,
+                "singer": artist,
+                "image_url": image_url,
+                "owner_id": owner_id
+            }])
+        except Exception as e:
+            # Meilisearch 실패해도 DB 저장은 성공으로 처리
+            print(f"Meilisearch add failed: {e}")
 
         return {
             "song_id": song_id,

@@ -1,7 +1,9 @@
 import httpx
 import asyncio
-from typing import Optional
+import time
+from typing import Optional, Dict, Tuple, List
 from app.database.mariadb import db_handler
+from app.utils.config import config
 
 from app.utils.log import logger
 
@@ -9,6 +11,18 @@ class ITunesSearchAPI:
     def __init__(self):
         self.url = "https://itunes.apple.com/search"
         self._client: Optional[httpx.AsyncClient] = None
+        # 캐시: {cache_key: (result_list, timestamp)}
+        self._cache: Dict[str, Tuple[List, float]] = {}
+
+    @property
+    def _cache_ttl(self) -> int:
+        """캐시 유효 시간 (초)"""
+        return config.cache_options.itunes_ttl
+
+    @property
+    def _cache_max_size(self) -> int:
+        """최대 캐시 항목 수"""
+        return config.cache_options.itunes_max_size
 
     async def initialize(self):
         """클라이언트를 초기화합니다. FastAPI lifespan에서 호출 추천."""
@@ -21,7 +35,51 @@ class ITunesSearchAPI:
             await self._client.aclose()
             self._client = None
 
+    def _get_cache_key(self, term: str, country: str, limit: int) -> str:
+        """캐시 키 생성"""
+        return f"{term.lower().strip()}:{country}:{limit}"
+
+    def _clean_expired_cache(self):
+        """만료된 캐시 항목 정리"""
+        now = time.time()
+        expired_keys = [
+            key for key, (_, timestamp) in self._cache.items()
+            if now - timestamp > self._cache_ttl
+        ]
+        for key in expired_keys:
+            del self._cache[key]
+
+    def _get_from_cache(self, cache_key: str) -> Optional[List]:
+        """캐시에서 결과 조회"""
+        if cache_key in self._cache:
+            result, timestamp = self._cache[cache_key]
+            if time.time() - timestamp <= self._cache_ttl:
+                logger.debug(f"iTunes cache hit: {cache_key}")
+                return result
+            else:
+                # 만료된 항목 삭제
+                del self._cache[cache_key]
+        return None
+
+    def _save_to_cache(self, cache_key: str, result: List):
+        """결과를 캐시에 저장"""
+        # 캐시 크기 제한 체크
+        if len(self._cache) >= self._cache_max_size:
+            self._clean_expired_cache()
+            # 여전히 크면 가장 오래된 항목 삭제
+            if len(self._cache) >= self._cache_max_size:
+                oldest_key = min(self._cache.keys(), key=lambda k: self._cache[k][1])
+                del self._cache[oldest_key]
+
+        self._cache[cache_key] = (result, time.time())
+
     async def search(self, term: str, country: str = "KR", limit: int = 100) -> list:
+        # 캐시 확인
+        cache_key = self._get_cache_key(term, country, limit)
+        cached_result = self._get_from_cache(cache_key)
+        if cached_result is not None:
+            return cached_result
+
         # 클라이언트가 초기화되지 않은 경우 (동적인 대응)
         if self._client is None or self._client.is_closed:
             await self.initialize()
@@ -32,9 +90,9 @@ class ITunesSearchAPI:
             "media": "music",
             "limit": limit
         }
-        
+
         response = await self._client.get(self.url, params=params)
-        
+
         if response.status_code == 200:
             data = response.json()
             result_list = []
@@ -47,9 +105,12 @@ class ITunesSearchAPI:
                     "artwork_url": track.get('artworkUrl100')
                 })
 
+            # 캐시에 저장
+            self._save_to_cache(cache_key, result_list)
+
             # 백그라운드 태스크로 DB 등록 진행 (검색 결과 리턴은 즉시 수행)
             asyncio.create_task(self._register_results_to_db(result_list))
-            
+
             return result_list
         else:
             raise Exception(f"오류 발생: {response.status_code}")

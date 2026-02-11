@@ -1,13 +1,61 @@
 import httpx
 import asyncio
-from typing import Optional, List, Dict, Any
-from app.utils.config import settings
+import time
+from typing import Optional, List, Dict, Any, Tuple
+from app.utils.config import settings, config
+from app.utils.log import logger
 
 class YouTubeAPI:
     def __init__(self):
         self.api_key = settings.youtube_api_key
         self.base_url = "https://www.googleapis.com/youtube/v3"
         self._client: Optional[httpx.AsyncClient] = None
+        # 캐시: {cache_key: (result_list, timestamp)}
+        self._cache: Dict[str, Tuple[List, float]] = {}
+
+    @property
+    def _cache_ttl(self) -> int:
+        """캐시 유효 시간 (초)"""
+        return config.cache_options.youtube_ttl
+
+    @property
+    def _cache_max_size(self) -> int:
+        """최대 캐시 항목 수"""
+        return config.cache_options.youtube_max_size
+
+    def _get_cache_key(self, query: str, max_results: int) -> str:
+        """캐시 키 생성"""
+        return f"{query.lower().strip()}:{max_results}"
+
+    def _clean_expired_cache(self):
+        """만료된 캐시 항목 정리"""
+        now = time.time()
+        expired_keys = [
+            key for key, (_, timestamp) in self._cache.items()
+            if now - timestamp > self._cache_ttl
+        ]
+        for key in expired_keys:
+            del self._cache[key]
+
+    def _get_from_cache(self, cache_key: str) -> Optional[List]:
+        """캐시에서 결과 조회"""
+        if cache_key in self._cache:
+            result, timestamp = self._cache[cache_key]
+            if time.time() - timestamp <= self._cache_ttl:
+                logger.debug(f"YouTube cache hit: {cache_key}")
+                return result
+            else:
+                del self._cache[cache_key]
+        return None
+
+    def _save_to_cache(self, cache_key: str, result: List):
+        """결과를 캐시에 저장"""
+        if len(self._cache) >= self._cache_max_size:
+            self._clean_expired_cache()
+            if len(self._cache) >= self._cache_max_size:
+                oldest_key = min(self._cache.keys(), key=lambda k: self._cache[k][1])
+                del self._cache[oldest_key]
+        self._cache[cache_key] = (result, time.time())
 
     async def initialize(self):
         """클라이언트를 초기화합니다. FastAPI lifespan에서 호출 권장."""
@@ -24,6 +72,12 @@ class YouTubeAPI:
         """
         유튜브 영상을 검색하고 상세 정보(길이, 재생가능여부 등)를 포함하여 반환합니다.
         """
+        # 캐시 확인
+        cache_key = self._get_cache_key(query, max_results)
+        cached_result = self._get_from_cache(cache_key)
+        if cached_result is not None:
+            return cached_result
+
         if self._client is None or self._client.is_closed:
             await self.initialize()
 
@@ -56,7 +110,7 @@ class YouTubeAPI:
             snippet = item.get("snippet", {})
             content_details = item.get("contentDetails", {})
             status = item.get("status", {})
-            
+
             results.append({
                 "video_id": item.get("id"),
                 "title": snippet.get("title"),
@@ -66,7 +120,10 @@ class YouTubeAPI:
                 "channel_title": snippet.get("channelTitle"),
                 "embeddable": status.get("embeddable", False) # 외부 재생 가능 여부
             })
-            
+
+        # 캐시에 저장
+        self._save_to_cache(cache_key, results)
+
         return results
 
     async def get_video_details(self, video_ids: List[str]) -> List[Dict[str, Any]]:

@@ -72,6 +72,16 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 
+class CacheOptions(BaseModel):
+    """캐시 관련 설정"""
+    # iTunes 캐시
+    itunes_ttl: int = 300  # 캐시 유효 시간 (초)
+    itunes_max_size: int = 100  # 최대 캐시 항목 수
+    # YouTube 캐시
+    youtube_ttl: int = 300
+    youtube_max_size: int = 100
+
+
 class AppConfig(BaseModel):
     """
     config.json에서 로드되는 '정적' 설정(비밀값 말고).
@@ -79,6 +89,7 @@ class AppConfig(BaseModel):
     app_name: str
     version: str
     app_url: str
+    cache_options: CacheOptions = CacheOptions()
 
     model_config = ConfigDict(extra="ignore")
 

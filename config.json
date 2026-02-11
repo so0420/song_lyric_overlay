@@ -1,5 +1,11 @@
 {
     "app_name": "Songbook",
     "version": "0.1",
-    "app_url": "http://localhost:8006"
+    "app_url": "http://localhost:8006",
+    "cache_options": {
+        "itunes_ttl": 300,
+        "itunes_max_size": 100,
+        "youtube_ttl": 300,
+        "youtube_max_size": 100
+    }
 }

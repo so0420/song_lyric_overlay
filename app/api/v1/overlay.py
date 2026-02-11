@@ -40,6 +40,18 @@ class OverlaySettingsSchema(BaseModel):
     show_now_badge: bool = True
     song_title_size: int = 48
     artist_size: int = 28
+    song_info_position: str = "top-left"
+    # 재생목록 설정
+    show_playlist: bool = False
+    playlist_position: str = "right"
+    playlist_max_items: int = 5
+    playlist_font_size: int = 16
+    playlist_bg_color: str = "#000000"
+    playlist_bg_opacity: float = 0.7
+    playlist_text_color: str = "#FFFFFF"
+    playlist_highlight_color: str = "#FFE500"
+    playlist_show_thumbnail: bool = True
+    playlist_show_artist: bool = True
 
 @router.get("/settings")
 async def get_overlay_settings(user=Depends(get_current_user_api)):
@@ -96,6 +108,18 @@ async def sync_lyrics(
     """노래하기 페이지에서 가사 동기화 요청"""
     await overlay_manager.broadcast_to_user(user['id'], {
         "type": "lyrics_update",
+        "data": data
+    })
+    return {"success": True}
+
+@router.post("/sync-playlist")
+async def sync_playlist(
+    data: dict,
+    user=Depends(get_current_user_api)
+):
+    """재생목록 동기화 요청"""
+    await overlay_manager.broadcast_to_user(user['id'], {
+        "type": "playlist_update",
         "data": data
     })
     return {"success": True}

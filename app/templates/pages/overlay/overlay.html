@@ -1227,6 +1227,7 @@
         currentLyrics: null,
         currentSongTitle: '',
         currentArtist: '',
+        currentModalSong: null,
         isPlaying: false,
         animationFrameId: null,
         searchCache: new Map(),
@@ -1435,6 +1436,9 @@
         elements.lyricsModal.classList.add('active');
         elements.lyricsListContainer.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
+        // 현재 모달에서 사용할 곡 정보 저장
+        state.currentModalSong = { songExternalId, songTitle, artistName };
+
         try {
             const response = await fetch(`/api/v1/lyrics/?song_external_id=${encodeURIComponent(songExternalId)}`);
             const lyrics = await response.json();
@@ -1442,16 +1446,7 @@
             if (lyrics.length > 0) {
                 renderLyricsList(lyrics, songExternalId, songTitle, artistName);
             } else {
-                elements.lyricsListContainer.innerHTML = `
-                    <div style="text-align: center; padding: 48px 24px; color: var(--text-dim);">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px; opacity: 0.5;">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                        <p>등록된 가사가 없습니다</p>
-                        <a href="/lyrics?external_id=${encodeURIComponent(songExternalId)}" class="btn-select" style="margin-top: 16px; display: inline-block;">가사 만들기</a>
-                    </div>
-                `;
+                renderNoLyricsOption(songExternalId, songTitle, artistName);
             }
         } catch (error) {
             console.error('Failed to load lyrics:', error);
@@ -1459,8 +1454,85 @@
         }
     }
 
+    // 가사 없이 추가 옵션 렌더링
+    function renderNoLyricsOption(songExternalId, songTitle, artistName) {
+        elements.lyricsListContainer.innerHTML = `
+            <div style="text-align: center; padding: 48px 24px; color: var(--text-dim);">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px; opacity: 0.5;">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                <p>등록된 가사가 없습니다</p>
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
+                    <button class="btn-select" id="addWithoutLyricsBtn" style="background: #6b7280;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        가사 없이 추가
+                    </button>
+                    <a href="/lyrics?external_id=${encodeURIComponent(songExternalId)}" class="btn-select">가사 만들기</a>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('addWithoutLyricsBtn').addEventListener('click', () => {
+            addWithoutLyrics(songExternalId, songTitle, artistName);
+        });
+    }
+
+    // 가사 없이 추가
+    async function addWithoutLyrics(songExternalId, songTitle, artistName) {
+        const btn = document.getElementById('addWithoutLyricsBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; border-width: 2px; margin-right: 6px;"></div> 검색 중...';
+
+        try {
+            // YouTube에서 MR 영상 검색
+            const searchQuery = `${songTitle} ${artistName || ''} MR instrumental`.trim();
+            const response = await fetch(`/api/v1/youtube/search?q=${encodeURIComponent(searchQuery)}`);
+            const videos = await response.json();
+
+            if (videos && videos.length > 0) {
+                const video = videos[0];
+                addToPlaylist(null, songExternalId, songTitle, artistName, video.video_id, null);
+            } else {
+                // 영상이 없으면 일반 검색
+                const fallbackQuery = `${songTitle} ${artistName || ''}`.trim();
+                const fallbackResponse = await fetch(`/api/v1/youtube/search?q=${encodeURIComponent(fallbackQuery)}`);
+                const fallbackVideos = await fallbackResponse.json();
+
+                if (fallbackVideos && fallbackVideos.length > 0) {
+                    const video = fallbackVideos[0];
+                    addToPlaylist(null, songExternalId, songTitle, artistName, video.video_id, null);
+                } else {
+                    showToast('재생 가능한 영상을 찾지 못했습니다', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        가사 없이 추가
+                    `;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to search YouTube:', error);
+            showToast('영상 검색에 실패했습니다', 'error');
+            btn.disabled = false;
+            btn.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                가사 없이 추가
+            `;
+        }
+    }
+
     function renderLyricsList(lyrics, songExternalId, songTitle, artistName) {
-        elements.lyricsListContainer.innerHTML = lyrics.map(l => `
+        let html = lyrics.map(l => `
             <div class="lyrics-list-item" data-lyrics='${JSON.stringify({
                 id: l.id,
                 songExternalId: songExternalId,
@@ -1499,6 +1571,22 @@
             </div>
         `).join('');
 
+        // 가사 없이 추가 옵션
+        html += `
+            <div style="border-top: 1px solid var(--border-color); margin-top: 16px; padding-top: 16px; text-align: center;">
+                <button class="btn-select" id="addWithoutLyricsBtn" style="background: #6b7280;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    가사 없이 추가
+                </button>
+                <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 8px;">YouTube에서 MR 영상을 검색하여 추가합니다</p>
+            </div>
+        `;
+
+        elements.lyricsListContainer.innerHTML = html;
+
         // Event delegation
         elements.lyricsListContainer.querySelectorAll('.lyrics-list-item').forEach(item => {
             const data = JSON.parse(item.dataset.lyrics);
@@ -1513,11 +1601,24 @@
                 toggleFavorite(parseInt(e.currentTarget.dataset.favorite), e.currentTarget);
             });
         });
+
+        // 가사 없이 추가 버튼
+        document.getElementById('addWithoutLyricsBtn').addEventListener('click', () => {
+            addWithoutLyrics(songExternalId, songTitle, artistName);
+        });
     }
 
     // Playlist Management
     function addToPlaylist(lyricsId, songId, songTitle, artistName, videoId, lyricsTitle) {
-        if (state.playlist.some(item => item.lyricsId === lyricsId)) {
+        // 중복 체크: lyricsId가 있으면 lyricsId로, 없으면 songId+videoId로 체크
+        const isDuplicate = state.playlist.some(item => {
+            if (lyricsId && item.lyricsId) {
+                return item.lyricsId === lyricsId;
+            }
+            return item.songId === songId && item.videoId === videoId;
+        });
+
+        if (isDuplicate) {
             showToast('이미 리스트에 있습니다', 'error');
             return;
         }
@@ -1560,6 +1661,7 @@
 
     function savePlaylist() {
         localStorage.setItem('overlay_playlist', JSON.stringify(state.playlist));
+        syncPlaylistToOBS();
     }
 
     function renderPlaylist() {
@@ -1710,20 +1812,40 @@
             state.ytPlayer.loadVideoById(videoId);
         }
 
-        // Load lyrics
-        try {
-            const response = await fetch(`/api/v1/lyrics/${item.lyricsId || item.id}`);
-            state.currentLyrics = await response.json();
-            if (state.currentLyrics.lyrics_data) {
-                state.currentLyrics.parsedLyrics = JSON.parse(state.currentLyrics.lyrics_data);
+        // Load lyrics (if available)
+        const lyricsId = item.lyricsId || item.id;
+        if (lyricsId) {
+            try {
+                const response = await fetch(`/api/v1/lyrics/${lyricsId}`);
+                state.currentLyrics = await response.json();
+                if (state.currentLyrics.lyrics_data) {
+                    state.currentLyrics.parsedLyrics = JSON.parse(state.currentLyrics.lyrics_data);
+                }
+            } catch (error) {
+                console.error('Failed to load lyrics:', error);
+                state.currentLyrics = null;
             }
-        } catch (error) {
-            console.error('Failed to load lyrics:', error);
+        } else {
+            // 가사 없이 추가된 곡
             state.currentLyrics = null;
+            elements.lyricsDisplay.innerHTML = `
+                <div class="current-lyrics" style="opacity: 0.5;">
+                    <p class="lyrics-line current" style="font-size: 1.2rem;">가사 없이 재생 중</p>
+                </div>
+            `;
+            // OBS에 곡 정보만 동기화 (가사 없음)
+            syncToOBS({
+                prev: '',
+                current: '',
+                next: '',
+                songTitle: state.currentSongTitle,
+                artist: state.currentArtist
+            });
         }
 
         renderPlaylist();
         updateControlButtons();
+        syncPlaylistToOBS();
     }
 
     // Lyrics Sync with requestAnimationFrame
@@ -1822,6 +1944,19 @@
         }, 50);
     }
 
+    // 재생목록을 OBS 오버레이로 동기화
+    function syncPlaylistToOBS() {
+        const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
+        fetch('/api/v1/overlay/sync-playlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                playlist: items,
+                currentIndex: state.currentPlayingIndex
+            })
+        }).catch(err => console.log('Playlist sync error:', err));
+    }
+
     // Favorites
     async function loadFavorites() {
         try {
@@ -1829,6 +1964,7 @@
             state.favorites = await response.json();
             if (state.currentTab === 'favorites') {
                 renderPlaylist();
+                syncPlaylistToOBS();
             }
         } catch (error) {
             console.error('Failed to load favorites:', error);
@@ -1986,6 +2122,7 @@
                 }
                 renderPlaylist();
                 updateControlButtons();
+                syncPlaylistToOBS();
             });
         });
 
@@ -2042,6 +2179,8 @@
         loadFavorites();
         updateControlButtons();
         updateVolumeIcon();
+        // 초기 재생목록 동기화
+        setTimeout(syncPlaylistToOBS, 1000);
     }
 
     // Run on DOM ready

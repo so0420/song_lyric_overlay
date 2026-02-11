@@ -114,6 +114,83 @@
     opacity: 0.6;
 }
 
+/* 재생목록 미리보기 */
+.preview-playlist {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 140px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 8px;
+    padding: 8px;
+    font-size: 10px;
+}
+
+.preview-playlist.left {
+    left: 12px;
+}
+
+.preview-playlist.right {
+    right: 12px;
+}
+
+.preview-playlist-header {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 9px;
+    font-weight: 600;
+    padding: 4px 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 4px;
+}
+
+.preview-playlist-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.preview-playlist-item.active {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.preview-playlist-thumb {
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.preview-playlist-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.preview-playlist-title {
+    color: #fff;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 9px;
+}
+
+.preview-playlist-item.active .preview-playlist-title {
+    color: #FFE500;
+}
+
+.preview-playlist-artist {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* Settings Panel */
 .settings-panel {
     background: white;
@@ -475,6 +552,12 @@ input:checked + .toggle-slider:before {
                 <p class="preview-lyrics-line current" id="previewCurrent">현재 가사가 여기에</p>
                 <p class="preview-lyrics-line sub" id="previewNext">다음 가사</p>
             </div>
+
+            <!-- 재생목록 미리보기 -->
+            <div class="preview-playlist" id="previewPlaylist" style="display: none;">
+                <div class="preview-playlist-header">재생목록</div>
+                <div class="preview-playlist-items" id="previewPlaylistItems"></div>
+            </div>
         </div>
 
         <div class="url-section">
@@ -798,6 +881,100 @@ input:checked + .toggle-slider:before {
                     </div>
                 </div>
             </div>
+
+            <!-- 재생목록 설정 -->
+            <div class="setting-group" id="groupPlaylist">
+                <div class="setting-group-header" onclick="toggleGroup('groupPlaylist')">
+                    <div class="setting-group-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        재생목록 표시
+                    </div>
+                    <div class="setting-group-toggle">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="setting-group-content">
+                    <div class="setting-row">
+                        <span class="setting-label">재생목록 표시</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="showPlaylist" onchange="updatePreview()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">표시 위치</span>
+                        <select id="playlistPosition" onchange="updatePreview()">
+                            <option value="left">왼쪽</option>
+                            <option value="right">오른쪽</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">최대 표시 곡 수</span>
+                        <div class="setting-control">
+                            <input type="range" id="playlistMaxItems" min="3" max="10" value="5" oninput="updatePreview()">
+                            <span class="value-display" id="playlistMaxItemsValue">5개</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">글자 크기</span>
+                        <div class="setting-control">
+                            <input type="range" id="playlistFontSize" min="12" max="24" value="16" oninput="updatePreview()">
+                            <span class="value-display" id="playlistFontSizeValue">16px</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">배경 색상</span>
+                        <input type="color" id="playlistBgColor" value="#000000" onchange="updatePreview()">
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">배경 투명도</span>
+                        <div class="setting-control">
+                            <input type="range" id="playlistBgOpacity" min="0" max="100" value="70" oninput="updatePreview()">
+                            <span class="value-display" id="playlistBgOpacityValue">70%</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">글자 색상</span>
+                        <input type="color" id="playlistTextColor" value="#FFFFFF" onchange="updatePreview()">
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">현재 곡 강조 색상</span>
+                        <input type="color" id="playlistHighlightColor" value="#FFE500" onchange="updatePreview()">
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">썸네일 표시</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="playlistShowThumbnail" checked onchange="updatePreview()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">가수명 표시</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="playlistShowArtist" checked onchange="updatePreview()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="save-section">
@@ -842,7 +1019,18 @@ const defaultSettings = {
     show_now_badge: true,
     song_title_size: 48,
     artist_size: 28,
-    song_info_position: "top-left"
+    song_info_position: "top-left",
+    // 재생목록 설정
+    show_playlist: false,
+    playlist_position: "right",
+    playlist_max_items: 5,
+    playlist_font_size: 16,
+    playlist_bg_color: "#000000",
+    playlist_bg_opacity: 0.7,
+    playlist_text_color: "#FFFFFF",
+    playlist_highlight_color: "#FFE500",
+    playlist_show_thumbnail: true,
+    playlist_show_artist: true
 };
 
 // Set overlay URL
@@ -888,6 +1076,17 @@ function applySettingsToForm(settings) {
     document.getElementById('artistWeight').value = settings.artist_weight || defaultSettings.artist_weight;
     document.getElementById('artistStroke').value = settings.artist_stroke ?? defaultSettings.artist_stroke;
     document.getElementById('songInfoPosition').value = settings.song_info_position || defaultSettings.song_info_position;
+    // 재생목록 설정
+    document.getElementById('showPlaylist').checked = settings.show_playlist || false;
+    document.getElementById('playlistPosition').value = settings.playlist_position || defaultSettings.playlist_position;
+    document.getElementById('playlistMaxItems').value = settings.playlist_max_items || defaultSettings.playlist_max_items;
+    document.getElementById('playlistFontSize').value = settings.playlist_font_size || defaultSettings.playlist_font_size;
+    document.getElementById('playlistBgColor').value = settings.playlist_bg_color || defaultSettings.playlist_bg_color;
+    document.getElementById('playlistBgOpacity').value = Math.round((settings.playlist_bg_opacity ?? defaultSettings.playlist_bg_opacity) * 100);
+    document.getElementById('playlistTextColor').value = settings.playlist_text_color || defaultSettings.playlist_text_color;
+    document.getElementById('playlistHighlightColor').value = settings.playlist_highlight_color || defaultSettings.playlist_highlight_color;
+    document.getElementById('playlistShowThumbnail').checked = settings.playlist_show_thumbnail !== false;
+    document.getElementById('playlistShowArtist').checked = settings.playlist_show_artist !== false;
 }
 
 function getSettingsFromForm() {
@@ -917,7 +1116,18 @@ function getSettingsFromForm() {
         show_now_badge: document.getElementById('showNowBadge').checked,
         song_title_size: parseInt(document.getElementById('songTitleSize').value),
         artist_size: parseInt(document.getElementById('artistSize').value),
-        song_info_position: document.getElementById('songInfoPosition').value
+        song_info_position: document.getElementById('songInfoPosition').value,
+        // 재생목록 설정
+        show_playlist: document.getElementById('showPlaylist').checked,
+        playlist_position: document.getElementById('playlistPosition').value,
+        playlist_max_items: parseInt(document.getElementById('playlistMaxItems').value),
+        playlist_font_size: parseInt(document.getElementById('playlistFontSize').value),
+        playlist_bg_color: document.getElementById('playlistBgColor').value,
+        playlist_bg_opacity: parseInt(document.getElementById('playlistBgOpacity').value) / 100,
+        playlist_text_color: document.getElementById('playlistTextColor').value,
+        playlist_highlight_color: document.getElementById('playlistHighlightColor').value,
+        playlist_show_thumbnail: document.getElementById('playlistShowThumbnail').checked,
+        playlist_show_artist: document.getElementById('playlistShowArtist').checked
     };
 }
 
@@ -1034,6 +1244,67 @@ function updatePreview() {
         el.style.paintOrder = 'stroke fill';
         el.style.textShadow = shadowStyle;
     });
+
+    // 재생목록 미리보기 업데이트
+    document.getElementById('playlistMaxItemsValue').textContent = settings.playlist_max_items + '개';
+    document.getElementById('playlistFontSizeValue').textContent = settings.playlist_font_size + 'px';
+    document.getElementById('playlistBgOpacityValue').textContent = Math.round(settings.playlist_bg_opacity * 100) + '%';
+
+    const playlistPreview = document.getElementById('previewPlaylist');
+    const playlistItemsContainer = document.getElementById('previewPlaylistItems');
+
+    if (settings.show_playlist) {
+        playlistPreview.style.display = 'block';
+        playlistPreview.className = 'preview-playlist ' + settings.playlist_position;
+
+        // 배경 색상 및 투명도
+        const bgColor = settings.playlist_bg_color;
+        const r = parseInt(bgColor.slice(1, 3), 16);
+        const g = parseInt(bgColor.slice(3, 5), 16);
+        const b = parseInt(bgColor.slice(5, 7), 16);
+        playlistPreview.style.background = `rgba(${r}, ${g}, ${b}, ${settings.playlist_bg_opacity})`;
+
+        // 샘플 데이터
+        const sampleSongs = [
+            { title: '현재 재생 중인 곡', artist: '가수명' },
+            { title: '다음 곡 제목', artist: '아티스트' },
+            { title: '세 번째 노래', artist: '가수' },
+            { title: '네 번째 곡', artist: '아티스트명' },
+            { title: '다섯 번째', artist: '가수명' },
+            { title: '여섯 번째 곡', artist: '아티스트' },
+            { title: '일곱 번째', artist: '가수' },
+            { title: '여덟 번째 곡', artist: '아티스트명' },
+            { title: '아홉 번째', artist: '가수명' },
+            { title: '열 번째 곡', artist: '아티스트' }
+        ];
+
+        // 스케일 팩터 (미리보기는 실제보다 작게)
+        const scale = 0.6;
+        const fontSize = Math.round(settings.playlist_font_size * scale);
+        const artistFontSize = Math.round((settings.playlist_font_size - 2) * scale);
+
+        // 아이템 동적 생성
+        let itemsHtml = '';
+        const maxItems = Math.min(settings.playlist_max_items, sampleSongs.length);
+        for (let i = 0; i < maxItems; i++) {
+            const song = sampleSongs[i];
+            const isActive = i === 0;
+            const titleColor = isActive ? settings.playlist_highlight_color : settings.playlist_text_color;
+
+            itemsHtml += `
+                <div class="preview-playlist-item ${isActive ? 'active' : ''}">
+                    ${settings.playlist_show_thumbnail ? '<div class="preview-playlist-thumb"></div>' : ''}
+                    <div class="preview-playlist-info">
+                        <div class="preview-playlist-title" style="color: ${titleColor}; font-size: ${fontSize}px;">${song.title}</div>
+                        ${settings.playlist_show_artist ? `<div class="preview-playlist-artist" style="color: ${settings.playlist_text_color}; font-size: ${artistFontSize}px;">${song.artist}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        playlistItemsContainer.innerHTML = itemsHtml;
+    } else {
+        playlistPreview.style.display = 'none';
+    }
 }
 
 async function saveSettings() {

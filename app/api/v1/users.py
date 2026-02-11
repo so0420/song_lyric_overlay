@@ -5,6 +5,7 @@ from app.database.mariadb import db_handler
 from app.core.auth import get_current_user_api
 from app.utils.mailer import send_email
 from app.utils.otp import otp_manager
+import bcrypt
 
 router = APIRouter()
 
@@ -12,6 +13,16 @@ class ProfileUpdateSchema(BaseModel):
     name: str
     email: str
     otp_code: Optional[str] = None
+
+class PasswordChangeSchema(BaseModel):
+    current_password: Optional[str] = None
+    new_password: str
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
 @router.post("/me/email-otp")
 async def send_email_otp(
@@ -114,7 +125,13 @@ async def unlink_social_account(
     )
 
     if len(accounts) <= 1:
-        raise HTTPException(status_code=400, detail="최소 하나 이상의 소셜 계정이 연결되어 있어야 합니다.")
+        # 마지막 소셜 계정이면, 비밀번호가 설정되어 있는지 확인
+        db_user = await db_handler.fetch_one(
+            "SELECT password_hash FROM users WHERE id = %s",
+            (user['id'],)
+        )
+        if not db_user or not db_user.get('password_hash'):
+            raise HTTPException(status_code=400, detail="이메일 로그인이 설정되어 있지 않아 마지막 소셜 계정은 해제할 수 없습니다.")
 
     # Delete link
     await db_handler.execute_query(
@@ -123,6 +140,48 @@ async def unlink_social_account(
     )
 
     return {"success": True}
+
+
+@router.get("/me/has-password")
+async def check_has_password(user=Depends(get_current_user_api)):
+    """비밀번호 설정 여부 확인"""
+    db_user = await db_handler.fetch_one(
+        "SELECT password_hash FROM users WHERE id = %s",
+        (user['id'],)
+    )
+    has_password = bool(db_user and db_user.get('password_hash'))
+    return {"has_password": has_password}
+
+
+@router.patch("/me/password")
+async def change_password(
+    data: PasswordChangeSchema,
+    user=Depends(get_current_user_api)
+):
+    """비밀번호 변경 또는 설정"""
+    if len(data.new_password) < 8:
+        raise HTTPException(status_code=400, detail="비밀번호는 8자 이상이어야 합니다.")
+
+    db_user = await db_handler.fetch_one(
+        "SELECT password_hash FROM users WHERE id = %s",
+        (user['id'],)
+    )
+
+    # 기존 비밀번호가 있으면 현재 비밀번호 확인 필요
+    if db_user and db_user.get('password_hash'):
+        if not data.current_password:
+            raise HTTPException(status_code=400, detail="현재 비밀번호를 입력해주세요.")
+        if not verify_password(data.current_password, db_user['password_hash']):
+            raise HTTPException(status_code=400, detail="현재 비밀번호가 일치하지 않습니다.")
+
+    # 새 비밀번호 저장
+    new_hash = hash_password(data.new_password)
+    await db_handler.execute_query(
+        "UPDATE users SET password_hash = %s, email_verified = 1 WHERE id = %s",
+        (new_hash, user['id'])
+    )
+
+    return {"success": True, "message": "비밀번호가 변경되었습니다."}
 
 @router.delete("/me")
 async def withdraw_user(

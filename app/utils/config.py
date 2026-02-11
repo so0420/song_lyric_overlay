@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     otp_ttl: int
     otp_max_attempts: int
 
+    # Email
+    email_sender: str
+    email_smtp_address: str
+    google_app_key: str
+
     # Meilisearch
     meilisearch_host: str
     meilisearch_api_key: str

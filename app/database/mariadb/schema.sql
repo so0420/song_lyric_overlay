@@ -6,6 +6,8 @@
 CREATE TABLE IF NOT EXISTS `users` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '내부 고유 식별자',
     `email` VARCHAR(255) NOT NULL UNIQUE COMMENT '사용자 이메일',
+    `password_hash` VARCHAR(255) NULL COMMENT '비밀번호 해시 (bcrypt) - 이메일 로그인용',
+    `email_verified` TINYINT(1) DEFAULT 0 COMMENT '이메일 인증 여부 (1: 인증됨, 0: 미인증)',
     `name` VARCHAR(100) COMMENT '사용자 이름/닉네임',
     `picture` TEXT COMMENT '프로필 이미지 URL',
     `is_active` TINYINT(1) DEFAULT 1 COMMENT '활성 상태 (1: 활성, 0: 비활성)',

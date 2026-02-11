@@ -14,6 +14,11 @@ async def login(request: Request):
     if not redirect_uri:
         redirect_uri = request.url_for('naver_auth_callback')
 
+    # 로그인 후 돌아갈 페이지 저장
+    next_url = request.query_params.get('next')
+    if next_url:
+        request.session['oauth_redirect'] = next_url
+
     return await oauth.naver.authorize_redirect(request, str(redirect_uri))
 
 @router.get("/callback", name="naver_auth_callback")
@@ -110,4 +115,6 @@ async def naver_auth_callback(
         "is_admin": bool(user.get('is_admin', 0))
     }
 
-    return RedirectResponse(url='/')
+    # 저장된 리다이렉트 URL로 이동 (없으면 홈)
+    redirect_url = request.session.pop('oauth_redirect', '/')
+    return RedirectResponse(url=redirect_url)

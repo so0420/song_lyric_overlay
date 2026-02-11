@@ -706,6 +706,18 @@ input:checked + .toggle-slider:before {
                 </div>
                 <div class="setting-group-content">
                     <div class="setting-row">
+                        <span class="setting-label">표시 위치</span>
+                        <select id="songInfoPosition" onchange="updatePreview()">
+                            <option value="top-left">좌측 상단</option>
+                            <option value="top-center">중앙 상단</option>
+                            <option value="top-right">우측 상단</option>
+                            <option value="bottom-left">좌측 하단</option>
+                            <option value="bottom-center">중앙 하단</option>
+                            <option value="bottom-right">우측 하단</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
                         <span class="setting-label">NOW 배지 표시</span>
                     <label class="toggle-switch">
                         <input type="checkbox" id="showNowBadge" checked onchange="updatePreview()">
@@ -829,7 +841,8 @@ const defaultSettings = {
     show_artist: true,
     show_now_badge: true,
     song_title_size: 48,
-    artist_size: 28
+    artist_size: 28,
+    song_info_position: "top-left"
 };
 
 // Set overlay URL
@@ -874,6 +887,7 @@ function applySettingsToForm(settings) {
     document.getElementById('artistSize').value = settings.artist_size || defaultSettings.artist_size;
     document.getElementById('artistWeight').value = settings.artist_weight || defaultSettings.artist_weight;
     document.getElementById('artistStroke').value = settings.artist_stroke ?? defaultSettings.artist_stroke;
+    document.getElementById('songInfoPosition').value = settings.song_info_position || defaultSettings.song_info_position;
 }
 
 function getSettingsFromForm() {
@@ -902,7 +916,8 @@ function getSettingsFromForm() {
         show_artist: document.getElementById('showArtist').checked,
         show_now_badge: document.getElementById('showNowBadge').checked,
         song_title_size: parseInt(document.getElementById('songTitleSize').value),
-        artist_size: parseInt(document.getElementById('artistSize').value)
+        artist_size: parseInt(document.getElementById('artistSize').value),
+        song_info_position: document.getElementById('songInfoPosition').value
     };
 }
 
@@ -936,6 +951,47 @@ function updatePreview() {
     songTitle.style.display = settings.show_song_title ? 'inline' : 'none';
     artist.style.display = settings.show_artist ? 'inline' : 'none';
     songInfo.style.display = (settings.show_song_title || settings.show_artist) ? 'block' : 'none';
+
+    // Song info position
+    songInfo.style.top = '';
+    songInfo.style.bottom = '';
+    songInfo.style.left = '';
+    songInfo.style.right = '';
+    songInfo.style.transform = '';
+    songInfo.style.textAlign = 'left';
+
+    switch (settings.song_info_position) {
+        case 'top-left':
+            songInfo.style.top = '24px';
+            songInfo.style.left = '24px';
+            break;
+        case 'top-center':
+            songInfo.style.top = '24px';
+            songInfo.style.left = '50%';
+            songInfo.style.transform = 'translateX(-50%)';
+            songInfo.style.textAlign = 'center';
+            break;
+        case 'top-right':
+            songInfo.style.top = '24px';
+            songInfo.style.right = '24px';
+            songInfo.style.textAlign = 'right';
+            break;
+        case 'bottom-left':
+            songInfo.style.bottom = '100px';
+            songInfo.style.left = '24px';
+            break;
+        case 'bottom-center':
+            songInfo.style.bottom = '100px';
+            songInfo.style.left = '50%';
+            songInfo.style.transform = 'translateX(-50%)';
+            songInfo.style.textAlign = 'center';
+            break;
+        case 'bottom-right':
+            songInfo.style.bottom = '100px';
+            songInfo.style.right = '24px';
+            songInfo.style.textAlign = 'right';
+            break;
+    }
 
     // Song info sizes (scaled down for preview)
     const titleScale = 0.6;

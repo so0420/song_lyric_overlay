@@ -41,7 +41,7 @@
             <span class="section-title">내 가사</span>
             <a href="/mypage" class="section-link">더보기</a>
         </div>
-        <div id="myLyricsList" class="lyrics-list">
+        <div id="sidebarLyricsList" class="lyrics-list">
             <div class="sidebar-loading">로딩 중...</div>
         </div>
     </div>
@@ -328,9 +328,9 @@ function toggleSidebar() {
 document.getElementById('sidebarClose')?.addEventListener('click', toggleSidebar);
 document.getElementById('sidebarOverlay')?.addEventListener('click', toggleSidebar);
 
-// 내 가사 목록 로드
-async function loadMyLyrics() {
-    const container = document.getElementById('myLyricsList');
+// 사이드바 내 가사 목록 로드
+async function loadSidebarLyrics() {
+    const container = document.getElementById('sidebarLyricsList');
     if (!container) return;
 
     try {
@@ -352,8 +352,8 @@ async function loadMyLyrics() {
         container.innerHTML = displayLyrics.map(l => `
             <a href="/lyrics?lyrics_id=${l.id}" class="lyrics-item">
                 <div class="lyrics-item-info">
-                    <div class="lyrics-item-title">${escapeHtml(l.title || '제목 없음')}</div>
-                    <div class="lyrics-item-song">${escapeHtml(l.song_title)} - ${escapeHtml(l.artist_name || '')}</div>
+                    <div class="lyrics-item-title">${sidebarEscapeHtml(l.title || '제목 없음')}</div>
+                    <div class="lyrics-item-song">${sidebarEscapeHtml(l.song_title)} - ${sidebarEscapeHtml(l.artist_name || '')}</div>
                 </div>
             </a>
         `).join('');
@@ -362,7 +362,7 @@ async function loadMyLyrics() {
     }
 }
 
-function escapeHtml(text) {
+function sidebarEscapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
@@ -372,7 +372,7 @@ function escapeHtml(text) {
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
     {% if user %}
-    loadMyLyrics();
+    loadSidebarLyrics();
     {% endif %}
 });
 </script>

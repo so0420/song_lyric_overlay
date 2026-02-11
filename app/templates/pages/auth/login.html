@@ -8,7 +8,7 @@
 .split-layout {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    min-height: calc(100vh - 40px); /* Adjust for potential padding */
+    min-height: calc(100vh - 40px);
     width: 100%;
     overflow: hidden;
 }
@@ -74,7 +74,7 @@
 }
 
 .login-header {
-    margin-bottom: 40px;
+    margin-bottom: 32px;
     text-align: center;
 }
 
@@ -90,11 +90,89 @@
     font-size: 1rem;
 }
 
+/* Form Styles */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 8px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: all 0.2s;
+    background: white;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-group input::placeholder {
+    color: var(--text-dim);
+}
+
+.btn-login {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+}
+
+.btn-login:hover:not(:disabled) {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+.btn-login:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Divider */
+.divider {
+    display: flex;
+    align-items: center;
+    margin: 24px 0;
+    color: var(--text-dim);
+    font-size: 0.875rem;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+}
+
+.divider span {
+    padding: 0 16px;
+}
+
 /* Auth Buttons */
 .auth-buttons {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
 }
 
 .btn-auth {
@@ -102,10 +180,10 @@
     align-items: center;
     justify-content: center;
     gap: 12px;
-    padding: 16px;
+    padding: 14px;
     border-radius: 12px;
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 0.95rem;
     text-decoration: none;
     transition: all 0.2s;
     border: 1px solid transparent;
@@ -135,17 +213,96 @@
     height: 20px;
 }
 
+/* Register Link */
+.register-link {
+    text-align: center;
+    margin-top: 24px;
+    color: var(--text-sub);
+    font-size: 0.9rem;
+}
+
+.register-link a {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.register-link a:hover {
+    text-decoration: underline;
+}
+
 /* Error Message */
-.error-message {
-    background-color: #fef2f2;
-    border: 1px solid #fecaca;
-    color: #b91c1c;
-    padding: 16px;
-    border-radius: 12px;
-    margin-bottom: 24px;
+.message {
+    padding: 14px 16px;
+    border-radius: 10px;
+    margin-bottom: 20px;
     font-size: 0.9rem;
     display: none;
     line-height: 1.5;
+}
+
+.message.error {
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+}
+
+.message.success {
+    background-color: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #15803d;
+}
+
+/* Verification Required */
+.verification-required {
+    display: none;
+    text-align: center;
+    padding: 20px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.verification-required p {
+    color: #92400e;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+}
+
+.btn-resend-verify {
+    background: #f59e0b;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.btn-resend-verify:hover:not(:disabled) {
+    background: #d97706;
+}
+
+.btn-resend-verify:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Loading Spinner */
+.spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 /* Mobile Responsive */
@@ -154,23 +311,23 @@
         grid-template-columns: 1fr;
         min-height: auto;
     }
-    
+
     .brand-side {
         padding: 40px 24px;
-        min-height: 200px;
+        min-height: 180px;
     }
-    
+
     .brand-content {
         text-align: center;
     }
-    
+
     .brand-logo {
         justify-content: center;
         font-size: 2rem;
     }
-    
+
     .form-side {
-        padding: 40px 24px;
+        padding: 32px 24px 48px;
     }
 }
 </style>
@@ -198,10 +355,39 @@
         <div class="login-box">
             <div class="login-header">
                 <h1>반가워요!</h1>
-                <p>소셜 계정으로 간편하게 시작하세요.</p>
+                <p>이메일 또는 소셜 계정으로 로그인하세요</p>
             </div>
 
-            <div id="errorMessage" class="error-message"></div>
+            <div id="errorMessage" class="message error"></div>
+            <div id="successMessage" class="message success"></div>
+
+            <div id="verificationRequired" class="verification-required">
+                <p>이메일 인증이 필요합니다.<br>인증 메일을 다시 받으시겠습니까?</p>
+                <button type="button" class="btn-resend-verify" id="resendVerifyBtn">인증 메일 재발송</button>
+            </div>
+
+            <!-- Email Login Form -->
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">이메일</label>
+                    <input type="email" id="email" name="email" placeholder="example@email.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">비밀번호</label>
+                    <input type="password" id="password" name="password" placeholder="비밀번호 입력" required>
+                </div>
+
+                <div style="text-align: right; margin-bottom: 16px;">
+                    <a href="/forgot-password" style="font-size: 0.85rem; color: var(--text-sub);">비밀번호를 잊으셨나요?</a>
+                </div>
+
+                <button type="submit" class="btn-login" id="loginBtn">
+                    로그인
+                </button>
+            </form>
+
+            <div class="divider"><span>또는</span></div>
 
             <div class="auth-buttons">
                 <a href="/api/v1/oauth/naver/login" class="btn-auth btn-naver">
@@ -210,7 +396,7 @@
                     </svg>
                     네이버로 시작하기
                 </a>
-                
+
                 <a href="/api/v1/oauth/google/login" class="btn-auth btn-google">
                     <svg class="brand-icon-img" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -221,6 +407,10 @@
                     Google로 시작하기
                 </a>
             </div>
+
+            <p class="register-link">
+                계정이 없으신가요? <a href="/register">회원가입</a>
+            </p>
         </div>
     </div>
 </div>
@@ -228,26 +418,134 @@
 
 {% block extra_scripts %}
 <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const error = urlParams.get('error');
-    if (error) {
-        const errorDiv = document.getElementById('errorMessage');
-        let message = '';
-        switch(error) {
-            case 'email_exists':
-                message = '이미 가입된 이메일입니다.';
-                break;
-            case 'account_already_linked':
-                message = '이미 연결된 계정입니다.';
-                break;
-            case 'email_mismatch':
-                message = '이메일 정보가 일치하지 않습니다.';
-                break;
-            default:
-                message = '로그인 중 오류가 발생했습니다.';
-        }
-        errorDiv.innerHTML = message;
-        errorDiv.style.display = 'block';
+const loginForm = document.getElementById('loginForm');
+const errorMessage = document.getElementById('errorMessage');
+const successMessage = document.getElementById('successMessage');
+const verificationRequired = document.getElementById('verificationRequired');
+const loginBtn = document.getElementById('loginBtn');
+const resendVerifyBtn = document.getElementById('resendVerifyBtn');
+
+let pendingEmail = '';
+
+function showError(message) {
+    errorMessage.textContent = message;
+    errorMessage.style.display = 'block';
+    successMessage.style.display = 'none';
+}
+
+function showSuccess(message) {
+    successMessage.textContent = message;
+    successMessage.style.display = 'block';
+    errorMessage.style.display = 'none';
+}
+
+function hideMessages() {
+    errorMessage.style.display = 'none';
+    successMessage.style.display = 'none';
+}
+
+function setLoading(button, loading) {
+    if (loading) {
+        button.disabled = true;
+        button.dataset.originalText = button.innerHTML;
+        button.innerHTML = '<span class="spinner"></span>';
+    } else {
+        button.disabled = false;
+        button.innerHTML = button.dataset.originalText || button.innerHTML;
     }
+}
+
+// Check URL params for errors
+const urlParams = new URLSearchParams(window.location.search);
+const error = urlParams.get('error');
+if (error) {
+    let message = '';
+    switch(error) {
+        case 'email_exists':
+            message = '이미 가입된 이메일입니다.';
+            break;
+        case 'account_already_linked':
+            message = '이미 연결된 계정입니다.';
+            break;
+        case 'email_mismatch':
+            message = '이메일 정보가 일치하지 않습니다.';
+            break;
+        default:
+            message = '로그인 중 오류가 발생했습니다.';
+    }
+    showError(message);
+}
+
+// Login Form Submit
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideMessages();
+    verificationRequired.style.display = 'none';
+
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    setLoading(loginBtn, true);
+
+    try {
+        const response = await fetch('/api/v1/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            // Check if email verification is required
+            if (response.status === 403 && data.detail.includes('이메일 인증')) {
+                pendingEmail = email;
+                verificationRequired.style.display = 'block';
+                throw new Error(data.detail);
+            }
+            throw new Error(data.detail || '로그인에 실패했습니다.');
+        }
+
+        showSuccess('로그인 성공! 이동 중...');
+
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 500);
+
+    } catch (error) {
+        showError(error.message);
+    } finally {
+        setLoading(loginBtn, false);
+    }
+});
+
+// Resend Verification Email
+resendVerifyBtn.addEventListener('click', async () => {
+    if (!pendingEmail) return;
+
+    setLoading(resendVerifyBtn, true);
+
+    try {
+        const response = await fetch('/api/v1/auth/resend-verification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: pendingEmail })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || '발송에 실패했습니다.');
+        }
+
+        showSuccess('인증 메일이 발송되었습니다. 메일함을 확인해주세요.');
+        verificationRequired.style.display = 'none';
+
+    } catch (error) {
+        showError(error.message);
+    } finally {
+        setLoading(resendVerifyBtn, false);
+    }
+});
 </script>
 {% endblock %}

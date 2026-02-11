@@ -249,7 +249,8 @@
             show_now_badge: true,
             song_title_size: 48,
             artist_size: 28,
-            lyrics_position: "bottom"
+            lyrics_position: "bottom",
+            song_info_position: "top-left"
         };
 
         let settings = { ...defaultSettings, ...initialSettings };
@@ -316,7 +317,55 @@
             nextLine.style.display = settings.show_next_line ? 'block' : 'none';
             nowBadge.style.display = settings.show_now_badge ? 'inline-block' : 'none';
 
+            // Song info position
+            applySongInfoPosition(settings.song_info_position || 'top-left');
+
             updateSongInfoDisplay();
+        }
+
+        function applySongInfoPosition(position) {
+            songInfoBox.style.top = '';
+            songInfoBox.style.bottom = '';
+            songInfoBox.style.left = '';
+            songInfoBox.style.right = '';
+            songInfoBox.style.transform = '';
+            songInfoBox.style.textAlign = 'left';
+
+            const padding = '40px';
+            const bottomOffset = '140px'; // 가사 위에 표시되도록
+
+            switch (position) {
+                case 'top-left':
+                    songInfoBox.style.top = padding;
+                    songInfoBox.style.left = padding;
+                    break;
+                case 'top-center':
+                    songInfoBox.style.top = padding;
+                    songInfoBox.style.left = '50%';
+                    songInfoBox.style.transform = 'translateX(-50%)';
+                    songInfoBox.style.textAlign = 'center';
+                    break;
+                case 'top-right':
+                    songInfoBox.style.top = padding;
+                    songInfoBox.style.right = padding;
+                    songInfoBox.style.textAlign = 'right';
+                    break;
+                case 'bottom-left':
+                    songInfoBox.style.bottom = bottomOffset;
+                    songInfoBox.style.left = padding;
+                    break;
+                case 'bottom-center':
+                    songInfoBox.style.bottom = bottomOffset;
+                    songInfoBox.style.left = '50%';
+                    songInfoBox.style.transform = 'translateX(-50%)';
+                    songInfoBox.style.textAlign = 'center';
+                    break;
+                case 'bottom-right':
+                    songInfoBox.style.bottom = bottomOffset;
+                    songInfoBox.style.right = padding;
+                    songInfoBox.style.textAlign = 'right';
+                    break;
+            }
         }
 
         function updateSongInfoDisplay() {

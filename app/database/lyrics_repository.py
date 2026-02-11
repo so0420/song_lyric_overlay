@@ -1,5 +1,5 @@
 from app.database.mariadb import db_handler
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 class LyricsRepository:
     def __init__(self, db=db_handler):
@@ -25,6 +25,7 @@ class LyricsRepository:
 
     async def get_lyrics_by_song_id_with_favorites(self, song_id: int, user_id: int) -> List[Dict[str, Any]]:
         """특정 노래의 가사 목록 조회 (즐겨찾기 정보 포함)"""
+        # N+1 쿼리 개선: 서브쿼리 대신 JOIN + GROUP BY 사용
         query = """
             SELECT
                 l.id,
@@ -36,12 +37,15 @@ class LyricsRepository:
                 l.likes_count,
                 l.created_at,
                 l.updated_at,
-                (SELECT COUNT(*) FROM user_lyrics_favorites WHERE lyrics_id = l.id) as favorites_count,
-                CASE WHEN ulf.id IS NOT NULL THEN 1 ELSE 0 END as is_favorited
+                COUNT(DISTINCT fav.id) as favorites_count,
+                MAX(CASE WHEN ulf.id IS NOT NULL THEN 1 ELSE 0 END) as is_favorited
             FROM song_lyrics l
             LEFT JOIN users u ON l.owner_id = u.id
+            LEFT JOIN user_lyrics_favorites fav ON l.id = fav.lyrics_id
             LEFT JOIN user_lyrics_favorites ulf ON l.id = ulf.lyrics_id AND ulf.user_id = %s
             WHERE l.song_id = %s AND l.is_public = 1
+            GROUP BY l.id, l.owner_id, u.name, l.title, l.mr_youtube_video_id,
+                     l.is_verified, l.likes_count, l.created_at, l.updated_at
             ORDER BY l.is_verified DESC, l.likes_count DESC, l.created_at DESC
         """
         return await self.db.fetch_all(query, (user_id, song_id))
@@ -63,7 +67,8 @@ class LyricsRepository:
         """
         return await self.db.fetch_one(query, (lyrics_id,))
 
-    async def get_my_lyrics(self, owner_id: int) -> List[Dict[str, Any]]:
+    async def get_my_lyrics(self, owner_id: int, offset: int = 0, limit: int = 50) -> Tuple[List[Dict[str, Any]], int]:
+        """자신이 작성한 가사 목록 조회 (페이지네이션 지원)"""
         query = """
             SELECT l.*, s.title as song_title, s.song_external_id, a.name as artist_name
             FROM song_lyrics l
@@ -71,8 +76,16 @@ class LyricsRepository:
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE l.owner_id = %s
             ORDER BY l.updated_at DESC
+            LIMIT %s OFFSET %s
         """
-        return await self.db.fetch_all(query, (owner_id,))
+        items = await self.db.fetch_all(query, (owner_id, limit, offset))
+
+        # 전체 개수 조회
+        count_query = "SELECT COUNT(*) as total FROM song_lyrics WHERE owner_id = %s"
+        count_result = await self.db.fetch_one(count_query, (owner_id,))
+        total = count_result['total'] if count_result else 0
+
+        return items, total
 
     async def check_title_duplicate(self, owner_id: int, song_id: Optional[int], title: str, exclude_id: int = None) -> bool:
         """가사 제목 중복 체크 (내 가사들 중에서)"""
@@ -151,8 +164,9 @@ class LyricsRepository:
         await self.db.execute_query(query, (user_id, lyrics_id))
         return True
 
-    async def get_my_favorites(self, user_id: int) -> List[Dict[str, Any]]:
-        """내 즐겨찾기 가사 목록 조회"""
+    async def get_my_favorites(self, user_id: int, offset: int = 0, limit: int = 50) -> Tuple[List[Dict[str, Any]], int]:
+        """내 즐겨찾기 가사 목록 조회 (페이지네이션 지원)"""
+        # N+1 쿼리 개선: 서브쿼리 대신 JOIN + GROUP BY 사용
         query = """
             SELECT
                 l.id,
@@ -168,16 +182,33 @@ class LyricsRepository:
                 l.likes_count,
                 l.updated_at,
                 ulf.created_at as favorited_at,
-                (SELECT COUNT(*) FROM user_lyrics_favorites WHERE lyrics_id = l.id) as favorites_count
+                COUNT(DISTINCT fav.id) as favorites_count
             FROM user_lyrics_favorites ulf
             JOIN song_lyrics l ON ulf.lyrics_id = l.id
             JOIN songs s ON l.song_id = s.id
             LEFT JOIN artists a ON s.artist_id = a.id
             LEFT JOIN users u ON l.owner_id = u.id
+            LEFT JOIN user_lyrics_favorites fav ON l.id = fav.lyrics_id
             WHERE ulf.user_id = %s AND l.is_public = 1
+            GROUP BY l.id, l.owner_id, u.name, l.song_id, s.title, s.song_external_id,
+                     a.name, l.title, l.mr_youtube_video_id, l.is_verified,
+                     l.likes_count, l.updated_at, ulf.created_at
             ORDER BY ulf.created_at DESC
+            LIMIT %s OFFSET %s
         """
-        return await self.db.fetch_all(query, (user_id,))
+        items = await self.db.fetch_all(query, (user_id, limit, offset))
+
+        # 전체 개수 조회
+        count_query = """
+            SELECT COUNT(*) as total
+            FROM user_lyrics_favorites ulf
+            JOIN song_lyrics l ON ulf.lyrics_id = l.id
+            WHERE ulf.user_id = %s AND l.is_public = 1
+        """
+        count_result = await self.db.fetch_one(count_query, (user_id,))
+        total = count_result['total'] if count_result else 0
+
+        return items, total
 
     async def is_favorited(self, user_id: int, lyrics_id: int) -> bool:
         """즐겨찾기 여부 확인"""
@@ -207,8 +238,10 @@ class LyricsRepository:
         """
         return await self.db.fetch_all(query, (search_pattern, search_pattern, limit))
 
-    async def search_all_songs_with_lyrics(self, query_term: str, limit: int = 20) -> Dict[str, List[Dict[str, Any]]]:
-        """공개된 가사가 있는 노래 검색 (음원 + 커스텀 분리 반환)"""
+    async def search_all_songs_with_lyrics(
+        self, query_term: str, offset: int = 0, limit: int = 20
+    ) -> Dict[str, Any]:
+        """공개된 가사가 있는 노래 검색 (음원 + 커스텀 분리 반환, 페이지네이션 지원)"""
         search_pattern = f"%{query_term}%"
 
         # 음원 노래 검색 (song_external_id가 'it_'로 시작)
@@ -226,11 +259,22 @@ class LyricsRepository:
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE s.song_external_id LIKE 'it_%%'
               AND (s.title LIKE %s OR a.name LIKE %s)
-            GROUP BY s.id
+            GROUP BY s.id, s.title, s.song_external_id, s.cover_image_url, a.name, a.artist_external_id
             ORDER BY lyrics_count DESC, s.title ASC
-            LIMIT %s
+            LIMIT %s OFFSET %s
         """
-        itunes_results = await self.db.fetch_all(itunes_query, (search_pattern, search_pattern, limit))
+        itunes_results = await self.db.fetch_all(itunes_query, (search_pattern, search_pattern, limit, offset))
+
+        # 음원 전체 개수
+        itunes_count_query = """
+            SELECT COUNT(DISTINCT s.id) as total
+            FROM songs s
+            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1
+            LEFT JOIN artists a ON s.artist_id = a.id
+            WHERE s.song_external_id LIKE 'it_%%'
+              AND (s.title LIKE %s OR a.name LIKE %s)
+        """
+        itunes_count = await self.db.fetch_one(itunes_count_query, (search_pattern, search_pattern))
 
         # 커스텀 노래 검색 (song_external_id가 'custom_'로 시작)
         custom_query = """
@@ -247,15 +291,34 @@ class LyricsRepository:
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE s.song_external_id LIKE 'custom_%%'
               AND (s.title LIKE %s OR a.name LIKE %s)
-            GROUP BY s.id
+            GROUP BY s.id, s.title, s.song_external_id, s.cover_image_url, a.name, a.artist_external_id
             ORDER BY lyrics_count DESC, s.title ASC
-            LIMIT %s
+            LIMIT %s OFFSET %s
         """
-        custom_results = await self.db.fetch_all(custom_query, (search_pattern, search_pattern, limit))
+        custom_results = await self.db.fetch_all(custom_query, (search_pattern, search_pattern, limit, offset))
+
+        # 커스텀 전체 개수
+        custom_count_query = """
+            SELECT COUNT(DISTINCT s.id) as total
+            FROM songs s
+            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1
+            LEFT JOIN artists a ON s.artist_id = a.id
+            WHERE s.song_external_id LIKE 'custom_%%'
+              AND (s.title LIKE %s OR a.name LIKE %s)
+        """
+        custom_count = await self.db.fetch_one(custom_count_query, (search_pattern, search_pattern))
 
         return {
-            "itunes": itunes_results,
-            "custom": custom_results
+            "itunes": {
+                "items": itunes_results,
+                "total": itunes_count['total'] if itunes_count else 0
+            },
+            "custom": {
+                "items": custom_results,
+                "total": custom_count['total'] if custom_count else 0
+            },
+            "offset": offset,
+            "limit": limit
         }
 
 def get_lyrics_repository():

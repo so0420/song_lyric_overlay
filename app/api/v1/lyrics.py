@@ -6,6 +6,10 @@ from typing import List, Dict, Any, Optional
 
 router = APIRouter()
 
+# 페이지네이션 기본값
+DEFAULT_LIMIT = 20
+MAX_LIMIT = 100
+
 class LyricsCreateSchema(BaseModel):
     song_id: int
     title: Optional[str] = None
@@ -20,10 +24,12 @@ class LyricsUpdateSchema(BaseModel):
 @router.get("/search")
 async def search_lyrics(
     q: str = Query(..., min_length=1),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     repo: LyricsRepository = Depends(get_lyrics_repository)
 ):
-    """공개된 가사가 있는 노래 검색 (음원 + 커스텀 분리)"""
-    results = await repo.search_all_songs_with_lyrics(q)
+    """공개된 가사가 있는 노래 검색 (음원 + 커스텀 분리, 페이지네이션 지원)"""
+    results = await repo.search_all_songs_with_lyrics(q, offset=offset, limit=limit)
     return results
 
 @router.get("/")
@@ -36,11 +42,20 @@ async def get_available_lyrics(
 
 @router.get("/my")
 async def get_my_lyrics(
+    offset: int = Query(0, ge=0),
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     user=Depends(get_current_user_api),
     repo: LyricsRepository = Depends(get_lyrics_repository)
 ):
-    """자신이 작성한 가사 목록 조회"""
-    return await repo.get_my_lyrics(user['id'])
+    """자신이 작성한 가사 목록 조회 (페이지네이션 지원)"""
+    items, total = await repo.get_my_lyrics(user['id'], offset=offset, limit=limit)
+    return {
+        "items": items,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "has_more": offset + len(items) < total
+    }
 
 @router.get("/song/{song_id}")
 async def get_lyrics_by_song(
@@ -142,8 +157,17 @@ async def remove_favorite(
 
 @router.get("/favorites/my")
 async def get_my_favorites(
+    offset: int = Query(0, ge=0),
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     user=Depends(get_current_user_api),
     repo: LyricsRepository = Depends(get_lyrics_repository)
 ):
-    """내 즐겨찾기 가사 목록 조회"""
-    return await repo.get_my_favorites(user['id'])
+    """내 즐겨찾기 가사 목록 조회 (페이지네이션 지원)"""
+    items, total = await repo.get_my_favorites(user['id'], offset=offset, limit=limit)
+    return {
+        "items": items,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "has_more": offset + len(items) < total
+    }

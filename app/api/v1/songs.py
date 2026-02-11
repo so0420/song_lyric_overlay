@@ -12,13 +12,16 @@ router = APIRouter()
 
 @router.get("/search")
 @limiter.limit(RATE_LIMITS["search"])
-async def search_songs(request: Request, q: str, limit: int = 20):
-    """iTunes API를 사용하여 노래 검색"""
+async def search_songs(request: Request, q: str, offset: int = 0, limit: int = 20):
+    """iTunes API를 사용하여 노래 검색 (페이지네이션 지원)"""
     if not q or len(q.strip()) < 1:
-        return []
+        return {"items": [], "total": 0, "offset": offset, "limit": limit, "has_more": False}
 
     try:
-        results = await itunes_api.search(term=q, limit=min(limit, 100))
+        # iTunes API는 offset을 지원하지 않으므로 최대 100개까지 한번에 가져옴
+        # 첫 요청 시 100개 가져와서 캐싱하면 좋지만, 간단히 항상 100개 요청
+        fetch_limit = 100
+        results = await itunes_api.search(term=q, limit=fetch_limit)
 
         # 프론트엔드에서 기대하는 형식으로 변환
         formatted_results = []
@@ -34,9 +37,13 @@ async def search_songs(request: Request, q: str, limit: int = 20):
                 "lyrics_count": 0  # 기본값, 실제로는 DB에서 조회 필요
             })
 
-        # 가사 개수 조회 (DB에 등록된 곡들만)
-        if formatted_results:
-            external_ids = [r['song_external_id'] for r in formatted_results]
+        # 페이지네이션 적용 (가사 개수 조회 전에 슬라이싱)
+        total = len(formatted_results)
+        paginated_results = formatted_results[offset:offset + limit]
+
+        # 가사 개수 조회 (현재 페이지 결과만)
+        if paginated_results:
+            external_ids = [r['song_external_id'] for r in paginated_results]
             format_strings = ','.join(['%s'] * len(external_ids))
             query = f"""
                 SELECT s.song_external_id, COUNT(l.id) as cnt
@@ -48,10 +55,16 @@ async def search_songs(request: Request, q: str, limit: int = 20):
             counts = await db_handler.fetch_all(query, tuple(external_ids))
             count_map = {c['song_external_id']: c['cnt'] for c in counts}
 
-            for r in formatted_results:
+            for r in paginated_results:
                 r['lyrics_count'] = count_map.get(r['song_external_id'], 0)
 
-        return formatted_results
+        return {
+            "items": paginated_results,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "has_more": offset + len(paginated_results) < total
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -88,21 +101,26 @@ async def get_song_info(
 
 @router.get("/search/custom")
 @limiter.limit(RATE_LIMITS["search"])
-async def search_custom_songs(request: Request, q: str, limit: int = 20):
-    """Meilisearch를 사용하여 커스텀 노래 검색"""
+async def search_custom_songs(request: Request, q: str, offset: int = 0, limit: int = 20):
+    """Meilisearch를 사용하여 커스텀 노래 검색 (페이지네이션 지원, DB 폴백)"""
     if not q or len(q.strip()) < 1:
-        return []
+        return {"items": [], "total": 0, "offset": offset, "limit": limit, "has_more": False}
+
+    formatted_results = []
+    total = 0
+    use_fallback = False
 
     try:
+        # Meilisearch 검색 시도
         results = await meilisearch_handler.search(
             query=q,
+            offset=offset,
             limit=min(limit, 100),
             attributes_to_search_on=["title", "singer"]
         )
 
         # 프론트엔드에서 기대하는 형식으로 변환
-        formatted_results = []
-        for item in results:
+        for item in results.get('hits', []):
             formatted_results.append({
                 "id": item.get('id'),
                 "song_external_id": item.get('id'),
@@ -112,23 +130,72 @@ async def search_custom_songs(request: Request, q: str, limit: int = 20):
                 "is_custom": True
             })
 
-        # 가사 개수 조회
-        if formatted_results:
-            external_ids = [r['song_external_id'] for r in formatted_results]
-            format_strings = ','.join(['%s'] * len(external_ids))
-            query = f"""
-                SELECT s.song_external_id, COUNT(l.id) as cnt
-                FROM songs s
-                JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1
-                WHERE s.song_external_id IN ({format_strings})
-                GROUP BY s.song_external_id
-            """
-            counts = await db_handler.fetch_all(query, tuple(external_ids))
-            count_map = {c['song_external_id']: c['cnt'] for c in counts}
+        total = results.get('estimatedTotalHits', len(formatted_results))
 
-            for r in formatted_results:
-                r['lyrics_count'] = count_map.get(r['song_external_id'], 0)
-
-        return formatted_results
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Meilisearch 실패 시 DB 폴백
+        use_fallback = True
+        search_pattern = f"%{q}%"
+        fallback_query = """
+            SELECT
+                s.song_external_id as id,
+                s.title,
+                a.name as singer,
+                s.cover_image_url as image_url
+            FROM songs s
+            LEFT JOIN artists a ON s.artist_id = a.id
+            WHERE s.song_external_id LIKE 'custom_%%'
+              AND (s.title LIKE %s OR a.name LIKE %s)
+            ORDER BY s.title ASC
+            LIMIT %s OFFSET %s
+        """
+        fallback_results = await db_handler.fetch_all(
+            fallback_query, (search_pattern, search_pattern, limit, offset)
+        )
+
+        for item in fallback_results:
+            formatted_results.append({
+                "id": item.get('id'),
+                "song_external_id": item.get('id'),
+                "title": item.get('title', ''),
+                "artist_name": item.get('singer', ''),
+                "cover_image_url": item.get('image_url'),
+                "is_custom": True
+            })
+
+        # 전체 개수 조회
+        count_query = """
+            SELECT COUNT(*) as total
+            FROM songs s
+            LEFT JOIN artists a ON s.artist_id = a.id
+            WHERE s.song_external_id LIKE 'custom_%%'
+              AND (s.title LIKE %s OR a.name LIKE %s)
+        """
+        count_result = await db_handler.fetch_one(count_query, (search_pattern, search_pattern))
+        total = count_result['total'] if count_result else 0
+
+    # 가사 개수 조회
+    if formatted_results:
+        external_ids = [r['song_external_id'] for r in formatted_results]
+        format_strings = ','.join(['%s'] * len(external_ids))
+        query = f"""
+            SELECT s.song_external_id, COUNT(l.id) as cnt
+            FROM songs s
+            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1
+            WHERE s.song_external_id IN ({format_strings})
+            GROUP BY s.song_external_id
+        """
+        counts = await db_handler.fetch_all(query, tuple(external_ids))
+        count_map = {c['song_external_id']: c['cnt'] for c in counts}
+
+        for r in formatted_results:
+            r['lyrics_count'] = count_map.get(r['song_external_id'], 0)
+
+    return {
+        "items": formatted_results,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "has_more": offset + len(formatted_results) < total,
+        "fallback": use_fallback  # 폴백 사용 여부 표시
+    }

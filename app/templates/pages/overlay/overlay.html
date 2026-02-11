@@ -1072,6 +1072,21 @@
         animation: spin 0.8s linear infinite;
     }
 
+    .spinner-small {
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--border-color);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    .search-load-more {
+        display: flex;
+        justify-content: center;
+        padding: 16px;
+    }
+
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
@@ -1551,7 +1566,12 @@
         autoRemoveCompleted: localStorage.getItem('overlay_auto_remove') === 'true',
         currentSearchTab: 'itunes',
         lastSearchQuery: '',
-        lastLyricsIndex: -2  // -2로 초기화하여 첫 번째 업데이트가 항상 발생하도록
+        lastLyricsIndex: -2,  // -2로 초기화하여 첫 번째 업데이트가 항상 발생하도록
+        // Pagination state
+        searchOffset: 0,
+        searchHasMore: false,
+        searchLoading: false,
+        currentSearchResults: []
     };
 
     // DOM Elements
@@ -1708,79 +1728,85 @@
         }
     }
 
-    async function searchITunes(query) {
-        // Check cache
-        if (state.searchCache.has(query)) {
-            renderSearchResults(state.searchCache.get(query), query);
+    async function searchITunes(query, loadMore = false) {
+        if (state.searchLoading) return;
+
+        if (!loadMore) {
+            // Reset pagination for new search
+            state.searchOffset = 0;
+            state.currentSearchResults = [];
+            state.searchHasMore = false;
+
+            elements.searchLoading.classList.add('active');
+            renderSearchSkeleton();
             elements.searchResults.classList.add('active');
             $('#addCustomSongSection').style.display = 'none';
-            return;
         }
 
-        elements.searchLoading.classList.add('active');
-        renderSearchSkeleton();
-        elements.searchResults.classList.add('active');
-        $('#addCustomSongSection').style.display = 'none';
+        state.searchLoading = true;
 
         try {
-            const response = await fetch(`/api/v1/songs/search?q=${encodeURIComponent(query)}&limit=15`);
+            const response = await fetch(`/api/v1/songs/search?q=${encodeURIComponent(query)}&limit=20&offset=${state.searchOffset}`);
             const data = await response.json();
+            const items = data.items || data;
 
-            // Cache results
-            state.searchCache.set(query, data);
+            state.currentSearchResults = loadMore ? [...state.currentSearchResults, ...items] : items;
+            state.searchHasMore = data.has_more || false;
+            state.searchOffset += items.length;
 
-            // Limit cache size
-            if (state.searchCache.size > 50) {
-                const firstKey = state.searchCache.keys().next().value;
-                state.searchCache.delete(firstKey);
-            }
-
-            renderSearchResults(data, query);
+            renderSearchResults(state.currentSearchResults, data.total, query, loadMore);
         } catch (error) {
             console.error('Search error:', error);
-            elements.searchResultsList.innerHTML = '<div style="padding: 24px; text-align: center; color: #dc2626;">검색 중 오류가 발생했습니다</div>';
+            if (!loadMore) {
+                elements.searchResultsList.innerHTML = '<div style="padding: 24px; text-align: center; color: #dc2626;">검색 중 오류가 발생했습니다</div>';
+            }
         } finally {
+            state.searchLoading = false;
             elements.searchLoading.classList.remove('active');
         }
     }
 
-    async function searchCustomSongs(query) {
-        // Check cache
-        if (state.customSearchCache.has(query)) {
-            renderCustomSearchResults(state.customSearchCache.get(query), query);
+    async function searchCustomSongs(query, loadMore = false) {
+        if (state.searchLoading) return;
+
+        if (!loadMore) {
+            // Reset pagination for new search
+            state.searchOffset = 0;
+            state.currentSearchResults = [];
+            state.searchHasMore = false;
+
+            elements.searchLoading.classList.add('active');
+            renderSearchSkeleton();
             elements.searchResults.classList.add('active');
-            return;
         }
 
-        elements.searchLoading.classList.add('active');
-        renderSearchSkeleton();
-        elements.searchResults.classList.add('active');
+        state.searchLoading = true;
 
         try {
-            const response = await fetch(`/api/v1/songs/search/custom?q=${encodeURIComponent(query)}&limit=15`);
+            const response = await fetch(`/api/v1/songs/search/custom?q=${encodeURIComponent(query)}&limit=20&offset=${state.searchOffset}`);
             const data = await response.json();
+            const items = data.items || data;
 
-            // Cache results
-            state.customSearchCache.set(query, data);
+            state.currentSearchResults = loadMore ? [...state.currentSearchResults, ...items] : items;
+            state.searchHasMore = data.has_more || false;
+            state.searchOffset += items.length;
 
-            // Limit cache size
-            if (state.customSearchCache.size > 50) {
-                const firstKey = state.customSearchCache.keys().next().value;
-                state.customSearchCache.delete(firstKey);
-            }
-
-            renderCustomSearchResults(data, query);
+            renderCustomSearchResults(state.currentSearchResults, data.total, query, loadMore);
         } catch (error) {
             console.error('Custom search error:', error);
-            elements.searchResultsList.innerHTML = '<div style="padding: 24px; text-align: center; color: #dc2626;">검색 중 오류가 발생했습니다</div>';
+            if (!loadMore) {
+                elements.searchResultsList.innerHTML = '<div style="padding: 24px; text-align: center; color: #dc2626;">검색 중 오류가 발생했습니다</div>';
+            }
             $('#addCustomSongSection').style.display = 'block';
         } finally {
+            state.searchLoading = false;
             elements.searchLoading.classList.remove('active');
         }
     }
 
-    function renderCustomSearchResults(songs, query) {
-        elements.searchResultsHeader.textContent = songs.length > 0 ? `"${query}" 검색 결과 (${songs.length}개)` : '검색 결과 없음';
+    function renderCustomSearchResults(songs, total, query, loadMore = false) {
+        const count = total || songs.length;
+        elements.searchResultsHeader.textContent = songs.length > 0 ? `"${query}" 검색 결과 (${count}개)` : '검색 결과 없음';
         $('#addCustomSongSection').style.display = 'block';
 
         if (songs.length === 0) {
@@ -1788,7 +1814,7 @@
             return;
         }
 
-        elements.searchResultsList.innerHTML = songs.map(song => `
+        const songsHtml = songs.map(song => `
             <div class="song-item" data-song='${JSON.stringify({id: song.id, externalId: song.song_external_id, title: song.title, artist: song.artist_name || '', isCustom: true})}'>
                 <img class="song-cover" src="${song.cover_image_url || ''}" alt="" loading="lazy" onerror="this.style.background='linear-gradient(135deg,#10b981 0%,#059669 100%)';this.style.visibility='hidden'">
                 <div class="song-info">
@@ -1799,6 +1825,9 @@
                 ${song.lyrics_count ? `<span class="song-lyrics-count">가사 ${song.lyrics_count}개</span>` : ''}
             </div>
         `).join('');
+
+        const loadingIndicator = state.searchHasMore ? '<div class="search-load-more"><div class="spinner-small"></div></div>' : '';
+        elements.searchResultsList.innerHTML = songsHtml + loadingIndicator;
 
         // Event delegation
         elements.searchResultsList.querySelectorAll('.song-item').forEach(item => {
@@ -1822,15 +1851,16 @@
         `).join('');
     }
 
-    function renderSearchResults(songs, query) {
-        elements.searchResultsHeader.textContent = songs.length > 0 ? `"${query}" 검색 결과 (${songs.length}개)` : '검색 결과 없음';
+    function renderSearchResults(songs, total, query, loadMore = false) {
+        const count = total || songs.length;
+        elements.searchResultsHeader.textContent = songs.length > 0 ? `"${query}" 검색 결과 (${count}개)` : '검색 결과 없음';
 
         if (songs.length === 0) {
             elements.searchResultsList.innerHTML = '<div style="padding: 32px; text-align: center; color: var(--text-dim);">일치하는 노래가 없습니다</div>';
             return;
         }
 
-        elements.searchResultsList.innerHTML = songs.map(song => `
+        const songsHtml = songs.map(song => `
             <div class="song-item" data-song='${JSON.stringify({id: song.id, externalId: song.song_external_id, title: song.title, artist: song.artist_name || ''})}'>
                 <img class="song-cover" src="${song.cover_image_url || ''}" alt="" loading="lazy" onerror="this.style.background='linear-gradient(135deg,#667eea 0%,#764ba2 100%)';this.style.visibility='hidden'">
                 <div class="song-info">
@@ -1840,6 +1870,9 @@
                 ${song.lyrics_count ? `<span class="song-lyrics-count">가사 ${song.lyrics_count}개</span>` : ''}
             </div>
         `).join('');
+
+        const loadingIndicator = state.searchHasMore ? '<div class="search-load-more"><div class="spinner-small"></div></div>' : '';
+        elements.searchResultsList.innerHTML = songsHtml + loadingIndicator;
 
         // Event delegation
         elements.searchResultsList.querySelectorAll('.song-item').forEach(item => {
@@ -2675,6 +2708,20 @@
                 !elements.searchInput.contains(e.target) &&
                 !elements.searchBtn.contains(e.target)) {
                 elements.searchResults.classList.remove('active');
+            }
+        });
+
+        // Infinite scroll for search results
+        elements.searchResults.addEventListener('scroll', () => {
+            if (state.searchLoading || !state.searchHasMore) return;
+
+            const { scrollTop, scrollHeight, clientHeight } = elements.searchResults;
+            if (scrollTop + clientHeight >= scrollHeight - 100) {
+                if (state.currentSearchTab === 'itunes') {
+                    searchITunes(state.lastSearchQuery, true);
+                } else {
+                    searchCustomSongs(state.lastSearchQuery, true);
+                }
             }
         });
 

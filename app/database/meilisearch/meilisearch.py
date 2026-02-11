@@ -175,9 +175,12 @@ class MeilisearchSearch:
             filter: Optional[str] = None,
             sort: Optional[List[str]] = None,
             attributes_to_search_on: Optional[List[str]] = None,
-    ) -> List[dict]:
+    ) -> Dict[str, Any]:
+        """
+        검색 수행. 페이지네이션 정보 포함.
+        Returns: {"hits": [...], "estimatedTotalHits": int, "offset": int, "limit": int}
+        """
         try:
-            # meilisearch-python-sdk search parameters are slightly different
             search_results = await self.index.search(
                 query,
                 limit=limit,
@@ -186,10 +189,27 @@ class MeilisearchSearch:
                 sort=sort,
                 attributes_to_search_on=attributes_to_search_on
             )
-            return [hit if isinstance(hit, dict) else (hit.model_dump() if hasattr(hit, 'model_dump') else vars(hit)) for hit in search_results.hits]
+            hits = [
+                hit if isinstance(hit, dict) else (hit.model_dump() if hasattr(hit, 'model_dump') else vars(hit))
+                for hit in search_results.hits
+            ]
+            return {
+                "hits": hits,
+                "estimatedTotalHits": getattr(search_results, 'estimated_total_hits', len(hits)),
+                "offset": offset,
+                "limit": limit
+            }
         except Exception as e:
             logger.error(f"Search error: {e}")
-            return []
+            raise  # 에러를 전파하여 폴백 처리가 가능하도록
+
+    async def is_healthy(self) -> bool:
+        """Meilisearch 연결 상태 확인"""
+        try:
+            await self.client.health()
+            return True
+        except Exception:
+            return False
 
     # ---------------------------
     # Settings 관련

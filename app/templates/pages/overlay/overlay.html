@@ -789,6 +789,89 @@
         cursor: pointer;
     }
 
+    /* Offset Controls */
+    .offset-controls {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 8px 16px;
+        background: #f8fafc;
+        border-top: 1px solid var(--border-color);
+        font-size: 0.85rem;
+    }
+
+    .offset-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .offset-label {
+        color: var(--text-sub);
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .offset-value-container {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .offset-btn {
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: 1px solid var(--border-color);
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-sub);
+        font-size: 1rem;
+        font-weight: 600;
+        transition: all 0.15s;
+    }
+
+    .offset-btn:hover {
+        background: var(--accent-light);
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    .offset-value {
+        min-width: 60px;
+        text-align: center;
+        font-weight: 600;
+        color: var(--text-main);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .offset-reset {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        background: none;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--text-dim);
+        transition: all 0.15s;
+    }
+
+    .offset-reset:hover {
+        background: #fee2e2;
+        border-color: #ef4444;
+        color: #ef4444;
+    }
+
+    .offset-separator {
+        width: 1px;
+        height: 20px;
+        background: var(--border-color);
+    }
+
     /* Tabs */
     .tabs {
         display: flex;
@@ -1308,7 +1391,8 @@
         <div class="keyboard-hint">
             <span><span class="kbd">Space</span> 재생</span>
             <span><span class="kbd">←</span><span class="kbd">→</span> 이전/다음</span>
-            <span><span class="kbd">Esc</span> 닫기</span>
+            <span><span class="kbd">[</span><span class="kbd">]</span> 로컬 오프셋</span>
+            <span><span class="kbd">,</span><span class="kbd">.</span> OBS 오프셋</span>
         </div>
         <a href="/overlay/settings" class="btn btn-outline" style="gap: 8px; padding: 10px 16px;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1422,6 +1506,27 @@
                     </button>
                     <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="100" title="볼륨">
                 </div>
+            </div>
+            <!-- Offset Controls -->
+            <div class="offset-controls">
+                <div class="offset-group">
+                    <span class="offset-label">로컬 오프셋:</span>
+                    <div class="offset-value-container">
+                        <button class="offset-btn" id="localOffsetMinus" title="-100ms">-</button>
+                        <span class="offset-value" id="localOffsetValue">0ms</span>
+                        <button class="offset-btn" id="localOffsetPlus" title="+100ms">+</button>
+                    </div>
+                </div>
+                <div class="offset-separator"></div>
+                <div class="offset-group">
+                    <span class="offset-label">OBS 오프셋:</span>
+                    <div class="offset-value-container">
+                        <button class="offset-btn" id="obsOffsetMinus" title="-100ms">-</button>
+                        <span class="offset-value" id="obsOffsetValue">0ms</span>
+                        <button class="offset-btn" id="obsOffsetPlus" title="+100ms">+</button>
+                    </div>
+                </div>
+                <button class="offset-reset" id="offsetReset" title="오프셋 초기화">초기화</button>
             </div>
         </div>
     </div>
@@ -1567,11 +1672,15 @@
         currentSearchTab: 'itunes',
         lastSearchQuery: '',
         lastLyricsIndex: -2,  // -2로 초기화하여 첫 번째 업데이트가 항상 발생하도록
+        lastObsLyricsIndex: -2,  // OBS용 별도 인덱스
         // Pagination state
         searchOffset: 0,
         searchHasMore: false,
         searchLoading: false,
-        currentSearchResults: []
+        currentSearchResults: [],
+        // Offset settings (in milliseconds)
+        localOffset: parseInt(localStorage.getItem('overlay_local_offset') || '0'),
+        obsOffset: parseInt(localStorage.getItem('overlay_obs_offset') || '0')
     };
 
     // DOM Elements
@@ -1605,7 +1714,15 @@
         volumeBtn: $('#volumeBtn'),
         volumeSlider: $('#volumeSlider'),
         volumeIcon: $('#volumeIcon'),
-        toastContainer: $('#toastContainer')
+        toastContainer: $('#toastContainer'),
+        // Offset controls
+        localOffsetMinus: $('#localOffsetMinus'),
+        localOffsetPlus: $('#localOffsetPlus'),
+        localOffsetValue: $('#localOffsetValue'),
+        obsOffsetMinus: $('#obsOffsetMinus'),
+        obsOffsetPlus: $('#obsOffsetPlus'),
+        obsOffsetValue: $('#obsOffsetValue'),
+        offsetReset: $('#offsetReset')
     };
 
     // Toast notifications
@@ -2417,22 +2534,28 @@
             elements.currentTimeEl.textContent = formatTime(currentTime / 1000);
             elements.durationEl.textContent = formatTime(duration);
 
-            // Find current lyrics
+            // Find current lyrics with offset applied
             if (state.currentLyrics?.parsedLyrics) {
                 const lyrics = state.currentLyrics.parsedLyrics;
-                let currentIndex = -1;
 
-                for (let i = 0; i < lyrics.length; i++) {
-                    if (currentTime >= lyrics[i].start && currentTime < lyrics[i].end) {
-                        currentIndex = i;
-                        break;
-                    }
+                // 로컬 오프셋 적용 (양수: 가사가 빨리 표시됨, 음수: 가사가 늦게 표시됨)
+                const localTime = currentTime + state.localOffset;
+                let localIndex = findLyricsIndex(lyrics, localTime);
+
+                // OBS 오프셋 적용
+                const obsTime = currentTime + state.obsOffset;
+                let obsIndex = findLyricsIndex(lyrics, obsTime);
+
+                // 로컬 가사 업데이트
+                if (isSeek || localIndex !== state.lastLyricsIndex) {
+                    state.lastLyricsIndex = localIndex;
+                    renderLocalLyrics(localIndex, lyrics);
                 }
 
-                // 시크 발생 시 또는 인덱스가 변경되었을 때 가사 업데이트
-                if (isSeek || currentIndex !== state.lastLyricsIndex) {
-                    state.lastLyricsIndex = currentIndex;
-                    renderCurrentLyrics(currentIndex, lyrics);
+                // OBS 가사 업데이트
+                if (isSeek || obsIndex !== state.lastObsLyricsIndex) {
+                    state.lastObsLyricsIndex = obsIndex;
+                    syncObsLyrics(obsIndex, lyrics);
                 }
             }
 
@@ -2442,23 +2565,35 @@
         state.animationFrameId = requestAnimationFrame(syncFrame);
     }
 
+    // 가사 인덱스 찾기 헬퍼 함수
+    function findLyricsIndex(lyrics, time) {
+        for (let i = 0; i < lyrics.length; i++) {
+            if (time >= lyrics[i].start && time < lyrics[i].end) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     // 시간 이동 시 가사 강제 업데이트
     function forceUpdateLyrics() {
         state.lastLyricsIndex = -2;  // 강제 업데이트를 위해 유효하지 않은 값으로 설정
+        state.lastObsLyricsIndex = -2;
         if (state.currentLyrics?.parsedLyrics && state.ytPlayer) {
             const currentTime = state.ytPlayer.getCurrentTime() * 1000;
             const lyrics = state.currentLyrics.parsedLyrics;
-            let currentIndex = -1;
 
-            for (let i = 0; i < lyrics.length; i++) {
-                if (currentTime >= lyrics[i].start && currentTime < lyrics[i].end) {
-                    currentIndex = i;
-                    break;
-                }
-            }
+            // 로컬 오프셋 적용
+            const localTime = currentTime + state.localOffset;
+            const localIndex = findLyricsIndex(lyrics, localTime);
+            state.lastLyricsIndex = localIndex;
+            renderLocalLyrics(localIndex, lyrics);
 
-            state.lastLyricsIndex = currentIndex;
-            renderCurrentLyrics(currentIndex, lyrics);
+            // OBS 오프셋 적용
+            const obsTime = currentTime + state.obsOffset;
+            const obsIndex = findLyricsIndex(lyrics, obsTime);
+            state.lastObsLyricsIndex = obsIndex;
+            syncObsLyrics(obsIndex, lyrics);
         }
     }
 
@@ -2469,15 +2604,10 @@
         }
     }
 
-    function renderCurrentLyrics(currentIndex, lyrics) {
+    // 로컬(재생 페이지) 가사 렌더링
+    function renderLocalLyrics(currentIndex, lyrics) {
         if (currentIndex === -1) {
             elements.lyricsDisplay.innerHTML = '<p class="lyrics-display-empty">가사가 여기에 표시됩니다</p>';
-            // OBS 오버레이에도 빈 상태 전송
-            syncToOBS({
-                prev: '', current: '', next: '',
-                songTitle: state.currentSongTitle,
-                artist: state.currentArtist
-            });
             return;
         }
 
@@ -2492,8 +2622,23 @@
                 ${nextLine ? `<p class="lyrics-line next">${escapeHtml(nextLine.text)}</p>` : ''}
             </div>
         `;
+    }
 
-        // OBS 오버레이에 가사 동기화
+    // OBS 오버레이에 가사 동기화
+    function syncObsLyrics(currentIndex, lyrics) {
+        if (currentIndex === -1) {
+            syncToOBS({
+                prev: '', current: '', next: '',
+                songTitle: state.currentSongTitle,
+                artist: state.currentArtist
+            });
+            return;
+        }
+
+        const prevLine = lyrics[currentIndex - 1];
+        const currentLine = lyrics[currentIndex];
+        const nextLine = lyrics[currentIndex + 1];
+
         syncToOBS({
             prev: prevLine ? prevLine.text : '',
             current: currentLine.text,
@@ -2501,6 +2646,12 @@
             songTitle: state.currentSongTitle,
             artist: state.currentArtist
         });
+    }
+
+    // 이전 호환성을 위한 래퍼 함수
+    function renderCurrentLyrics(currentIndex, lyrics) {
+        renderLocalLyrics(currentIndex, lyrics);
+        syncObsLyrics(currentIndex, lyrics);
     }
 
     // OBS 오버레이 동기화 (debounced)
@@ -2601,6 +2752,39 @@
         } else {
             icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>';
         }
+    }
+
+    // Offset Control
+    function adjustOffset(type, delta) {
+        if (type === 'local') {
+            state.localOffset += delta;
+            localStorage.setItem('overlay_local_offset', state.localOffset.toString());
+        } else {
+            state.obsOffset += delta;
+            localStorage.setItem('overlay_obs_offset', state.obsOffset.toString());
+        }
+        updateOffsetDisplay();
+        forceUpdateLyrics();
+        showToast(`${type === 'local' ? '로컬' : 'OBS'} 오프셋: ${type === 'local' ? state.localOffset : state.obsOffset}ms`);
+    }
+
+    function resetOffsets() {
+        state.localOffset = 0;
+        state.obsOffset = 0;
+        localStorage.setItem('overlay_local_offset', '0');
+        localStorage.setItem('overlay_obs_offset', '0');
+        updateOffsetDisplay();
+        forceUpdateLyrics();
+        showToast('오프셋이 초기화되었습니다');
+    }
+
+    function updateOffsetDisplay() {
+        const formatOffset = (ms) => {
+            const sign = ms >= 0 ? '+' : '';
+            return `${sign}${ms}ms`;
+        };
+        elements.localOffsetValue.textContent = formatOffset(state.localOffset);
+        elements.obsOffsetValue.textContent = formatOffset(state.obsOffset);
     }
 
     // Modal
@@ -2761,6 +2945,16 @@
         elements.volumeSlider.addEventListener('input', (e) => updateVolume(parseInt(e.target.value)));
         elements.volumeBtn.addEventListener('click', toggleMute);
 
+        // Offset Controls
+        elements.localOffsetMinus.addEventListener('click', () => adjustOffset('local', -100));
+        elements.localOffsetPlus.addEventListener('click', () => adjustOffset('local', 100));
+        elements.obsOffsetMinus.addEventListener('click', () => adjustOffset('obs', -100));
+        elements.obsOffsetPlus.addEventListener('click', () => adjustOffset('obs', 100));
+        elements.offsetReset.addEventListener('click', resetOffsets);
+
+        // Initialize offset display
+        updateOffsetDisplay();
+
         // Tabs
         $$('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -2868,6 +3062,28 @@
                     closeVideoModal();
                     closeCustomSongModal();
                     elements.searchResults.classList.remove('active');
+                    break;
+                case 'BracketLeft':  // [
+                    e.preventDefault();
+                    adjustOffset('local', e.shiftKey ? -500 : -100);
+                    break;
+                case 'BracketRight':  // ]
+                    e.preventDefault();
+                    adjustOffset('local', e.shiftKey ? 500 : 100);
+                    break;
+                case 'Comma':  // ,
+                    e.preventDefault();
+                    adjustOffset('obs', e.shiftKey ? -500 : -100);
+                    break;
+                case 'Period':  // .
+                    e.preventDefault();
+                    adjustOffset('obs', e.shiftKey ? 500 : 100);
+                    break;
+                case 'Digit0':  // 0
+                    if (e.shiftKey) {
+                        e.preventDefault();
+                        resetOffsets();
+                    }
                     break;
             }
         });

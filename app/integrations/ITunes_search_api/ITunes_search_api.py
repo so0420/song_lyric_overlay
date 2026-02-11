@@ -2,7 +2,7 @@ import httpx
 import asyncio
 from typing import Optional
 from app.database.mariadb import db_handler
-from app.database.meilisearch.meilisearch import meilisearch_handler
+
 from app.utils.log import logger
 
 class ITunesSearchAPI:

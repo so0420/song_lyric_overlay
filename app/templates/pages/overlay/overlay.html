@@ -447,29 +447,52 @@
         color: var(--text-dim);
     }
 
-    .auto-remove-btn {
+    .auto-remove-switch {
         display: flex;
         align-items: center;
-        gap: 4px;
-        padding: 5px 10px;
-        font-size: 0.7rem;
-        color: var(--text-dim);
-        background: #f1f5f9;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
+        gap: 8px;
         cursor: pointer;
+        user-select: none;
+    }
+
+    .auto-remove-switch .switch-label {
+        font-size: 0.75rem;
+        color: var(--text-sub);
         font-weight: 600;
-        transition: all 0.2s;
     }
 
-    .auto-remove-btn:hover {
+    .auto-remove-switch input {
+        display: none;
+    }
+
+    .auto-remove-switch .switch-slider {
+        position: relative;
+        width: 36px;
+        height: 20px;
         background: #e2e8f0;
+        border-radius: 20px;
+        transition: all 0.3s;
     }
 
-    .auto-remove-btn.active {
-        color: white;
+    .auto-remove-switch .switch-slider::before {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        background: white;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        transition: all 0.3s;
+    }
+
+    .auto-remove-switch input:checked + .switch-slider {
         background: var(--accent);
-        border-color: var(--accent);
+    }
+
+    .auto-remove-switch input:checked + .switch-slider::before {
+        transform: translateX(16px);
     }
 
     .clear-playlist-btn {
@@ -1263,13 +1286,11 @@
             <span class="playlist-title">재생 목록</span>
             <div class="playlist-actions">
                 <span class="playlist-count" id="playlistCount">0곡</span>
-                <button class="auto-remove-btn" id="autoRemoveBtn" title="재생 완료 시 자동 삭제">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                    자동삭제
-                </button>
+                <label class="auto-remove-switch" title="재생 완료 시 자동 삭제">
+                    <span class="switch-label">자동삭제</span>
+                    <input type="checkbox" id="autoRemoveToggle">
+                    <span class="switch-slider"></span>
+                </label>
                 <button class="clear-playlist-btn" id="clearPlaylistBtn" style="display: none;">전체 삭제</button>
             </div>
         </div>
@@ -2394,14 +2415,11 @@
         elements.clearPlaylistBtn.addEventListener('click', clearPlaylist);
 
         // Auto Remove Toggle
-        const autoRemoveBtn = $('#autoRemoveBtn');
-        if (state.autoRemoveCompleted) {
-            autoRemoveBtn.classList.add('active');
-        }
-        autoRemoveBtn.addEventListener('click', () => {
-            state.autoRemoveCompleted = !state.autoRemoveCompleted;
+        const autoRemoveToggle = $('#autoRemoveToggle');
+        autoRemoveToggle.checked = state.autoRemoveCompleted;
+        autoRemoveToggle.addEventListener('change', () => {
+            state.autoRemoveCompleted = autoRemoveToggle.checked;
             localStorage.setItem('overlay_auto_remove', state.autoRemoveCompleted);
-            autoRemoveBtn.classList.toggle('active', state.autoRemoveCompleted);
             showToast(state.autoRemoveCompleted ? '재생 완료 시 자동 삭제 켜짐' : '재생 완료 시 자동 삭제 꺼짐');
         });
 

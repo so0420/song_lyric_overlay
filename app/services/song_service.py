@@ -1,7 +1,6 @@
 from typing import Optional
 from fastapi import UploadFile, Depends
 from app.database.song_repository import SongRepository, get_song_repository
-from app.database.meilisearch.meilisearch import meilisearch_handler
 
 class SongService:
     def __init__(self, repo: SongRepository):
@@ -22,19 +21,7 @@ class SongService:
         # Get External ID (generated in Repo/DB)
         song_external_id = await self.repo.get_song_external_id(song_id)
 
-        # Sync to Meilisearch
-        if song_external_id:
-            owner_data = await self.repo.db.fetch_one("SELECT name FROM users WHERE id = %s", (owner_id,))
-            owner_name = owner_data['name'] if owner_data else None
 
-            await meilisearch_handler.add_documents([{
-                "id": song_id,
-                "title": title,
-                "singer": artist,
-                "image_url": image_url,
-                "song_external_id": song_external_id,
-                "owner_name": owner_name
-            }])
 
         return {
             "song_id": song_id,

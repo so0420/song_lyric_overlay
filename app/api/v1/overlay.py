@@ -2,7 +2,13 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPExce
 from app.core.auth import get_current_user_api
 from app.core.overlay_websocket import overlay_manager
 from app.database.overlay_repository import get_overlay_repository, OverlayRepository
-from app.utils.ws_token import generate_ws_token, verify_ws_token, verify_overlay_token
+from app.utils.ws_token import (
+    generate_ws_token,
+    verify_ws_token,
+    verify_overlay_token_async,
+    generate_overlay_token_async,
+    increment_overlay_token_version
+)
 from app.schemas.overlay import OverlaySettingsSchema, LyricsSyncSchema, PlaylistSyncSchema
 from app.schemas.common import TokenResponse
 import asyncio
@@ -71,6 +77,36 @@ async def get_ws_token(user=Depends(get_current_user_api)):
     token = await generate_ws_token(user['id'])
     return TokenResponse(token=token)
 
+
+@router.get("/overlay-token")
+async def get_overlay_token(user=Depends(get_current_user_api)):
+    """오버레이 영구 토큰 조회"""
+    token = await generate_overlay_token_async(user['id'])
+    return TokenResponse(token=token)
+
+
+@router.post("/overlay-token/regenerate")
+async def regenerate_overlay_token(user=Depends(get_current_user_api)):
+    """오버레이 토큰 재발급 (기존 토큰 무효화)"""
+    # 기존 연결 종료 알림
+    await overlay_manager.broadcast_to_user(user['id'], {
+        "type": "token_invalidated",
+        "message": "토큰이 재발급되어 연결이 종료됩니다."
+    })
+
+    # 버전 증가 (기존 토큰 무효화)
+    new_version = await increment_overlay_token_version(user['id'])
+
+    # 새 토큰 생성
+    new_token = await generate_overlay_token_async(user['id'])
+
+    return {
+        "success": True,
+        "token": new_token,
+        "message": "토큰이 재발급되었습니다. OBS에서 새 URL을 설정해주세요."
+    }
+
+
 PING_INTERVAL = 30  # 30초마다 ping 전송
 PONG_TIMEOUT = 60   # 60초 내 pong 미응답 시 연결 종료
 
@@ -90,7 +126,7 @@ async def overlay_websocket(
         verified_user_id = await verify_ws_token(token)
     # 2. 오버레이 영구 토큰 검증 (OBS에서 사용)
     elif overlay_token:
-        verified_user_id = verify_overlay_token(overlay_token)
+        verified_user_id = await verify_overlay_token_async(overlay_token)
 
     # 검증 실패
     if verified_user_id is None or verified_user_id != user_id:

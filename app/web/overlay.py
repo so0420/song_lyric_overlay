@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse
 from app.utils.templates import templates
 from app.core.auth import get_current_user
 from app.database.overlay_repository import get_overlay_repository
-from app.utils.ws_token import generate_overlay_token, verify_overlay_token
+from app.utils.ws_token import generate_overlay_token_async, verify_overlay_token_async
 
 router = APIRouter()
 
@@ -31,7 +31,7 @@ async def overlay_settings_page(
         return HTMLResponse(content="<script>alert('로그인이 필요합니다.'); window.location.href='/login';</script>")
 
     # OBS용 오버레이 토큰 생성
-    overlay_token = generate_overlay_token(user['id'])
+    overlay_token = await generate_overlay_token_async(user['id'])
 
     return templates.TemplateResponse("pages/overlay/settings.html", {
         "request": request,
@@ -48,7 +48,7 @@ async def obs_overlay_page(
     user_id = None
 
     if token:
-        user_id = verify_overlay_token(token)
+        user_id = await verify_overlay_token_async(token)
         if not user_id:
             return HTMLResponse(content="<p style='color:white;font-family:sans-serif;padding:20px;'>유효하지 않은 오버레이 토큰입니다. 설정 페이지에서 새 URL을 복사해주세요.</p>")
 

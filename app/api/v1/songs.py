@@ -5,7 +5,7 @@ from app.services.song_service import SongService, get_song_service
 from app.integrations.itunes_search_api import itunes_api
 from app.database.mariadb import db_handler
 from app.database.meilisearch.meilisearch import meilisearch_handler
-from app.database.lyrics_repository import get_lyrics_repository, LyricsRepository
+from app.database.lyrics_repository import get_lyrics_repository
 from app.utils.csrf import verify_csrf
 from app.utils.rate_limit import limiter, RATE_LIMITS
 from app.utils.log import logger

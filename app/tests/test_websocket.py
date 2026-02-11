@@ -67,9 +67,9 @@ class TestOverlayManager:
         mock_ws2 = MagicMock()
         mock_ws2.send_json = AsyncMock()
 
-        # 연결 추가
-        manager.active_connections[1] = [mock_ws1]
-        manager.active_connections[2] = [mock_ws2]
+        # 연결 추가 (Set 사용)
+        manager.active_connections[1] = {mock_ws1}
+        manager.active_connections[2] = {mock_ws2}
 
         # user_id=1에게 브로드캐스트
         await manager.broadcast_to_user(1, {"type": "test", "data": "hello"})

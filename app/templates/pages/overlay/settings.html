@@ -569,6 +569,24 @@ input:checked + .toggle-slider:before {
             <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 12px;">
                 OBS에서 브라우저 소스를 추가하고 위 URL을 붙여넣으세요. (권장 크기: 1920x1080)
             </p>
+
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">토큰 재발급</div>
+                        <p style="font-size: 0.75rem; color: var(--text-dim); margin-top: 4px;">
+                            URL이 노출되었다면 새로 발급받으세요. 기존 연결은 끊어집니다.
+                        </p>
+                    </div>
+                    <button class="btn btn-outline" style="white-space: nowrap;" onclick="regenerateToken()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+                            <path d="M21 3v5h-5"/>
+                        </svg>
+                        재발급
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1348,6 +1366,30 @@ function copyUrl() {
         btn.textContent = '복사';
         btn.classList.remove('copied');
     }, 2000);
+}
+
+async function regenerateToken() {
+    if (!confirm('토큰을 재발급하면 기존 OBS 연결이 끊어집니다.\n새 URL을 OBS에 다시 설정해야 합니다.\n\n계속하시겠습니까?')) {
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/v1/overlay/overlay-token/regenerate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            // 새 토큰으로 URL 업데이트
+            document.getElementById('overlayUrl').value = `${baseUrl}/overlay/obs?token=${data.token}`;
+            showToast('토큰이 재발급되었습니다. 새 URL을 복사하세요.', 'success');
+        } else {
+            showToast('토큰 재발급에 실패했습니다', 'error');
+        }
+    } catch (e) {
+        showToast('오류가 발생했습니다', 'error');
+    }
 }
 
 function showToast(message, type = '') {

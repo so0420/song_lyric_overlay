@@ -1,0 +1,292 @@
+{% extends "base/base.html" %}
+
+{% block title %}WebSocket 모니터링 - 관리자{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+
+    .stat-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--accent);
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: var(--text-sub);
+        margin-top: 8px;
+    }
+
+    .connections-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+    }
+
+    .connections-table th,
+    .connections-table td {
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .connections-table th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: var(--text-sub);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .connections-table tr:hover {
+        background: #f8fafc;
+    }
+
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .badge-blue {
+        background: var(--accent-light);
+        color: var(--accent);
+    }
+
+    .refresh-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-sub);
+        font-size: 0.85rem;
+    }
+
+    .refresh-indicator.loading svg {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    .btn-danger {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background: #dc2626;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 48px 24px;
+        color: var(--text-sub);
+    }
+
+    .empty-state svg {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="toolbar">
+        <div>
+            <h1 style="margin-bottom: 4px;">WebSocket 모니터링</h1>
+            <p style="color: var(--text-sub);">실시간 오버레이 연결 상태</p>
+        </div>
+        <div class="refresh-indicator" id="refreshIndicator">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+                <path d="M21 3v5h-5"/>
+            </svg>
+            <span id="refreshText">5초마다 자동 갱신</span>
+        </div>
+    </div>
+
+    <!-- 통계 카드 -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value" id="totalConnections">-</div>
+            <div class="stat-label">총 연결 수</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="uniqueUsers">-</div>
+            <div class="stat-label">연결된 사용자</div>
+        </div>
+    </div>
+
+    <!-- 연결 목록 -->
+    <div class="card">
+        <h2 style="font-size: 1.1rem; margin-bottom: 16px;">연결된 사용자</h2>
+
+        <div id="connectionsContainer">
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+                <p>로딩 중...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    async function fetchStats() {
+        const indicator = document.getElementById('refreshIndicator');
+        indicator.classList.add('loading');
+
+        try {
+            const response = await fetch('/api/v1/admin/websocket/stats', {
+                headers: {
+                    'X-CSRF-Token': csrfToken
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch stats');
+            }
+
+            const data = await response.json();
+            updateUI(data);
+        } catch (error) {
+            console.error('Error fetching stats:', error);
+        } finally {
+            indicator.classList.remove('loading');
+        }
+    }
+
+    function updateUI(data) {
+        document.getElementById('totalConnections').textContent = data.total_connections;
+        document.getElementById('uniqueUsers').textContent = data.unique_users;
+
+        const container = document.getElementById('connectionsContainer');
+
+        if (data.connections.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M18.364 5.636a9 9 0 11-12.728 12.728 9 9 0 0112.728-12.728"/>
+                        <path d="M12 9v4M12 17h.01"/>
+                    </svg>
+                    <p>현재 연결된 사용자가 없습니다.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const tableHTML = `
+            <table class="connections-table">
+                <thead>
+                    <tr>
+                        <th>사용자</th>
+                        <th>이메일</th>
+                        <th>연결 수</th>
+                        <th>작업</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.connections.map(conn => `
+                        <tr>
+                            <td>
+                                <strong>${escapeHtml(conn.user_name)}</strong>
+                                <br>
+                                <small style="color: var(--text-dim);">ID: ${conn.user_id}</small>
+                            </td>
+                            <td>${escapeHtml(conn.user_email)}</td>
+                            <td>
+                                <span class="badge badge-blue">${conn.connection_count}</span>
+                            </td>
+                            <td>
+                                <button class="btn btn-outline btn-sm" onclick="disconnectUser(${conn.user_id})">
+                                    연결 종료
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+
+        container.innerHTML = tableHTML;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    async function disconnectUser(userId) {
+        if (!confirm('해당 사용자의 모든 연결을 종료하시겠습니까?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/v1/admin/websocket/disconnect/${userId}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-Token': csrfToken
+                }
+            });
+
+            const data = await response.json();
+            alert(data.message);
+            fetchStats();
+        } catch (error) {
+            alert('연결 종료 요청 중 오류가 발생했습니다.');
+        }
+    }
+
+    // 초기 로드
+    fetchStats();
+
+    // 5초마다 자동 갱신
+    setInterval(fetchStats, 5000);
+</script>
+{% endblock %}

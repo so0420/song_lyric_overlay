@@ -1,0 +1,33 @@
+{% extends "base/base.html" %}
+
+{% block title %}관리자 대시보드 - Jamku Song{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="margin-bottom: 24px;">관리자 대시보드</h1>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+        <!-- WebSocket 모니터링 카드 -->
+        <a href="/admin/websocket" class="card" style="text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="width: 48px; height: 48px; background: var(--accent-light); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 4px;">WebSocket 모니터링</h3>
+                    <p style="color: var(--text-sub); font-size: 0.9rem;">실시간 연결 상태 확인</p>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<style>
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+</style>
+{% endblock %}

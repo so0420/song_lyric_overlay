@@ -447,6 +447,31 @@
         color: var(--text-dim);
     }
 
+    .auto-remove-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 10px;
+        font-size: 0.7rem;
+        color: var(--text-dim);
+        background: #f1f5f9;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .auto-remove-btn:hover {
+        background: #e2e8f0;
+    }
+
+    .auto-remove-btn.active {
+        color: white;
+        background: var(--accent);
+        border-color: var(--accent);
+    }
+
     .clear-playlist-btn {
         padding: 6px 12px;
         font-size: 0.75rem;
@@ -1238,6 +1263,13 @@
             <span class="playlist-title">재생 목록</span>
             <div class="playlist-actions">
                 <span class="playlist-count" id="playlistCount">0곡</span>
+                <button class="auto-remove-btn" id="autoRemoveBtn" title="재생 완료 시 자동 삭제">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    자동삭제
+                </button>
                 <button class="clear-playlist-btn" id="clearPlaylistBtn" style="display: none;">전체 삭제</button>
             </div>
         </div>
@@ -1330,7 +1362,8 @@
         animationFrameId: null,
         searchCache: new Map(),
         volume: parseInt(localStorage.getItem('overlay_volume') || '100'),
-        isMuted: false
+        isMuted: false,
+        autoRemoveCompleted: localStorage.getItem('overlay_auto_remove') === 'true'
     };
 
     // DOM Elements
@@ -1422,8 +1455,32 @@
             stopLyricsSync();
         }
 
-        // 곡이 끝나면 다음 곡을 대기 상태로 로드 (자동 재생 안 함)
-        if (event.data === YT.PlayerState.ENDED) {
+        // 곡이 끝나면 재생목록에서 삭제하고 다음 곡 로드
+        if (event.data === YT.PlayerState.ENDED && state.autoRemoveCompleted) {
+            if (state.currentTab === 'playlist' && state.currentPlayingIndex >= 0) {
+                // 현재 곡 삭제 (인덱스 유지하면 다음 곡이 자동으로 현재 위치로 옴)
+                state.playlist.splice(state.currentPlayingIndex, 1);
+                savePlaylist();
+                renderPlaylist();
+
+                // 다음 곡이 있으면 로드
+                if (state.playlist.length > 0 && state.currentPlayingIndex < state.playlist.length) {
+                    playItem(state.currentPlayingIndex);
+                } else if (state.playlist.length > 0) {
+                    // 마지막 곡이었으면 첫 곡으로
+                    state.currentPlayingIndex = 0;
+                    playItem(0);
+                } else {
+                    // 재생목록이 비었으면 초기화
+                    state.currentPlayingIndex = -1;
+                    showPlaceholder();
+                    elements.lyricsDisplay.innerHTML = '<p class="lyrics-display-empty">가사가 여기에 표시됩니다</p>';
+                    elements.nowPlayingInfo.classList.remove('active');
+                    updateControlButtons();
+                }
+            }
+        } else if (event.data === YT.PlayerState.ENDED) {
+            // 자동 삭제 비활성화 시 다음 곡만 로드
             const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
             if (state.currentPlayingIndex < items.length - 1) {
                 playItem(state.currentPlayingIndex + 1);
@@ -2335,6 +2392,18 @@
 
         // Clear Playlist
         elements.clearPlaylistBtn.addEventListener('click', clearPlaylist);
+
+        // Auto Remove Toggle
+        const autoRemoveBtn = $('#autoRemoveBtn');
+        if (state.autoRemoveCompleted) {
+            autoRemoveBtn.classList.add('active');
+        }
+        autoRemoveBtn.addEventListener('click', () => {
+            state.autoRemoveCompleted = !state.autoRemoveCompleted;
+            localStorage.setItem('overlay_auto_remove', state.autoRemoveCompleted);
+            autoRemoveBtn.classList.toggle('active', state.autoRemoveCompleted);
+            showToast(state.autoRemoveCompleted ? '재생 완료 시 자동 삭제 켜짐' : '재생 완료 시 자동 삭제 꺼짐');
+        });
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {

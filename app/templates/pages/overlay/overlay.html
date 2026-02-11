@@ -169,6 +169,51 @@
         opacity: 0.5;
     }
 
+    .video-standby {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .video-standby:hover {
+        background: rgba(0, 0, 0, 0.75);
+    }
+
+    .video-standby:hover .standby-content svg {
+        transform: scale(1.1);
+    }
+
+    .standby-content {
+        text-align: center;
+        color: white;
+    }
+
+    .standby-content svg {
+        color: var(--accent);
+        margin-bottom: 16px;
+        transition: transform 0.2s;
+    }
+
+    .standby-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+
+    .standby-sub {
+        font-size: 0.9rem;
+        opacity: 0.7;
+    }
+
     /* Now Playing Info */
     .now-playing-info {
         padding: 16px 24px;
@@ -1190,6 +1235,16 @@
                         </svg>
                         <p>노래를 선택하면 영상이 재생됩니다</p>
                     </div>
+                    <div class="video-standby" id="videoStandby" style="display: none;">
+                        <div class="standby-content">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"></polygon>
+                            </svg>
+                            <p class="standby-title">재생 대기중</p>
+                            <p class="standby-sub">재생 버튼을 눌러 시작하세요</p>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="lyrics-display" id="lyricsDisplay">
@@ -1416,12 +1471,13 @@
         updateControlButtons();
 
         if (state.isPlaying) {
+            hideStandbyOverlay();
             startLyricsSync();
         } else {
             stopLyricsSync();
         }
 
-        // Auto-play next song
+        // 곡이 끝나면 다음 곡을 대기 상태로 로드 (자동 재생 안 함)
         if (event.data === YT.PlayerState.ENDED) {
             const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
             if (state.currentPlayingIndex < items.length - 1) {
@@ -1706,6 +1762,23 @@
         $('#videoModal').classList.remove('active');
     }
 
+    // 재생 대기 상태 오버레이
+    function showStandbyOverlay() {
+        $('#videoStandby').style.display = 'flex';
+        $('#videoPlaceholder').style.display = 'none';
+    }
+
+    function hideStandbyOverlay() {
+        $('#videoStandby').style.display = 'none';
+    }
+
+    function startPlayback() {
+        if (state.isPlayerReady && state.ytPlayer) {
+            hideStandbyOverlay();
+            state.ytPlayer.playVideo();
+        }
+    }
+
     function renderLyricsList(lyrics, songExternalId, songTitle, artistName) {
         let html = lyrics.map(l => `
             <div class="lyrics-list-item" data-lyrics='${JSON.stringify({
@@ -1982,9 +2055,10 @@
         elements.nowPlayingInfo.classList.add('active');
         elements.nowPlayingTitle.textContent = songTitle + (artistName ? ` - ${artistName}` : '');
 
-        // Load video
-        if (state.isPlayerReady && state.ytPlayer.loadVideoById) {
-            state.ytPlayer.loadVideoById(videoId);
+        // Load video (cue only, don't auto-play)
+        if (state.isPlayerReady && state.ytPlayer.cueVideoById) {
+            state.ytPlayer.cueVideoById(videoId);
+            showStandbyOverlay();
         }
 
         // Load lyrics (if available)
@@ -1996,6 +2070,12 @@
                 if (state.currentLyrics.lyrics_data) {
                     state.currentLyrics.parsedLyrics = JSON.parse(state.currentLyrics.lyrics_data);
                 }
+                // 대기 상태 메시지
+                elements.lyricsDisplay.innerHTML = `
+                    <div class="current-lyrics" style="opacity: 0.6;">
+                        <p class="lyrics-line current" style="font-size: 1.2rem;">재생 버튼을 눌러 시작하세요</p>
+                    </div>
+                `;
             } catch (error) {
                 console.error('Failed to load lyrics:', error);
                 state.currentLyrics = null;
@@ -2005,18 +2085,19 @@
             state.currentLyrics = null;
             elements.lyricsDisplay.innerHTML = `
                 <div class="current-lyrics" style="opacity: 0.5;">
-                    <p class="lyrics-line current" style="font-size: 1.2rem;">가사 없이 재생 중</p>
+                    <p class="lyrics-line current" style="font-size: 1.2rem;">가사 없이 재생 대기중</p>
                 </div>
             `;
-            // OBS에 곡 정보만 동기화 (가사 없음)
-            syncToOBS({
-                prev: '',
-                current: '',
-                next: '',
-                songTitle: state.currentSongTitle,
-                artist: state.currentArtist
-            });
         }
+
+        // OBS에 곡 정보 동기화 (대기 상태)
+        syncToOBS({
+            prev: '',
+            current: '',
+            next: '',
+            songTitle: state.currentSongTitle,
+            artist: state.currentArtist
+        });
 
         renderPlaylist();
         updateControlButtons();
@@ -2258,6 +2339,7 @@
             if (state.isPlaying) {
                 state.ytPlayer.pauseVideo();
             } else {
+                hideStandbyOverlay();
                 state.ytPlayer.playVideo();
             }
         });
@@ -2317,6 +2399,9 @@
             if (e.key === 'Enter') searchVideosForSelection();
         });
 
+        // Standby Overlay - 클릭하면 재생 시작
+        $('#videoStandby').addEventListener('click', startPlayback);
+
         // Clear Playlist
         elements.clearPlaylistBtn.addEventListener('click', clearPlaylist);
 
@@ -2332,6 +2417,7 @@
                         if (state.isPlaying) {
                             state.ytPlayer.pauseVideo();
                         } else {
+                            hideStandbyOverlay();
                             state.ytPlayer.playVideo();
                         }
                     }

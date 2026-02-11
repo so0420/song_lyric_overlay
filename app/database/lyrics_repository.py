@@ -207,10 +207,12 @@ class LyricsRepository:
         """
         return await self.db.fetch_all(query, (search_pattern, search_pattern, limit))
 
-    async def search_custom_songs_with_lyrics(self, query_term: str, limit: int = 20) -> List[Dict[str, Any]]:
-        """공개된 가사가 있는 커스텀 노래 검색 (song_external_id가 'cs_'로 시작하는 노래)"""
+    async def search_all_songs_with_lyrics(self, query_term: str, limit: int = 20) -> Dict[str, List[Dict[str, Any]]]:
+        """공개된 가사가 있는 노래 검색 (음원 + 커스텀 분리 반환)"""
         search_pattern = f"%{query_term}%"
-        query = """
+
+        # 음원 노래 검색 (song_external_id가 'it_'로 시작)
+        itunes_query = """
             SELECT
                 s.id as song_id,
                 s.title as track_name,
@@ -222,13 +224,39 @@ class LyricsRepository:
             FROM songs s
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1
             LEFT JOIN artists a ON s.artist_id = a.id
-            WHERE s.song_external_id LIKE 'cs_%%'
+            WHERE s.song_external_id LIKE 'it_%%'
               AND (s.title LIKE %s OR a.name LIKE %s)
             GROUP BY s.id
             ORDER BY lyrics_count DESC, s.title ASC
             LIMIT %s
         """
-        return await self.db.fetch_all(query, (search_pattern, search_pattern, limit))
+        itunes_results = await self.db.fetch_all(itunes_query, (search_pattern, search_pattern, limit))
+
+        # 커스텀 노래 검색 (song_external_id가 'custom_'로 시작)
+        custom_query = """
+            SELECT
+                s.id as song_id,
+                s.title as track_name,
+                s.song_external_id,
+                s.cover_image_url as artwork_url,
+                a.name as artist_name,
+                a.artist_external_id as artist_id,
+                COUNT(l.id) as lyrics_count
+            FROM songs s
+            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1
+            LEFT JOIN artists a ON s.artist_id = a.id
+            WHERE s.song_external_id LIKE 'custom_%%'
+              AND (s.title LIKE %s OR a.name LIKE %s)
+            GROUP BY s.id
+            ORDER BY lyrics_count DESC, s.title ASC
+            LIMIT %s
+        """
+        custom_results = await self.db.fetch_all(custom_query, (search_pattern, search_pattern, limit))
+
+        return {
+            "itunes": itunes_results,
+            "custom": custom_results
+        }
 
 def get_lyrics_repository():
     return LyricsRepository()

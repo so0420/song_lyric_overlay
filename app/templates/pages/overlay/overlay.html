@@ -2571,8 +2571,10 @@
             formData.append('title', title);
             formData.append('artist', artist);
 
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
             const response = await fetch('/api/v1/songs/custom', {
                 method: 'POST',
+                headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
                 body: formData
             });
 

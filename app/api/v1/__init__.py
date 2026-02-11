@@ -7,6 +7,7 @@ from .users import router as users_router
 from .lyrics import router as lyrics_router
 from .overlay import router as overlay_router
 from .auth import router as auth_router
+from .health import router as health_router
 
 router = APIRouter()
 router.include_router(oauth_router, prefix="/oauth", tags=["oauth"])
@@ -16,5 +17,6 @@ router.include_router(users_router, prefix="/users", tags=["users"])
 router.include_router(lyrics_router, prefix="/lyrics", tags=["lyrics"])
 router.include_router(overlay_router, prefix="/overlay", tags=["overlay"])
 router.include_router(auth_router, prefix="/auth", tags=["auth"])
+router.include_router(health_router, tags=["health"])
 
 __all__ = ["router"]

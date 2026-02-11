@@ -1051,9 +1051,9 @@
         return false;
     };
 
-    let currentSongId = {% if song %}{ { song.id | tojson } } {% else %} null{% endif %};
-    let currentLyricsId = {% if lyrics %}{ { lyrics.id | tojson } } {% else %} null{% endif %};
-    let currentLyricsTitle = {% if lyrics %}{ { lyrics.title | tojson } } {% else %} ""{% endif %};
+    let currentSongId = {% if song %}{{ song.id | tojson }}{% else %}null{% endif %};
+    let currentLyricsId = {% if lyrics %}{{ lyrics.id | tojson }}{% else %}null{% endif %};
+    let currentLyricsTitle = {% if lyrics %}{{ lyrics.title | tojson }}{% else %}""{% endif %};
     let currentVideoId = {{ (lyrics.mr_youtube_video_id if lyrics else (default_mr_video_id or '')) | tojson }};
     let activeIndex = -1;
 
@@ -1671,8 +1671,10 @@
             formData.append('title', title);
             formData.append('artist', artist);
 
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
             const res = await fetch('/api/v1/songs/custom', {
                 method: 'POST',
+                headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
                 body: formData
             });
 

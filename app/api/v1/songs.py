@@ -1,15 +1,18 @@
-from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Form
+from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Form, Request
 from app.core.auth import get_current_user_api
 from typing import Optional
 from app.services.song_service import SongService, get_song_service
 from app.integrations.ITunes_search_api import itunes_api
 from app.database.mariadb import db_handler
 from app.database.meilisearch.meilisearch import meilisearch_handler
+from app.utils.csrf import verify_csrf
+from app.utils.rate_limit import limiter, RATE_LIMITS
 
 router = APIRouter()
 
 @router.get("/search")
-async def search_songs(q: str, limit: int = 20):
+@limiter.limit(RATE_LIMITS["search"])
+async def search_songs(request: Request, q: str, limit: int = 20):
     """iTunes API를 사용하여 노래 검색"""
     if not q or len(q.strip()) < 1:
         return []
@@ -52,7 +55,7 @@ async def search_songs(q: str, limit: int = 20):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/custom")
+@router.post("/custom", dependencies=[Depends(verify_csrf)])
 async def register_custom_song(
     title: str = Form(...),
     artist: str = Form(...),
@@ -84,7 +87,8 @@ async def get_song_info(
     raise HTTPException(status_code=404, detail="Song not found")
 
 @router.get("/search/custom")
-async def search_custom_songs(q: str, limit: int = 20):
+@limiter.limit(RATE_LIMITS["search"])
+async def search_custom_songs(request: Request, q: str, limit: int = 20):
     """Meilisearch를 사용하여 커스텀 노래 검색"""
     if not q or len(q.strip()) < 1:
         return []

@@ -24,6 +24,9 @@ from app.utils.custom_exceptions import (
 from app.core.auth import get_current_user_api, get_current_user
 
 from app.utils.log import logger, setup_uvicorn_logging
+from app.utils.rate_limit import limiter, rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from contextlib import asynccontextmanager
 from app.integrations.ITunes_search_api import itunes_api
 from app.integrations.youtube_api import youtube_api
@@ -52,6 +55,10 @@ async def lifespan(app: FastAPI):
 
 # FastAPI 애플리케이션 생성
 app = FastAPI(lifespan=lifespan)
+
+# Rate Limiter 설정
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # Uvicorn 로깅 설정 (워커 프로세스에서도 적용되도록 최상단에서 실행)
 setup_uvicorn_logging()

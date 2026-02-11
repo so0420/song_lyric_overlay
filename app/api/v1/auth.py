@@ -4,6 +4,7 @@ from app.database.mariadb import db_handler
 from app.utils.mailer import send_email
 from app.utils.otp import otp_manager
 from app.utils.config import config
+from app.utils.rate_limit import limiter, RATE_LIMITS
 import bcrypt
 
 router = APIRouter()
@@ -50,7 +51,8 @@ def verify_password(password: str, hashed: str) -> bool:
 
 
 @router.post("/register")
-async def register(data: RegisterSchema):
+@limiter.limit(RATE_LIMITS["auth"])
+async def register(request: Request, data: RegisterSchema):
     """회원가입 - 이메일 인증 코드 발송"""
 
     # 비밀번호 길이 검증
@@ -121,7 +123,8 @@ async def register(data: RegisterSchema):
 
 
 @router.post("/verify-email")
-async def verify_email(data: VerifyEmailSchema):
+@limiter.limit(RATE_LIMITS["otp"])
+async def verify_email(request: Request, data: VerifyEmailSchema):
     """이메일 인증 확인"""
 
     # OTP 검증
@@ -148,7 +151,8 @@ async def verify_email(data: VerifyEmailSchema):
 
 
 @router.post("/resend-verification")
-async def resend_verification(data: ResendVerificationSchema):
+@limiter.limit(RATE_LIMITS["otp"])
+async def resend_verification(request: Request, data: ResendVerificationSchema):
     """인증 코드 재발송"""
 
     user = await db_handler.fetch_one(
@@ -197,6 +201,7 @@ async def resend_verification(data: ResendVerificationSchema):
 
 
 @router.post("/login")
+@limiter.limit(RATE_LIMITS["auth"])
 async def login(request: Request, data: LoginSchema):
     """이메일 + 비밀번호 로그인"""
 
@@ -245,7 +250,8 @@ async def logout(request: Request):
 
 
 @router.post("/forgot-password")
-async def forgot_password(data: ForgotPasswordSchema):
+@limiter.limit(RATE_LIMITS["otp"])
+async def forgot_password(request: Request, data: ForgotPasswordSchema):
     """비밀번호 재설정 코드 발송"""
 
     user = await db_handler.fetch_one(
@@ -298,7 +304,8 @@ async def forgot_password(data: ForgotPasswordSchema):
 
 
 @router.post("/reset-password")
-async def reset_password(data: ResetPasswordSchema):
+@limiter.limit(RATE_LIMITS["otp"])
+async def reset_password(request: Request, data: ResetPasswordSchema):
     """비밀번호 재설정"""
 
     if len(data.new_password) < 8:

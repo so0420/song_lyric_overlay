@@ -990,6 +990,7 @@ input:checked + .toggle-slider:before {
 {% block extra_scripts %}
 <script>
 const userId = {{ user.id }};
+const overlayToken = "{{ overlay_token }}";
 const baseUrl = window.location.origin;
 
 // Default settings
@@ -1033,8 +1034,8 @@ const defaultSettings = {
     playlist_show_artist: true
 };
 
-// Set overlay URL
-document.getElementById('overlayUrl').value = `${baseUrl}/overlay/obs?uid=${userId}`;
+// Set overlay URL (토큰 기반 인증)
+document.getElementById('overlayUrl').value = `${baseUrl}/overlay/obs?token=${overlayToken}`;
 
 // Load settings on page load
 async function loadSettings() {

@@ -343,6 +343,7 @@
 
     <script>
         const userId = {{ user_id }};
+        const overlayToken = {{ overlay_token | tojson if overlay_token else 'null' }};
         const initialSettings = {{ settings | tojson if settings else 'null' }};
 
         // Default settings
@@ -663,7 +664,12 @@
 
         function connect() {
             const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${wsProtocol}//${window.location.host}/api/v1/overlay/ws/${userId}`;
+            let wsUrl = `${wsProtocol}//${window.location.host}/api/v1/overlay/ws/${userId}`;
+
+            // 오버레이 토큰 추가
+            if (overlayToken) {
+                wsUrl += `?overlay_token=${encodeURIComponent(overlayToken)}`;
+            }
 
             connectionStatus.textContent = '연결 중...';
             connectionStatus.className = 'connection-status connecting';

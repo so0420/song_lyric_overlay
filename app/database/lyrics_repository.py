@@ -1,5 +1,6 @@
 from app.database.mariadb import db_handler
 from typing import List, Dict, Any, Optional, Tuple
+from app.utils.log import logger
 
 class LyricsRepository:
     def __init__(self, db=db_handler):
@@ -155,8 +156,10 @@ class LyricsRepository:
             query = "INSERT INTO user_lyrics_favorites (user_id, lyrics_id) VALUES (%s, %s)"
             await self.db.execute_query(query, (user_id, lyrics_id))
             return True
-        except Exception:
-            # 중복 키 오류 (이미 즐겨찾기 됨)
+        except Exception as e:
+            error_str = str(e).lower()
+            if "duplicate" not in error_str and "unique" not in error_str:
+                logger.error(f"Favorite add error for user {user_id}, lyrics {lyrics_id}: {e}")
             return False
 
     async def remove_favorite(self, user_id: int, lyrics_id: int) -> bool:

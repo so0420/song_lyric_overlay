@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from app.core.auth import get_current_user_api, get_current_user
 from app.database.lyrics_repository import get_lyrics_repository, LyricsRepository
 from app.schemas.lyrics import LyricsCreateSchema, LyricsUpdateSchema
+from app.schemas.common import IdResponse
 
 router = APIRouter()
 
@@ -85,7 +86,7 @@ async def create_lyrics(
         mr_youtube_video_id=data.mr_youtube_video_id,
         lyrics_data=data.lyrics_data
     )
-    return {"id": lyrics_id}
+    return IdResponse(id=lyrics_id)
 
 @router.patch("/{lyrics_id}")
 async def update_lyrics(

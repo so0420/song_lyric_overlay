@@ -55,5 +55,26 @@ class SongRepository:
         res = await self.db.fetch_one("SELECT song_external_id FROM songs WHERE id = %s", (song_id,))
         return res['song_external_id'] if res else None
 
+    async def get_song_with_artist(self, song_id: int = None, external_id: str = None) -> Optional[Dict[str, Any]]:
+        """song_id 또는 external_id로 노래 정보 조회 (아티스트 정보 포함)"""
+        if song_id:
+            query = """
+                SELECT s.*, a.name as artist_name
+                FROM songs s
+                LEFT JOIN artists a ON s.artist_id = a.id
+                WHERE s.id = %s
+            """
+            return await self.db.fetch_one(query, (song_id,))
+        elif external_id:
+            query = """
+                SELECT s.*, a.name as artist_name
+                FROM songs s
+                LEFT JOIN artists a ON s.artist_id = a.id
+                WHERE s.song_external_id = %s
+            """
+            return await self.db.fetch_one(query, (external_id,))
+        return None
+
+
 def get_song_repository():
     return SongRepository()

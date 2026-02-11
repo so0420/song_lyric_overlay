@@ -5,8 +5,10 @@ from app.services.song_service import SongService, get_song_service
 from app.integrations.itunes_search_api import itunes_api
 from app.database.mariadb import db_handler
 from app.database.meilisearch.meilisearch import meilisearch_handler
+from app.database.lyrics_repository import get_lyrics_repository, LyricsRepository
 from app.utils.csrf import verify_csrf
 from app.utils.rate_limit import limiter, RATE_LIMITS
+from app.utils.log import logger
 
 router = APIRouter()
 
@@ -43,17 +45,9 @@ async def search_songs(request: Request, q: str, offset: int = 0, limit: int = 2
 
         # 가사 개수 조회 (현재 페이지 결과만)
         if paginated_results:
+            lyrics_repo = get_lyrics_repository()
             external_ids = [r['song_external_id'] for r in paginated_results]
-            format_strings = ','.join(['%s'] * len(external_ids))
-            query = f"""
-                SELECT s.song_external_id, COUNT(l.id) as cnt
-                FROM songs s
-                JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
-                WHERE s.song_external_id IN ({format_strings})
-                GROUP BY s.song_external_id
-            """
-            counts = await db_handler.fetch_all(query, tuple(external_ids))
-            count_map = {c['song_external_id']: c['cnt'] for c in counts}
+            count_map = await lyrics_repo.get_lyrics_counts(external_ids)
 
             for r in paginated_results:
                 r['lyrics_count'] = count_map.get(r['song_external_id'], 0)
@@ -66,7 +60,8 @@ async def search_songs(request: Request, q: str, offset: int = 0, limit: int = 2
             "has_more": offset + len(paginated_results) < total
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"iTunes search error: {e}")
+        raise HTTPException(status_code=500, detail="검색 중 오류가 발생했습니다.")
 
 @router.post("/custom", dependencies=[Depends(verify_csrf)])
 async def register_custom_song(
@@ -176,17 +171,9 @@ async def search_custom_songs(request: Request, q: str, offset: int = 0, limit: 
 
     # 가사 개수 조회
     if formatted_results:
+        lyrics_repo = get_lyrics_repository()
         external_ids = [r['song_external_id'] for r in formatted_results]
-        format_strings = ','.join(['%s'] * len(external_ids))
-        query = f"""
-            SELECT s.song_external_id, COUNT(l.id) as cnt
-            FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
-            WHERE s.song_external_id IN ({format_strings})
-            GROUP BY s.song_external_id
-        """
-        counts = await db_handler.fetch_all(query, tuple(external_ids))
-        count_map = {c['song_external_id']: c['cnt'] for c in counts}
+        count_map = await lyrics_repo.get_lyrics_counts(external_ids)
 
         for r in formatted_results:
             r['lyrics_count'] = count_map.get(r['song_external_id'], 0)

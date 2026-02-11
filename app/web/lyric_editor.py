@@ -23,9 +23,9 @@ async def lyric_editor_page(
 
     song_info = None
     if song_id:
-        song_info = await song_repo.db.fetch_one("SELECT s.*, a.name as artist_name FROM songs s LEFT JOIN artists a ON s.artist_id = a.id WHERE s.id = %s", (song_id,))
+        song_info = await song_repo.get_song_with_artist(song_id=song_id)
     elif external_id:
-        song_info = await song_repo.db.fetch_one("SELECT s.*, a.name as artist_name FROM songs s LEFT JOIN artists a ON s.artist_id = a.id WHERE s.song_external_id = %s", (external_id,))
+        song_info = await song_repo.get_song_with_artist(external_id=external_id)
         if song_info:
             song_id = song_info['id']
 
@@ -34,7 +34,7 @@ async def lyric_editor_page(
         lyrics_info = await lyrics_repo.get_lyrics_by_id(lyrics_id)
         if lyrics_info and not song_info:
             song_id = lyrics_info['song_id']
-            song_info = await song_repo.db.fetch_one("SELECT s.*, a.name as artist_name FROM songs s LEFT JOIN artists a ON s.artist_id = a.id WHERE s.id = %s", (song_id,))
+            song_info = await song_repo.get_song_with_artist(song_id=song_id)
 
     return templates.TemplateResponse("pages/lyric_editor/lyric_editor.html", {
         "request": request,

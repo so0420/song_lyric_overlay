@@ -9,7 +9,15 @@ from app.utils.ws_token import (
     generate_overlay_token_async,
     increment_overlay_token_version
 )
-from app.schemas.overlay import OverlaySettingsSchema, LyricsSyncSchema, PlaylistSyncSchema
+from app.schemas.overlay import (
+    OverlaySettingsSchema,
+    LyricsSyncSchema,
+    PlaylistSyncSchema,
+    OverlayPresetCreateSchema,
+    OverlayPresetUpdateSchema,
+    OverlayPresetResponseSchema
+)
+from typing import List
 from app.schemas.common import TokenResponse
 import asyncio
 import json
@@ -105,6 +113,115 @@ async def regenerate_overlay_token(user=Depends(get_current_user_api)):
         "token": new_token,
         "message": "토큰이 재발급되었습니다. OBS에서 새 URL을 설정해주세요."
     }
+
+
+# ============ Preset Endpoints ============
+
+@router.get("/presets", response_model=List[OverlayPresetResponseSchema])
+async def get_presets(
+    user=Depends(get_current_user_api),
+    overlay_repo: OverlayRepository = Depends(get_overlay_repository)
+):
+    """프리셋 목록 조회"""
+    return await overlay_repo.get_presets(user['id'])
+
+
+@router.post("/presets", response_model=OverlayPresetResponseSchema)
+async def create_preset(
+    data: OverlayPresetCreateSchema,
+    user=Depends(get_current_user_api),
+    overlay_repo: OverlayRepository = Depends(get_overlay_repository)
+):
+    """새 프리셋 생성"""
+    preset_id = await overlay_repo.create_preset(user['id'], data)
+    preset = await overlay_repo.get_preset(preset_id, user['id'])
+    return preset
+
+
+@router.get("/presets/{preset_id}", response_model=OverlayPresetResponseSchema)
+async def get_preset(
+    preset_id: int,
+    user=Depends(get_current_user_api),
+    overlay_repo: OverlayRepository = Depends(get_overlay_repository)
+):
+    """특정 프리셋 조회"""
+    preset = await overlay_repo.get_preset(preset_id, user['id'])
+    if not preset:
+        raise HTTPException(status_code=404, detail="프리셋을 찾을 수 없습니다")
+    return preset
+
+
+@router.put("/presets/{preset_id}", response_model=OverlayPresetResponseSchema)
+async def update_preset(
+    preset_id: int,
+    data: OverlayPresetUpdateSchema,
+    user=Depends(get_current_user_api),
+    overlay_repo: OverlayRepository = Depends(get_overlay_repository)
+):
+    """프리셋 수정"""
+    success = await overlay_repo.update_preset(preset_id, user['id'], data)
+    if not success:
+        raise HTTPException(status_code=404, detail="프리셋을 찾을 수 없습니다")
+    preset = await overlay_repo.get_preset(preset_id, user['id'])
+    return preset
+
+
+@router.delete("/presets/{preset_id}")
+async def delete_preset(
+    preset_id: int,
+    user=Depends(get_current_user_api),
+    overlay_repo: OverlayRepository = Depends(get_overlay_repository)
+):
+    """프리셋 삭제"""
+    success = await overlay_repo.delete_preset(preset_id, user['id'])
+    if not success:
+        raise HTTPException(status_code=404, detail="프리셋을 찾을 수 없습니다")
+    return {"success": True}
+
+
+@router.post("/presets/{preset_id}/activate")
+async def activate_preset(
+    preset_id: int,
+    user=Depends(get_current_user_api),
+    overlay_repo: OverlayRepository = Depends(get_overlay_repository)
+):
+    """프리셋 활성화 (현재 설정에 적용)"""
+    success = await overlay_repo.activate_preset(preset_id, user['id'])
+    if not success:
+        raise HTTPException(status_code=404, detail="프리셋을 찾을 수 없습니다")
+
+    # 프리셋 설정 가져오기
+    preset = await overlay_repo.get_preset(preset_id, user['id'])
+
+    # 연결된 OBS 오버레이에 설정 변경 알림
+    await overlay_manager.broadcast_to_user(user['id'], {
+        "type": "settings_update",
+        "settings": preset['settings']
+    })
+
+    return {"success": True, "message": f"'{preset['name']}' 프리셋이 적용되었습니다"}
+
+
+@router.post("/presets/save-current")
+async def save_current_as_preset(
+    name: str = Query(..., min_length=1, max_length=100),
+    user=Depends(get_current_user_api),
+    overlay_repo: OverlayRepository = Depends(get_overlay_repository)
+):
+    """현재 설정을 새 프리셋으로 저장"""
+    # 현재 설정 가져오기
+    current_settings = await overlay_repo.get_settings(user['id'])
+    if not current_settings:
+        current_settings = OverlaySettingsSchema().model_dump()
+
+    # 프리셋 생성
+    preset_data = OverlayPresetCreateSchema(
+        name=name,
+        settings=OverlaySettingsSchema(**current_settings)
+    )
+    preset_id = await overlay_repo.create_preset(user['id'], preset_data)
+    preset = await overlay_repo.get_preset(preset_id, user['id'])
+    return preset
 
 
 PING_INTERVAL = 30  # 30초마다 ping 전송

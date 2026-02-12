@@ -150,3 +150,23 @@ CREATE INDEX idx_lyrics_owner_id ON song_lyrics(owner_id);
 CREATE INDEX idx_favorites_user_id ON user_lyrics_favorites(user_id);
 CREATE INDEX idx_favorites_lyrics_id ON user_lyrics_favorites(lyrics_id);
 CREATE INDEX idx_overlay_user_id ON user_overlay_settings(user_id);
+
+-- -------------------------------------------------------------------------------------------------------------
+-- User Overlay Presets
+-- -------------------------------------------------------------------------------------------------------------
+
+-- User Overlay Presets table: 사용자 오버레이 프리셋
+CREATE TABLE IF NOT EXISTS `user_overlay_presets` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` BIGINT NOT NULL COMMENT 'users 테이블 참조 ID',
+    `name` VARCHAR(100) NOT NULL COMMENT '프리셋 이름',
+    `settings_json` TEXT NOT NULL COMMENT '오버레이 설정 JSON',
+    `is_active` TINYINT(1) DEFAULT 0 COMMENT '현재 활성화된 프리셋 여부',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    -- 외래 키 설정: 사용자 삭제 시 연관된 프리셋도 삭제
+    CONSTRAINT `fk_preset_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_preset_user_id ON user_overlay_presets(user_id);

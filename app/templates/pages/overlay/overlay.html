@@ -21,6 +21,7 @@
         .overlay-container {
             grid-template-columns: 1fr;
         }
+
         .playlist-panel {
             position: static !important;
             max-height: 500px !important;
@@ -200,8 +201,15 @@
     }
 
     @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.7;
+        }
     }
 
     .now-playing-text {
@@ -382,8 +390,13 @@
     }
 
     @keyframes shimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
+        0% {
+            background-position: 200% 0;
+        }
+
+        100% {
+            background-position: -200% 0;
+        }
     }
 
     .song-item-skeleton {
@@ -488,15 +501,15 @@
         height: 16px;
         background: white;
         border-radius: 50%;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         transition: all 0.3s;
     }
 
-    .auto-remove-switch input:checked + .switch-slider {
+    .auto-remove-switch input:checked+.switch-slider {
         background: var(--accent);
     }
 
-    .auto-remove-switch input:checked + .switch-slider::before {
+    .auto-remove-switch input:checked+.switch-slider::before {
         transform: translateX(16px);
     }
 
@@ -662,7 +675,7 @@
         cursor: pointer;
         transition: all 0.15s ease;
         color: var(--text-main);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .control-btn:hover {
@@ -901,7 +914,7 @@
     .tab-btn.active {
         background: white;
         color: var(--accent);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     /* Modal */
@@ -1133,6 +1146,7 @@
             opacity: 0;
             transform: translateY(20px);
         }
+
         to {
             opacity: 1;
             transform: translateY(0);
@@ -1171,7 +1185,9 @@
     }
 
     @keyframes spin {
-        to { transform: rotate(360deg); }
+        to {
+            transform: rotate(360deg);
+        }
     }
 
     /* Scrollbar */
@@ -1229,7 +1245,7 @@
     .search-tab-btn.active {
         background: white;
         color: var(--accent);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     /* Custom Song Add */
@@ -1350,7 +1366,7 @@
         font-weight: 700;
         padding: 3px 10px;
         border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .video-result-thumb {
@@ -1408,7 +1424,8 @@
 <!-- Search -->
 <div class="search-container">
     <div class="search-input-wrapper">
-        <svg class="search-icon-left" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="search-icon-left" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
             <circle cx="11" cy="11" r="8"></circle>
             <path d="m21 21-4.35-4.35"></path>
         </svg>
@@ -1477,7 +1494,7 @@
             <div class="controls-bar">
                 <button class="control-btn" id="prevBtn" title="이전 곡 (←)" disabled>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M6 6h2v12H6V6zm3.5 6 8.5 6V6l-8.5 6z"/>
+                        <path d="M6 6h2v12H6V6zm3.5 6 8.5 6V6l-8.5 6z" />
                     </svg>
                 </button>
                 <button class="control-btn play" id="playBtn" title="재생/일시정지 (Space)">
@@ -1487,7 +1504,7 @@
                 </button>
                 <button class="control-btn" id="nextBtn" title="다음 곡 (→)" disabled>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M16 18h2V6h-2v12zM6 18l8.5-6L6 6v12z"/>
+                        <path d="M16 18h2V6h-2v12zM6 18l8.5-6L6 6v12z" />
                     </svg>
                 </button>
                 <div class="progress-container">
@@ -1499,18 +1516,20 @@
                 </div>
                 <div class="volume-control">
                     <button class="volume-btn" id="volumeBtn" title="음소거">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="volumeIcon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" id="volumeIcon">
                             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
                             <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
                         </svg>
                     </button>
-                    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="100" title="볼륨">
+                    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="100"
+                        title="볼륨">
                 </div>
             </div>
             <!-- Offset Controls -->
             <div class="offset-controls">
                 <div class="offset-group">
-                    <span class="offset-label">로컬 오프셋:</span>
+                    <span class="offset-label">웹페이지 가사 오프셋:</span>
                     <div class="offset-value-container">
                         <button class="offset-btn" id="localOffsetMinus" title="-100ms">-</button>
                         <span class="offset-value" id="localOffsetValue">0ms</span>
@@ -1519,7 +1538,7 @@
                 </div>
                 <div class="offset-separator"></div>
                 <div class="offset-group">
-                    <span class="offset-label">OBS 오프셋:</span>
+                    <span class="offset-label">OBS 브라우저 가사 오프셋:</span>
                     <div class="offset-value-container">
                         <button class="offset-btn" id="obsOffsetMinus" title="-100ms">-</button>
                         <span class="offset-value" id="obsOffsetValue">0ms</span>
@@ -1572,7 +1591,7 @@
             <h2 class="modal-title" id="modalSongTitle">가사 선택</h2>
             <button class="modal-close" id="modalClose" title="닫기 (Esc)">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6 6 18M6 6l12 12"/>
+                    <path d="M18 6 6 18M6 6l12 12" />
                 </svg>
             </button>
         </div>
@@ -1591,14 +1610,15 @@
             <h2 class="modal-title" id="videoModalTitle">영상 선택</h2>
             <button class="modal-close" id="videoModalClose" title="닫기">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6 6 18M6 6l12 12"/>
+                    <path d="M18 6 6 18M6 6l12 12" />
                 </svg>
             </button>
         </div>
         <div class="modal-body">
             <div class="video-search-box" style="margin-bottom: 16px;">
                 <div style="display: flex; gap: 8px;">
-                    <input type="text" id="videoSearchInput" class="search-input" style="flex: 1; padding: 12px 16px;" placeholder="영상 검색...">
+                    <input type="text" id="videoSearchInput" class="search-input" style="flex: 1; padding: 12px 16px;"
+                        placeholder="영상 검색...">
                     <button class="search-btn" id="videoSearchBtn" style="padding: 12px 20px;">검색</button>
                 </div>
             </div>
@@ -1618,7 +1638,7 @@
             <h2 class="modal-title">커스텀 노래 추가</h2>
             <button class="modal-close" id="customSongModalClose" title="닫기">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6 6 18M6 6l12 12"/>
+                    <path d="M18 6 6 18M6 6l12 12" />
                 </svg>
             </button>
         </div>
@@ -1647,292 +1667,292 @@
 {% block extra_scripts %}
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
-(function() {
-    'use strict';
+    (function () {
+        'use strict';
 
-    // State
-    const state = {
-        ytPlayer: null,
-        isPlayerReady: false,
-        playlist: JSON.parse(localStorage.getItem('overlay_playlist') || '[]'),
-        favorites: [],
-        currentTab: 'playlist',
-        currentPlayingIndex: -1,
-        currentLyrics: null,
-        currentSongTitle: '',
-        currentArtist: '',
-        currentModalSong: null,
-        isPlaying: false,
-        animationFrameId: null,
-        searchCache: new Map(),
-        customSearchCache: new Map(),
-        volume: parseInt(localStorage.getItem('overlay_volume') || '100'),
-        isMuted: false,
-        autoRemoveCompleted: localStorage.getItem('overlay_auto_remove') === 'true',
-        currentSearchTab: 'itunes',
-        lastSearchQuery: '',
-        lastLyricsIndex: -2,  // -2로 초기화하여 첫 번째 업데이트가 항상 발생하도록
-        lastObsLyricsIndex: -2,  // OBS용 별도 인덱스
-        // Pagination state
-        searchOffset: 0,
-        searchHasMore: false,
-        searchLoading: false,
-        currentSearchResults: [],
-        // Offset settings (in milliseconds)
-        localOffset: parseInt(localStorage.getItem('overlay_local_offset') || '0'),
-        obsOffset: parseInt(localStorage.getItem('overlay_obs_offset') || '0')
-    };
+        // State
+        const state = {
+            ytPlayer: null,
+            isPlayerReady: false,
+            playlist: JSON.parse(localStorage.getItem('overlay_playlist') || '[]'),
+            favorites: [],
+            currentTab: 'playlist',
+            currentPlayingIndex: -1,
+            currentLyrics: null,
+            currentSongTitle: '',
+            currentArtist: '',
+            currentModalSong: null,
+            isPlaying: false,
+            animationFrameId: null,
+            searchCache: new Map(),
+            customSearchCache: new Map(),
+            volume: parseInt(localStorage.getItem('overlay_volume') || '100'),
+            isMuted: false,
+            autoRemoveCompleted: localStorage.getItem('overlay_auto_remove') === 'true',
+            currentSearchTab: 'itunes',
+            lastSearchQuery: '',
+            lastLyricsIndex: -2,  // -2로 초기화하여 첫 번째 업데이트가 항상 발생하도록
+            lastObsLyricsIndex: -2,  // OBS용 별도 인덱스
+            // Pagination state
+            searchOffset: 0,
+            searchHasMore: false,
+            searchLoading: false,
+            currentSearchResults: [],
+            // Offset settings (in milliseconds)
+            localOffset: parseInt(localStorage.getItem('overlay_local_offset') || '0'),
+            obsOffset: parseInt(localStorage.getItem('overlay_obs_offset') || '0')
+        };
 
-    // DOM Elements
-    const $ = (sel) => document.querySelector(sel);
-    const $$ = (sel) => document.querySelectorAll(sel);
+        // DOM Elements
+        const $ = (sel) => document.querySelector(sel);
+        const $$ = (sel) => document.querySelectorAll(sel);
 
-    const elements = {
-        searchInput: $('#searchInput'),
-        searchBtn: $('#searchBtn'),
-        searchResults: $('#searchResults'),
-        searchResultsList: $('#searchResultsList'),
-        searchResultsHeader: $('#searchResultsHeader'),
-        searchLoading: $('#searchLoading'),
-        playlistItems: $('#playlistItems'),
-        playlistCount: $('#playlistCount'),
-        clearPlaylistBtn: $('#clearPlaylistBtn'),
-        lyricsModal: $('#lyricsModal'),
-        modalClose: $('#modalClose'),
-        lyricsListContainer: $('#lyricsListContainer'),
-        modalSongTitle: $('#modalSongTitle'),
-        lyricsDisplay: $('#lyricsDisplay'),
-        nowPlayingInfo: $('#nowPlayingInfo'),
-        nowPlayingTitle: $('#nowPlayingTitle'),
-        playBtn: $('#playBtn'),
-        prevBtn: $('#prevBtn'),
-        nextBtn: $('#nextBtn'),
-        progressBar: $('#progressBar'),
-        progressFill: $('#progressFill'),
-        currentTimeEl: $('#currentTime'),
-        durationEl: $('#duration'),
-        volumeBtn: $('#volumeBtn'),
-        volumeSlider: $('#volumeSlider'),
-        volumeIcon: $('#volumeIcon'),
-        toastContainer: $('#toastContainer'),
-        // Offset controls
-        localOffsetMinus: $('#localOffsetMinus'),
-        localOffsetPlus: $('#localOffsetPlus'),
-        localOffsetValue: $('#localOffsetValue'),
-        obsOffsetMinus: $('#obsOffsetMinus'),
-        obsOffsetPlus: $('#obsOffsetPlus'),
-        obsOffsetValue: $('#obsOffsetValue'),
-        offsetReset: $('#offsetReset')
-    };
+        const elements = {
+            searchInput: $('#searchInput'),
+            searchBtn: $('#searchBtn'),
+            searchResults: $('#searchResults'),
+            searchResultsList: $('#searchResultsList'),
+            searchResultsHeader: $('#searchResultsHeader'),
+            searchLoading: $('#searchLoading'),
+            playlistItems: $('#playlistItems'),
+            playlistCount: $('#playlistCount'),
+            clearPlaylistBtn: $('#clearPlaylistBtn'),
+            lyricsModal: $('#lyricsModal'),
+            modalClose: $('#modalClose'),
+            lyricsListContainer: $('#lyricsListContainer'),
+            modalSongTitle: $('#modalSongTitle'),
+            lyricsDisplay: $('#lyricsDisplay'),
+            nowPlayingInfo: $('#nowPlayingInfo'),
+            nowPlayingTitle: $('#nowPlayingTitle'),
+            playBtn: $('#playBtn'),
+            prevBtn: $('#prevBtn'),
+            nextBtn: $('#nextBtn'),
+            progressBar: $('#progressBar'),
+            progressFill: $('#progressFill'),
+            currentTimeEl: $('#currentTime'),
+            durationEl: $('#duration'),
+            volumeBtn: $('#volumeBtn'),
+            volumeSlider: $('#volumeSlider'),
+            volumeIcon: $('#volumeIcon'),
+            toastContainer: $('#toastContainer'),
+            // Offset controls
+            localOffsetMinus: $('#localOffsetMinus'),
+            localOffsetPlus: $('#localOffsetPlus'),
+            localOffsetValue: $('#localOffsetValue'),
+            obsOffsetMinus: $('#obsOffsetMinus'),
+            obsOffsetPlus: $('#obsOffsetPlus'),
+            obsOffsetValue: $('#obsOffsetValue'),
+            offsetReset: $('#offsetReset')
+        };
 
-    // Toast notifications
-    function showToast(message, type = 'default') {
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.innerHTML = `
+        // Toast notifications
+        function showToast(message, type = 'default') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 ${type === 'success' ? '<path d="M20 6L9 17l-5-5"/>' :
-                  type === 'error' ? '<circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/>' :
-                  '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>'}
+                    type === 'error' ? '<circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/>' :
+                        '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>'}
             </svg>
             ${message}
         `;
-        elements.toastContainer.appendChild(toast);
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(20px)';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    }
-
-    // YouTube Player
-    window.onYouTubeIframeAPIReady = function() {
-        state.ytPlayer = new YT.Player('player', {
-            height: '100%',
-            width: '100%',
-            playerVars: {
-                'playsinline': 1,
-                'rel': 0,
-                'modestbranding': 1,
-                'enablejsapi': 1
-            },
-            events: {
-                'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange
-            }
-        });
-    };
-
-    function onPlayerReady(event) {
-        state.isPlayerReady = true;
-        state.ytPlayer.setVolume(state.volume);
-        elements.volumeSlider.value = state.volume;
-    }
-
-    function onPlayerStateChange(event) {
-        state.isPlaying = event.data === YT.PlayerState.PLAYING;
-        updatePlayButton();
-        updateControlButtons();
-
-        if (state.isPlaying) {
-            startLyricsSync();
-        } else {
-            stopLyricsSync();
+            elements.toastContainer.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
-        // 곡이 끝나면 재생목록에서 삭제하고 다음 곡 로드
-        if (event.data === YT.PlayerState.ENDED && state.autoRemoveCompleted) {
-            if (state.currentTab === 'playlist' && state.currentPlayingIndex >= 0) {
-                // 현재 곡 삭제 (인덱스 유지하면 다음 곡이 자동으로 현재 위치로 옴)
-                state.playlist.splice(state.currentPlayingIndex, 1);
-                savePlaylist();
-                renderPlaylist();
+        // YouTube Player
+        window.onYouTubeIframeAPIReady = function () {
+            state.ytPlayer = new YT.Player('player', {
+                height: '100%',
+                width: '100%',
+                playerVars: {
+                    'playsinline': 1,
+                    'rel': 0,
+                    'modestbranding': 1,
+                    'enablejsapi': 1
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        };
 
-                // 다음 곡이 있으면 로드
-                if (state.playlist.length > 0 && state.currentPlayingIndex < state.playlist.length) {
-                    playItem(state.currentPlayingIndex);
-                } else if (state.playlist.length > 0) {
-                    // 마지막 곡이었으면 첫 곡으로
-                    state.currentPlayingIndex = 0;
-                    playItem(0);
-                } else {
-                    // 재생목록이 비었으면 초기화
-                    state.currentPlayingIndex = -1;
-                    showPlaceholder();
-                    elements.lyricsDisplay.innerHTML = '<p class="lyrics-display-empty">가사가 여기에 표시됩니다</p>';
-                    elements.nowPlayingInfo.classList.remove('active');
-                    updateControlButtons();
+        function onPlayerReady(event) {
+            state.isPlayerReady = true;
+            state.ytPlayer.setVolume(state.volume);
+            elements.volumeSlider.value = state.volume;
+        }
+
+        function onPlayerStateChange(event) {
+            state.isPlaying = event.data === YT.PlayerState.PLAYING;
+            updatePlayButton();
+            updateControlButtons();
+
+            if (state.isPlaying) {
+                startLyricsSync();
+            } else {
+                stopLyricsSync();
+            }
+
+            // 곡이 끝나면 재생목록에서 삭제하고 다음 곡 로드
+            if (event.data === YT.PlayerState.ENDED && state.autoRemoveCompleted) {
+                if (state.currentTab === 'playlist' && state.currentPlayingIndex >= 0) {
+                    // 현재 곡 삭제 (인덱스 유지하면 다음 곡이 자동으로 현재 위치로 옴)
+                    state.playlist.splice(state.currentPlayingIndex, 1);
+                    savePlaylist();
+                    renderPlaylist();
+
+                    // 다음 곡이 있으면 로드
+                    if (state.playlist.length > 0 && state.currentPlayingIndex < state.playlist.length) {
+                        playItem(state.currentPlayingIndex);
+                    } else if (state.playlist.length > 0) {
+                        // 마지막 곡이었으면 첫 곡으로
+                        state.currentPlayingIndex = 0;
+                        playItem(0);
+                    } else {
+                        // 재생목록이 비었으면 초기화
+                        state.currentPlayingIndex = -1;
+                        showPlaceholder();
+                        elements.lyricsDisplay.innerHTML = '<p class="lyrics-display-empty">가사가 여기에 표시됩니다</p>';
+                        elements.nowPlayingInfo.classList.remove('active');
+                        updateControlButtons();
+                    }
+                }
+            } else if (event.data === YT.PlayerState.ENDED) {
+                // 자동 삭제 비활성화 시 다음 곡만 로드
+                const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
+                if (state.currentPlayingIndex < items.length - 1) {
+                    playItem(state.currentPlayingIndex + 1);
                 }
             }
-        } else if (event.data === YT.PlayerState.ENDED) {
-            // 자동 삭제 비활성화 시 다음 곡만 로드
+        }
+
+        function updatePlayButton() {
+            const playIcon = $('#playIcon');
+            if (state.isPlaying) {
+                playIcon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+            } else {
+                playIcon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+            }
+        }
+
+        function updateControlButtons() {
             const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
-            if (state.currentPlayingIndex < items.length - 1) {
-                playItem(state.currentPlayingIndex + 1);
+            elements.prevBtn.disabled = state.currentPlayingIndex <= 0;
+            elements.nextBtn.disabled = state.currentPlayingIndex >= items.length - 1 || items.length === 0;
+        }
+
+        // Search with debounce and cache
+        let searchTimeout;
+        async function searchSongs(query) {
+            if (!query.trim()) {
+                elements.searchResults.classList.remove('active');
+                return;
+            }
+
+            state.lastSearchQuery = query;
+
+            if (state.currentSearchTab === 'itunes') {
+                await searchITunes(query);
+            } else {
+                await searchCustomSongs(query);
             }
         }
-    }
 
-    function updatePlayButton() {
-        const playIcon = $('#playIcon');
-        if (state.isPlaying) {
-            playIcon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
-        } else {
-            playIcon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
-        }
-    }
+        async function searchITunes(query, loadMore = false) {
+            if (state.searchLoading) return;
 
-    function updateControlButtons() {
-        const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
-        elements.prevBtn.disabled = state.currentPlayingIndex <= 0;
-        elements.nextBtn.disabled = state.currentPlayingIndex >= items.length - 1 || items.length === 0;
-    }
-
-    // Search with debounce and cache
-    let searchTimeout;
-    async function searchSongs(query) {
-        if (!query.trim()) {
-            elements.searchResults.classList.remove('active');
-            return;
-        }
-
-        state.lastSearchQuery = query;
-
-        if (state.currentSearchTab === 'itunes') {
-            await searchITunes(query);
-        } else {
-            await searchCustomSongs(query);
-        }
-    }
-
-    async function searchITunes(query, loadMore = false) {
-        if (state.searchLoading) return;
-
-        if (!loadMore) {
-            // Reset pagination for new search
-            state.searchOffset = 0;
-            state.currentSearchResults = [];
-            state.searchHasMore = false;
-
-            elements.searchLoading.classList.add('active');
-            renderSearchSkeleton();
-            elements.searchResults.classList.add('active');
-            $('#addCustomSongSection').style.display = 'none';
-        }
-
-        state.searchLoading = true;
-
-        try {
-            const response = await fetch(`/api/v1/songs/search?q=${encodeURIComponent(query)}&limit=20&offset=${state.searchOffset}`);
-            const data = await response.json();
-            const items = data.items || data;
-
-            state.currentSearchResults = loadMore ? [...state.currentSearchResults, ...items] : items;
-            state.searchHasMore = data.has_more || false;
-            state.searchOffset += items.length;
-
-            renderSearchResults(state.currentSearchResults, data.total, query, loadMore);
-        } catch (error) {
-            console.error('Search error:', error);
             if (!loadMore) {
-                elements.searchResultsList.innerHTML = '<div style="padding: 24px; text-align: center; color: #dc2626;">검색 중 오류가 발생했습니다</div>';
+                // Reset pagination for new search
+                state.searchOffset = 0;
+                state.currentSearchResults = [];
+                state.searchHasMore = false;
+
+                elements.searchLoading.classList.add('active');
+                renderSearchSkeleton();
+                elements.searchResults.classList.add('active');
+                $('#addCustomSongSection').style.display = 'none';
             }
-        } finally {
-            state.searchLoading = false;
-            elements.searchLoading.classList.remove('active');
+
+            state.searchLoading = true;
+
+            try {
+                const response = await fetch(`/api/v1/songs/search?q=${encodeURIComponent(query)}&limit=20&offset=${state.searchOffset}`);
+                const data = await response.json();
+                const items = data.items || data;
+
+                state.currentSearchResults = loadMore ? [...state.currentSearchResults, ...items] : items;
+                state.searchHasMore = data.has_more || false;
+                state.searchOffset += items.length;
+
+                renderSearchResults(state.currentSearchResults, data.total, query, loadMore);
+            } catch (error) {
+                console.error('Search error:', error);
+                if (!loadMore) {
+                    elements.searchResultsList.innerHTML = '<div style="padding: 24px; text-align: center; color: #dc2626;">검색 중 오류가 발생했습니다</div>';
+                }
+            } finally {
+                state.searchLoading = false;
+                elements.searchLoading.classList.remove('active');
+            }
         }
-    }
 
-    async function searchCustomSongs(query, loadMore = false) {
-        if (state.searchLoading) return;
+        async function searchCustomSongs(query, loadMore = false) {
+            if (state.searchLoading) return;
 
-        if (!loadMore) {
-            // Reset pagination for new search
-            state.searchOffset = 0;
-            state.currentSearchResults = [];
-            state.searchHasMore = false;
-
-            elements.searchLoading.classList.add('active');
-            renderSearchSkeleton();
-            elements.searchResults.classList.add('active');
-        }
-
-        state.searchLoading = true;
-
-        try {
-            const response = await fetch(`/api/v1/songs/search/custom?q=${encodeURIComponent(query)}&limit=20&offset=${state.searchOffset}`);
-            const data = await response.json();
-            const items = data.items || data;
-
-            state.currentSearchResults = loadMore ? [...state.currentSearchResults, ...items] : items;
-            state.searchHasMore = data.has_more || false;
-            state.searchOffset += items.length;
-
-            renderCustomSearchResults(state.currentSearchResults, data.total, query, loadMore);
-        } catch (error) {
-            console.error('Custom search error:', error);
             if (!loadMore) {
-                elements.searchResultsList.innerHTML = '<div style="padding: 24px; text-align: center; color: #dc2626;">검색 중 오류가 발생했습니다</div>';
+                // Reset pagination for new search
+                state.searchOffset = 0;
+                state.currentSearchResults = [];
+                state.searchHasMore = false;
+
+                elements.searchLoading.classList.add('active');
+                renderSearchSkeleton();
+                elements.searchResults.classList.add('active');
             }
+
+            state.searchLoading = true;
+
+            try {
+                const response = await fetch(`/api/v1/songs/search/custom?q=${encodeURIComponent(query)}&limit=20&offset=${state.searchOffset}`);
+                const data = await response.json();
+                const items = data.items || data;
+
+                state.currentSearchResults = loadMore ? [...state.currentSearchResults, ...items] : items;
+                state.searchHasMore = data.has_more || false;
+                state.searchOffset += items.length;
+
+                renderCustomSearchResults(state.currentSearchResults, data.total, query, loadMore);
+            } catch (error) {
+                console.error('Custom search error:', error);
+                if (!loadMore) {
+                    elements.searchResultsList.innerHTML = '<div style="padding: 24px; text-align: center; color: #dc2626;">검색 중 오류가 발생했습니다</div>';
+                }
+                $('#addCustomSongSection').style.display = 'block';
+            } finally {
+                state.searchLoading = false;
+                elements.searchLoading.classList.remove('active');
+            }
+        }
+
+        function renderCustomSearchResults(songs, total, query, loadMore = false) {
+            const count = total || songs.length;
+            elements.searchResultsHeader.textContent = songs.length > 0 ? `"${query}" 검색 결과 (${count}개)` : '검색 결과 없음';
             $('#addCustomSongSection').style.display = 'block';
-        } finally {
-            state.searchLoading = false;
-            elements.searchLoading.classList.remove('active');
-        }
-    }
 
-    function renderCustomSearchResults(songs, total, query, loadMore = false) {
-        const count = total || songs.length;
-        elements.searchResultsHeader.textContent = songs.length > 0 ? `"${query}" 검색 결과 (${count}개)` : '검색 결과 없음';
-        $('#addCustomSongSection').style.display = 'block';
+            if (songs.length === 0) {
+                elements.searchResultsList.innerHTML = '<div style="padding: 32px; text-align: center; color: var(--text-dim);">등록된 커스텀 노래가 없습니다</div>';
+                return;
+            }
 
-        if (songs.length === 0) {
-            elements.searchResultsList.innerHTML = '<div style="padding: 32px; text-align: center; color: var(--text-dim);">등록된 커스텀 노래가 없습니다</div>';
-            return;
-        }
-
-        const songsHtml = songs.map(song => `
-            <div class="song-item" data-song='${JSON.stringify({id: song.id, externalId: song.song_external_id, title: song.title, artist: song.artist_name || '', isCustom: true})}'>
+            const songsHtml = songs.map(song => `
+            <div class="song-item" data-song='${JSON.stringify({ id: song.id, externalId: song.song_external_id, title: song.title, artist: song.artist_name || '', isCustom: true })}'>
                 <img class="song-cover" src="${song.cover_image_url || ''}" alt="" loading="lazy" onerror="this.style.background='linear-gradient(135deg,#10b981 0%,#059669 100%)';this.style.visibility='hidden'">
                 <div class="song-info">
                     <div class="song-title">${escapeHtml(song.title)}</div>
@@ -1943,21 +1963,21 @@
             </div>
         `).join('');
 
-        const loadingIndicator = state.searchHasMore ? '<div class="search-load-more"><div class="spinner-small"></div></div>' : '';
-        elements.searchResultsList.innerHTML = songsHtml + loadingIndicator;
+            const loadingIndicator = state.searchHasMore ? '<div class="search-load-more"><div class="spinner-small"></div></div>' : '';
+            elements.searchResultsList.innerHTML = songsHtml + loadingIndicator;
 
-        // Event delegation
-        elements.searchResultsList.querySelectorAll('.song-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const data = JSON.parse(item.dataset.song);
-                showLyricsModal(data.externalId, data.title, data.artist);
+            // Event delegation
+            elements.searchResultsList.querySelectorAll('.song-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const data = JSON.parse(item.dataset.song);
+                    showLyricsModal(data.externalId, data.title, data.artist);
+                });
             });
-        });
-    }
+        }
 
-    function renderSearchSkeleton() {
-        elements.searchResultsHeader.textContent = '검색 중...';
-        elements.searchResultsList.innerHTML = Array(5).fill().map(() => `
+        function renderSearchSkeleton() {
+            elements.searchResultsHeader.textContent = '검색 중...';
+            elements.searchResultsList.innerHTML = Array(5).fill().map(() => `
             <div class="song-item-skeleton">
                 <div class="skeleton cover"></div>
                 <div class="info">
@@ -1966,19 +1986,19 @@
                 </div>
             </div>
         `).join('');
-    }
-
-    function renderSearchResults(songs, total, query, loadMore = false) {
-        const count = total || songs.length;
-        elements.searchResultsHeader.textContent = songs.length > 0 ? `"${query}" 검색 결과 (${count}개)` : '검색 결과 없음';
-
-        if (songs.length === 0) {
-            elements.searchResultsList.innerHTML = '<div style="padding: 32px; text-align: center; color: var(--text-dim);">일치하는 노래가 없습니다</div>';
-            return;
         }
 
-        const songsHtml = songs.map(song => `
-            <div class="song-item" data-song='${JSON.stringify({id: song.id, externalId: song.song_external_id, title: song.title, artist: song.artist_name || ''})}'>
+        function renderSearchResults(songs, total, query, loadMore = false) {
+            const count = total || songs.length;
+            elements.searchResultsHeader.textContent = songs.length > 0 ? `"${query}" 검색 결과 (${count}개)` : '검색 결과 없음';
+
+            if (songs.length === 0) {
+                elements.searchResultsList.innerHTML = '<div style="padding: 32px; text-align: center; color: var(--text-dim);">일치하는 노래가 없습니다</div>';
+                return;
+            }
+
+            const songsHtml = songs.map(song => `
+            <div class="song-item" data-song='${JSON.stringify({ id: song.id, externalId: song.song_external_id, title: song.title, artist: song.artist_name || '' })}'>
                 <img class="song-cover" src="${song.cover_image_url || ''}" alt="" loading="lazy" onerror="this.style.background='linear-gradient(135deg,#667eea 0%,#764ba2 100%)';this.style.visibility='hidden'">
                 <div class="song-info">
                     <div class="song-title">${escapeHtml(song.title)}</div>
@@ -1988,45 +2008,45 @@
             </div>
         `).join('');
 
-        const loadingIndicator = state.searchHasMore ? '<div class="search-load-more"><div class="spinner-small"></div></div>' : '';
-        elements.searchResultsList.innerHTML = songsHtml + loadingIndicator;
+            const loadingIndicator = state.searchHasMore ? '<div class="search-load-more"><div class="spinner-small"></div></div>' : '';
+            elements.searchResultsList.innerHTML = songsHtml + loadingIndicator;
 
-        // Event delegation
-        elements.searchResultsList.querySelectorAll('.song-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const data = JSON.parse(item.dataset.song);
-                showLyricsModal(data.externalId, data.title, data.artist);
+            // Event delegation
+            elements.searchResultsList.querySelectorAll('.song-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const data = JSON.parse(item.dataset.song);
+                    showLyricsModal(data.externalId, data.title, data.artist);
+                });
             });
-        });
-    }
-
-    // Lyrics Modal
-    async function showLyricsModal(songExternalId, songTitle, artistName) {
-        elements.modalSongTitle.textContent = artistName ? `${songTitle} - ${artistName}` : songTitle;
-        elements.lyricsModal.classList.add('active');
-        elements.lyricsListContainer.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-
-        // 현재 모달에서 사용할 곡 정보 저장
-        state.currentModalSong = { songExternalId, songTitle, artistName };
-
-        try {
-            const response = await fetch(`/api/v1/lyrics/?song_external_id=${encodeURIComponent(songExternalId)}`);
-            const lyrics = await response.json();
-
-            if (lyrics.length > 0) {
-                renderLyricsList(lyrics, songExternalId, songTitle, artistName);
-            } else {
-                renderNoLyricsOption(songExternalId, songTitle, artistName);
-            }
-        } catch (error) {
-            console.error('Failed to load lyrics:', error);
-            elements.lyricsListContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #dc2626;">가사를 불러오는데 실패했습니다</div>';
         }
-    }
 
-    // 가사 없이 추가 옵션 렌더링
-    function renderNoLyricsOption(songExternalId, songTitle, artistName) {
-        elements.lyricsListContainer.innerHTML = `
+        // Lyrics Modal
+        async function showLyricsModal(songExternalId, songTitle, artistName) {
+            elements.modalSongTitle.textContent = artistName ? `${songTitle} - ${artistName}` : songTitle;
+            elements.lyricsModal.classList.add('active');
+            elements.lyricsListContainer.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            // 현재 모달에서 사용할 곡 정보 저장
+            state.currentModalSong = { songExternalId, songTitle, artistName };
+
+            try {
+                const response = await fetch(`/api/v1/lyrics/?song_external_id=${encodeURIComponent(songExternalId)}`);
+                const lyrics = await response.json();
+
+                if (lyrics.length > 0) {
+                    renderLyricsList(lyrics, songExternalId, songTitle, artistName);
+                } else {
+                    renderNoLyricsOption(songExternalId, songTitle, artistName);
+                }
+            } catch (error) {
+                console.error('Failed to load lyrics:', error);
+                elements.lyricsListContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #dc2626;">가사를 불러오는데 실패했습니다</div>';
+            }
+        }
+
+        // 가사 없이 추가 옵션 렌더링
+        function renderNoLyricsOption(songExternalId, songTitle, artistName) {
+            elements.lyricsListContainer.innerHTML = `
             <div style="text-align: center; padding: 48px 24px; color: var(--text-dim);">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px; opacity: 0.5;">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -2046,87 +2066,87 @@
             </div>
         `;
 
-        document.getElementById('addWithoutLyricsBtn').addEventListener('click', () => {
-            addWithoutLyrics(songExternalId, songTitle, artistName);
-        });
-    }
+            document.getElementById('addWithoutLyricsBtn').addEventListener('click', () => {
+                addWithoutLyrics(songExternalId, songTitle, artistName);
+            });
+        }
 
-    // 저장된 영상 선택 정보 관리
-    const savedVideoSelections = JSON.parse(localStorage.getItem('saved_video_selections') || '{}');
+        // 저장된 영상 선택 정보 관리
+        const savedVideoSelections = JSON.parse(localStorage.getItem('saved_video_selections') || '{}');
 
-    function saveVideoSelection(songExternalId, videoId, videoTitle, channelTitle, thumbnailUrl) {
-        savedVideoSelections[songExternalId] = {
-            videoId,
-            videoTitle,
-            channelTitle,
-            thumbnailUrl,
-            savedAt: Date.now()
-        };
-        localStorage.setItem('saved_video_selections', JSON.stringify(savedVideoSelections));
-    }
+        function saveVideoSelection(songExternalId, videoId, videoTitle, channelTitle, thumbnailUrl) {
+            savedVideoSelections[songExternalId] = {
+                videoId,
+                videoTitle,
+                channelTitle,
+                thumbnailUrl,
+                savedAt: Date.now()
+            };
+            localStorage.setItem('saved_video_selections', JSON.stringify(savedVideoSelections));
+        }
 
-    function getSavedVideoSelection(songExternalId) {
-        return savedVideoSelections[songExternalId] || null;
-    }
+        function getSavedVideoSelection(songExternalId) {
+            return savedVideoSelections[songExternalId] || null;
+        }
 
-    // 가사 없이 추가 - 영상 선택 모달 표시
-    async function addWithoutLyrics(songExternalId, songTitle, artistName) {
-        // 가사 모달 닫기
-        closeModal();
+        // 가사 없이 추가 - 영상 선택 모달 표시
+        async function addWithoutLyrics(songExternalId, songTitle, artistName) {
+            // 가사 모달 닫기
+            closeModal();
 
-        // 영상 선택 모달 열기
-        state.currentModalSong = { songExternalId, songTitle, artistName };
-        const videoModal = $('#videoModal');
-        const videoModalTitle = $('#videoModalTitle');
-        const videoSearchInput = $('#videoSearchInput');
-        const videoSearchResults = $('#videoSearchResults');
+            // 영상 선택 모달 열기
+            state.currentModalSong = { songExternalId, songTitle, artistName };
+            const videoModal = $('#videoModal');
+            const videoModalTitle = $('#videoModalTitle');
+            const videoSearchInput = $('#videoSearchInput');
+            const videoSearchResults = $('#videoSearchResults');
 
-        videoModalTitle.textContent = `영상 선택 - ${songTitle}`;
-        videoSearchInput.value = `${songTitle} ${artistName || ''} MR`.trim();
-        videoModal.classList.add('active');
+            videoModalTitle.textContent = `영상 선택 - ${songTitle}`;
+            videoSearchInput.value = `${songTitle} ${artistName || ''} MR`.trim();
+            videoModal.classList.add('active');
 
-        // 자동 검색
-        await searchVideosForSelection();
-    }
+            // 자동 검색
+            await searchVideosForSelection();
+        }
 
-    // 영상 검색
-    async function searchVideosForSelection() {
-        const query = $('#videoSearchInput').value.trim();
-        if (!query) return;
+        // 영상 검색
+        async function searchVideosForSelection() {
+            const query = $('#videoSearchInput').value.trim();
+            if (!query) return;
 
-        const resultsDiv = $('#videoSearchResults');
-        resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            const resultsDiv = $('#videoSearchResults');
+            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
-        try {
-            const response = await fetch(`/api/v1/youtube/search?q=${encodeURIComponent(query)}`);
-            const videos = await response.json();
+            try {
+                const response = await fetch(`/api/v1/youtube/search?q=${encodeURIComponent(query)}`);
+                const videos = await response.json();
 
-            if (!videos || videos.length === 0) {
-                resultsDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-dim);">검색 결과가 없습니다</div>';
-                return;
-            }
+                if (!videos || videos.length === 0) {
+                    resultsDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-dim);">검색 결과가 없습니다</div>';
+                    return;
+                }
 
-            // 이전에 선택한 영상 확인
-            const savedVideo = getSavedVideoSelection(state.currentModalSong.songExternalId);
-            let videosToShow = [...videos];
+                // 이전에 선택한 영상 확인
+                const savedVideo = getSavedVideoSelection(state.currentModalSong.songExternalId);
+                let videosToShow = [...videos];
 
-            // 저장된 영상이 있으면 맨 위에 추가 (중복 제거)
-            if (savedVideo) {
-                videosToShow = videosToShow.filter(v => v.video_id !== savedVideo.videoId);
-                videosToShow.unshift({
-                    video_id: savedVideo.videoId,
-                    title: savedVideo.videoTitle,
-                    channel_title: savedVideo.channelTitle,
-                    thumbnails: { medium: { url: savedVideo.thumbnailUrl } },
-                    isPreviouslyUsed: true
-                });
-            }
+                // 저장된 영상이 있으면 맨 위에 추가 (중복 제거)
+                if (savedVideo) {
+                    videosToShow = videosToShow.filter(v => v.video_id !== savedVideo.videoId);
+                    videosToShow.unshift({
+                        video_id: savedVideo.videoId,
+                        title: savedVideo.videoTitle,
+                        channel_title: savedVideo.channelTitle,
+                        thumbnails: { medium: { url: savedVideo.thumbnailUrl } },
+                        isPreviouslyUsed: true
+                    });
+                }
 
-            resultsDiv.innerHTML = videosToShow.map((v, idx) => {
-                const thumbUrl = v.thumbnails?.medium?.url || v.thumbnails?.default?.url || '';
-                const isPrevious = v.isPreviouslyUsed;
+                resultsDiv.innerHTML = videosToShow.map((v, idx) => {
+                    const thumbUrl = v.thumbnails?.medium?.url || v.thumbnails?.default?.url || '';
+                    const isPrevious = v.isPreviouslyUsed;
 
-                return `
+                    return `
                     <div class="video-result-item ${isPrevious ? 'previously-used' : ''}"
                          style="position: relative;"
                          data-video-id="${v.video_id}"
@@ -2141,57 +2161,57 @@
                         </div>
                     </div>
                 `;
-            }).join('');
+                }).join('');
 
-            // 클릭 이벤트 추가
-            resultsDiv.querySelectorAll('.video-result-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const videoId = item.dataset.videoId;
-                    const videoTitle = item.dataset.videoTitle;
-                    const channelTitle = item.dataset.channelTitle;
-                    const thumbnailUrl = item.dataset.thumbnailUrl;
+                // 클릭 이벤트 추가
+                resultsDiv.querySelectorAll('.video-result-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const videoId = item.dataset.videoId;
+                        const videoTitle = item.dataset.videoTitle;
+                        const channelTitle = item.dataset.channelTitle;
+                        const thumbnailUrl = item.dataset.thumbnailUrl;
 
-                    selectVideoAndAdd(videoId, videoTitle, channelTitle, thumbnailUrl);
+                        selectVideoAndAdd(videoId, videoTitle, channelTitle, thumbnailUrl);
+                    });
                 });
-            });
 
-        } catch (error) {
-            console.error('Failed to search videos:', error);
-            resultsDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: #dc2626;">검색 중 오류가 발생했습니다</div>';
+            } catch (error) {
+                console.error('Failed to search videos:', error);
+                resultsDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: #dc2626;">검색 중 오류가 발생했습니다</div>';
+            }
         }
-    }
 
-    // 영상 선택 및 추가
-    function selectVideoAndAdd(videoId, videoTitle, channelTitle, thumbnailUrl) {
-        const { songExternalId, songTitle, artistName } = state.currentModalSong;
+        // 영상 선택 및 추가
+        function selectVideoAndAdd(videoId, videoTitle, channelTitle, thumbnailUrl) {
+            const { songExternalId, songTitle, artistName } = state.currentModalSong;
 
-        // 선택한 영상 저장
-        saveVideoSelection(songExternalId, videoId, videoTitle, channelTitle, thumbnailUrl);
+            // 선택한 영상 저장
+            saveVideoSelection(songExternalId, videoId, videoTitle, channelTitle, thumbnailUrl);
 
-        // 재생목록에 추가
-        addToPlaylist(null, songExternalId, songTitle, artistName, videoId, null);
+            // 재생목록에 추가
+            addToPlaylist(null, songExternalId, songTitle, artistName, videoId, null);
 
-        // 영상 모달 닫기
-        closeVideoModal();
-    }
+            // 영상 모달 닫기
+            closeVideoModal();
+        }
 
-    function closeVideoModal() {
-        $('#videoModal').classList.remove('active');
-    }
+        function closeVideoModal() {
+            $('#videoModal').classList.remove('active');
+        }
 
-    // 플레이어 표시 제어
-    function showPlayer() {
-        $('#videoPlaceholder').style.display = 'none';
-        $('#playerContainer').style.display = 'block';
-    }
+        // 플레이어 표시 제어
+        function showPlayer() {
+            $('#videoPlaceholder').style.display = 'none';
+            $('#playerContainer').style.display = 'block';
+        }
 
-    function showPlaceholder() {
-        $('#videoPlaceholder').style.display = 'flex';
-        $('#playerContainer').style.display = 'none';
-    }
+        function showPlaceholder() {
+            $('#videoPlaceholder').style.display = 'flex';
+            $('#playerContainer').style.display = 'none';
+        }
 
-    function renderLyricsList(lyrics, songExternalId, songTitle, artistName) {
-        let html = lyrics.map(l => `
+        function renderLyricsList(lyrics, songExternalId, songTitle, artistName) {
+            let html = lyrics.map(l => `
             <div class="lyrics-list-item" data-lyrics='${JSON.stringify({
                 id: l.id,
                 songExternalId: songExternalId,
@@ -2230,8 +2250,8 @@
             </div>
         `).join('');
 
-        // 가사 없이 추가 옵션
-        html += `
+            // 가사 없이 추가 옵션
+            html += `
             <div style="border-top: 1px solid var(--border-color); margin-top: 16px; padding-top: 16px; text-align: center;">
                 <button class="btn-select" id="addWithoutLyricsBtn" style="background: #6b7280;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
@@ -2244,108 +2264,108 @@
             </div>
         `;
 
-        elements.lyricsListContainer.innerHTML = html;
+            elements.lyricsListContainer.innerHTML = html;
 
-        // Event delegation
-        elements.lyricsListContainer.querySelectorAll('.lyrics-list-item').forEach(item => {
-            const data = JSON.parse(item.dataset.lyrics);
+            // Event delegation
+            elements.lyricsListContainer.querySelectorAll('.lyrics-list-item').forEach(item => {
+                const data = JSON.parse(item.dataset.lyrics);
 
-            item.querySelector('[data-add]').addEventListener('click', (e) => {
-                e.stopPropagation();
-                addToPlaylist(data.id, data.songExternalId, data.songTitle, data.artistName, data.videoId, data.title);
+                item.querySelector('[data-add]').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    addToPlaylist(data.id, data.songExternalId, data.songTitle, data.artistName, data.videoId, data.title);
+                });
+
+                item.querySelector('[data-favorite]').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleFavorite(parseInt(e.currentTarget.dataset.favorite), e.currentTarget);
+                });
             });
 
-            item.querySelector('[data-favorite]').addEventListener('click', (e) => {
-                e.stopPropagation();
-                toggleFavorite(parseInt(e.currentTarget.dataset.favorite), e.currentTarget);
+            // 가사 없이 추가 버튼
+            document.getElementById('addWithoutLyricsBtn').addEventListener('click', () => {
+                addWithoutLyrics(songExternalId, songTitle, artistName);
             });
-        });
-
-        // 가사 없이 추가 버튼
-        document.getElementById('addWithoutLyricsBtn').addEventListener('click', () => {
-            addWithoutLyrics(songExternalId, songTitle, artistName);
-        });
-    }
-
-    // Playlist Management
-    function addToPlaylist(lyricsId, songId, songTitle, artistName, videoId, lyricsTitle) {
-        // 중복 체크: lyricsId가 있으면 lyricsId로, 없으면 songId+videoId로 체크
-        const isDuplicate = state.playlist.some(item => {
-            if (lyricsId && item.lyricsId) {
-                return item.lyricsId === lyricsId;
-            }
-            return item.songId === songId && item.videoId === videoId;
-        });
-
-        if (isDuplicate) {
-            showToast('이미 리스트에 있습니다', 'error');
-            return;
         }
 
-        state.playlist.push({ lyricsId, songId, songTitle, artistName, videoId, lyricsTitle });
-        savePlaylist();
-        renderPlaylist();
-        closeModal();
-        elements.searchResults.classList.remove('active');
-        showToast(`"${songTitle}" 추가됨`, 'success');
-    }
+        // Playlist Management
+        function addToPlaylist(lyricsId, songId, songTitle, artistName, videoId, lyricsTitle) {
+            // 중복 체크: lyricsId가 있으면 lyricsId로, 없으면 songId+videoId로 체크
+            const isDuplicate = state.playlist.some(item => {
+                if (lyricsId && item.lyricsId) {
+                    return item.lyricsId === lyricsId;
+                }
+                return item.songId === songId && item.videoId === videoId;
+            });
 
-    function removeFromPlaylist(index) {
-        const removed = state.playlist[index];
-        state.playlist.splice(index, 1);
+            if (isDuplicate) {
+                showToast('이미 리스트에 있습니다', 'error');
+                return;
+            }
 
-        if (state.currentPlayingIndex === index) {
+            state.playlist.push({ lyricsId, songId, songTitle, artistName, videoId, lyricsTitle });
+            savePlaylist();
+            renderPlaylist();
+            closeModal();
+            elements.searchResults.classList.remove('active');
+            showToast(`"${songTitle}" 추가됨`, 'success');
+        }
+
+        function removeFromPlaylist(index) {
+            const removed = state.playlist[index];
+            state.playlist.splice(index, 1);
+
+            if (state.currentPlayingIndex === index) {
+                state.currentPlayingIndex = -1;
+                elements.nowPlayingInfo.classList.remove('active');
+            } else if (state.currentPlayingIndex > index) {
+                state.currentPlayingIndex--;
+            }
+
+            savePlaylist();
+            renderPlaylist();
+            updateControlButtons();
+            showToast(`"${removed.songTitle}" 삭제됨`);
+        }
+
+        function clearPlaylist() {
+            if (!confirm('재생 목록을 모두 삭제하시겠습니까?')) return;
+            state.playlist = [];
             state.currentPlayingIndex = -1;
             elements.nowPlayingInfo.classList.remove('active');
-        } else if (state.currentPlayingIndex > index) {
-            state.currentPlayingIndex--;
+            savePlaylist();
+            renderPlaylist();
+            updateControlButtons();
+            showToast('재생 목록이 비워졌습니다');
         }
 
-        savePlaylist();
-        renderPlaylist();
-        updateControlButtons();
-        showToast(`"${removed.songTitle}" 삭제됨`);
-    }
+        function savePlaylist() {
+            localStorage.setItem('overlay_playlist', JSON.stringify(state.playlist));
+            syncPlaylistToOBS();
+        }
 
-    function clearPlaylist() {
-        if (!confirm('재생 목록을 모두 삭제하시겠습니까?')) return;
-        state.playlist = [];
-        state.currentPlayingIndex = -1;
-        elements.nowPlayingInfo.classList.remove('active');
-        savePlaylist();
-        renderPlaylist();
-        updateControlButtons();
-        showToast('재생 목록이 비워졌습니다');
-    }
+        function renderPlaylist() {
+            const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
+            elements.playlistCount.textContent = `${items.length}곡`;
+            elements.clearPlaylistBtn.style.display = state.currentTab === 'playlist' && items.length > 0 ? 'block' : 'none';
 
-    function savePlaylist() {
-        localStorage.setItem('overlay_playlist', JSON.stringify(state.playlist));
-        syncPlaylistToOBS();
-    }
-
-    function renderPlaylist() {
-        const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
-        elements.playlistCount.textContent = `${items.length}곡`;
-        elements.clearPlaylistBtn.style.display = state.currentTab === 'playlist' && items.length > 0 ? 'block' : 'none';
-
-        if (items.length === 0) {
-            elements.playlistItems.innerHTML = `
+            if (items.length === 0) {
+                elements.playlistItems.innerHTML = `
                 <div class="playlist-empty">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         ${state.currentTab === 'playlist' ?
-                            '<path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle>' :
-                            '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'}
+                        '<path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle>' :
+                        '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'}
                     </svg>
                     ${state.currentTab === 'playlist' ? '노래를 검색하여 리스트에 추가하세요' : '즐겨찾기한 가사가 없습니다'}
                 </div>
             `;
-            return;
-        }
+                return;
+            }
 
-        elements.playlistItems.innerHTML = items.map((item, index) => {
-            const isActive = index === state.currentPlayingIndex && state.currentTab === 'playlist';
-            const videoId = item.videoId || item.mr_youtube_video_id;
-            return `
+            elements.playlistItems.innerHTML = items.map((item, index) => {
+                const isActive = index === state.currentPlayingIndex && state.currentTab === 'playlist';
+                const videoId = item.videoId || item.mr_youtube_video_id;
+                return `
                 <div class="playlist-item ${isActive ? 'active playing' : ''}"
                      draggable="${state.currentTab === 'playlist'}"
                      data-index="${index}">
@@ -2372,740 +2392,740 @@
                     ` : ''}
                 </div>
             `;
-        }).join('');
+            }).join('');
 
-        // Event delegation
-        elements.playlistItems.querySelectorAll('.playlist-item').forEach(item => {
-            const index = parseInt(item.dataset.index);
+            // Event delegation
+            elements.playlistItems.querySelectorAll('.playlist-item').forEach(item => {
+                const index = parseInt(item.dataset.index);
 
-            item.addEventListener('click', (e) => {
-                if (!e.target.closest('.playlist-item-remove') && !e.target.closest('.playlist-drag-handle')) {
-                    playItem(index);
-                }
-            });
-
-            const removeBtn = item.querySelector('.playlist-item-remove');
-            if (removeBtn) {
-                removeBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    removeFromPlaylist(parseInt(e.currentTarget.dataset.remove));
+                item.addEventListener('click', (e) => {
+                    if (!e.target.closest('.playlist-item-remove') && !e.target.closest('.playlist-drag-handle')) {
+                        playItem(index);
+                    }
                 });
+
+                const removeBtn = item.querySelector('.playlist-item-remove');
+                if (removeBtn) {
+                    removeBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        removeFromPlaylist(parseInt(e.currentTarget.dataset.remove));
+                    });
+                }
+            });
+
+            if (state.currentTab === 'playlist') {
+                setupDragAndDrop();
             }
-        });
-
-        if (state.currentTab === 'playlist') {
-            setupDragAndDrop();
-        }
-    }
-
-    function setupDragAndDrop() {
-        let draggedItem = null;
-        let draggedIndex = -1;
-
-        elements.playlistItems.querySelectorAll('.playlist-item').forEach(item => {
-            item.addEventListener('dragstart', (e) => {
-                draggedItem = item;
-                draggedIndex = parseInt(item.dataset.index);
-                item.classList.add('dragging');
-                e.dataTransfer.effectAllowed = 'move';
-            });
-
-            item.addEventListener('dragend', () => {
-                item.classList.remove('dragging');
-                draggedItem = null;
-                draggedIndex = -1;
-            });
-
-            item.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                if (!draggedItem || draggedItem === item) return;
-
-                const rect = item.getBoundingClientRect();
-                const midY = rect.top + rect.height / 2;
-                if (e.clientY < midY) {
-                    item.parentNode.insertBefore(draggedItem, item);
-                } else {
-                    item.parentNode.insertBefore(draggedItem, item.nextSibling);
-                }
-            });
-
-            item.addEventListener('drop', () => {
-                const newOrder = Array.from(elements.playlistItems.querySelectorAll('.playlist-item'))
-                    .map(el => parseInt(el.dataset.index));
-
-                const newPlaylist = newOrder.map(i => state.playlist[i]);
-
-                // Update current playing index
-                if (state.currentPlayingIndex !== -1) {
-                    state.currentPlayingIndex = newOrder.indexOf(state.currentPlayingIndex);
-                }
-
-                state.playlist = newPlaylist;
-                savePlaylist();
-                renderPlaylist();
-            });
-        });
-    }
-
-    // Play Item
-    async function playItem(index) {
-        const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
-        if (index < 0 || index >= items.length) return;
-
-        state.currentPlayingIndex = index;
-        const item = items[index];
-        const videoId = item.videoId || item.mr_youtube_video_id;
-        const songTitle = item.songTitle || item.song_title;
-        const artistName = item.artistName || item.artist_name || '';
-
-        // Store current song info for sync
-        state.currentSongTitle = songTitle;
-        state.currentArtist = artistName;
-
-        // Update UI
-        elements.nowPlayingInfo.classList.add('active');
-        elements.nowPlayingTitle.textContent = songTitle + (artistName ? ` - ${artistName}` : '');
-
-        // Load video (cue only, don't auto-play)
-        if (state.isPlayerReady && state.ytPlayer.cueVideoById) {
-            state.ytPlayer.cueVideoById(videoId);
-            showPlayer();
         }
 
-        // Load lyrics (if available)
-        const lyricsId = item.lyricsId || item.id;
-        if (lyricsId) {
-            try {
-                const response = await fetch(`/api/v1/lyrics/${lyricsId}`);
-                state.currentLyrics = await response.json();
-                if (state.currentLyrics.lyrics_data) {
-                    state.currentLyrics.parsedLyrics = JSON.parse(state.currentLyrics.lyrics_data);
+        function setupDragAndDrop() {
+            let draggedItem = null;
+            let draggedIndex = -1;
+
+            elements.playlistItems.querySelectorAll('.playlist-item').forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    draggedItem = item;
+                    draggedIndex = parseInt(item.dataset.index);
+                    item.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                item.addEventListener('dragend', () => {
+                    item.classList.remove('dragging');
+                    draggedItem = null;
+                    draggedIndex = -1;
+                });
+
+                item.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    if (!draggedItem || draggedItem === item) return;
+
+                    const rect = item.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+                    if (e.clientY < midY) {
+                        item.parentNode.insertBefore(draggedItem, item);
+                    } else {
+                        item.parentNode.insertBefore(draggedItem, item.nextSibling);
+                    }
+                });
+
+                item.addEventListener('drop', () => {
+                    const newOrder = Array.from(elements.playlistItems.querySelectorAll('.playlist-item'))
+                        .map(el => parseInt(el.dataset.index));
+
+                    const newPlaylist = newOrder.map(i => state.playlist[i]);
+
+                    // Update current playing index
+                    if (state.currentPlayingIndex !== -1) {
+                        state.currentPlayingIndex = newOrder.indexOf(state.currentPlayingIndex);
+                    }
+
+                    state.playlist = newPlaylist;
+                    savePlaylist();
+                    renderPlaylist();
+                });
+            });
+        }
+
+        // Play Item
+        async function playItem(index) {
+            const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
+            if (index < 0 || index >= items.length) return;
+
+            state.currentPlayingIndex = index;
+            const item = items[index];
+            const videoId = item.videoId || item.mr_youtube_video_id;
+            const songTitle = item.songTitle || item.song_title;
+            const artistName = item.artistName || item.artist_name || '';
+
+            // Store current song info for sync
+            state.currentSongTitle = songTitle;
+            state.currentArtist = artistName;
+
+            // Update UI
+            elements.nowPlayingInfo.classList.add('active');
+            elements.nowPlayingTitle.textContent = songTitle + (artistName ? ` - ${artistName}` : '');
+
+            // Load video (cue only, don't auto-play)
+            if (state.isPlayerReady && state.ytPlayer.cueVideoById) {
+                state.ytPlayer.cueVideoById(videoId);
+                showPlayer();
+            }
+
+            // Load lyrics (if available)
+            const lyricsId = item.lyricsId || item.id;
+            if (lyricsId) {
+                try {
+                    const response = await fetch(`/api/v1/lyrics/${lyricsId}`);
+                    state.currentLyrics = await response.json();
+                    if (state.currentLyrics.lyrics_data) {
+                        state.currentLyrics.parsedLyrics = JSON.parse(state.currentLyrics.lyrics_data);
+                    }
+                    // 가사 로드 완료, 재생 대기
+                    elements.lyricsDisplay.innerHTML = '<p class="lyrics-display-empty">영상을 재생하면 가사가 표시됩니다</p>';
+                } catch (error) {
+                    console.error('Failed to load lyrics:', error);
+                    state.currentLyrics = null;
                 }
-                // 가사 로드 완료, 재생 대기
-                elements.lyricsDisplay.innerHTML = '<p class="lyrics-display-empty">영상을 재생하면 가사가 표시됩니다</p>';
-            } catch (error) {
-                console.error('Failed to load lyrics:', error);
+            } else {
+                // 가사 없이 추가된 곡
                 state.currentLyrics = null;
-            }
-        } else {
-            // 가사 없이 추가된 곡
-            state.currentLyrics = null;
-            elements.lyricsDisplay.innerHTML = `
+                elements.lyricsDisplay.innerHTML = `
                 <div class="current-lyrics" style="opacity: 0.5;">
                     <p class="lyrics-line current" style="font-size: 1.2rem;">가사 없이 재생</p>
                 </div>
             `;
+            }
+
+            // OBS에 곡 정보 동기화 (대기 상태)
+            syncToOBS({
+                prev: '',
+                current: '',
+                next: '',
+                songTitle: state.currentSongTitle,
+                artist: state.currentArtist
+            });
+
+            renderPlaylist();
+            updateControlButtons();
+            syncPlaylistToOBS();
         }
 
-        // OBS에 곡 정보 동기화 (대기 상태)
-        syncToOBS({
-            prev: '',
-            current: '',
-            next: '',
-            songTitle: state.currentSongTitle,
-            artist: state.currentArtist
-        });
+        // Lyrics Sync with requestAnimationFrame
+        function startLyricsSync() {
+            stopLyricsSync();
 
-        renderPlaylist();
-        updateControlButtons();
-        syncPlaylistToOBS();
-    }
+            let lastTime = 0;
 
-    // Lyrics Sync with requestAnimationFrame
-    function startLyricsSync() {
-        stopLyricsSync();
+            function syncFrame() {
+                if (!state.ytPlayer || !state.isPlaying) return;
 
-        let lastTime = 0;
+                const currentTime = state.ytPlayer.getCurrentTime() * 1000;
+                const duration = state.ytPlayer.getDuration();
 
-        function syncFrame() {
-            if (!state.ytPlayer || !state.isPlaying) return;
+                // 시간 점프 감지 (1.5초 이상 차이나면 시크로 판단)
+                const timeDiff = Math.abs(currentTime - lastTime);
+                const isSeek = timeDiff > 1500 && lastTime > 0;
+                lastTime = currentTime;
 
-            const currentTime = state.ytPlayer.getCurrentTime() * 1000;
-            const duration = state.ytPlayer.getDuration();
+                // Update progress
+                const percent = (currentTime / (duration * 1000)) * 100;
+                elements.progressFill.style.width = `${Math.min(percent, 100)}%`;
+                elements.currentTimeEl.textContent = formatTime(currentTime / 1000);
+                elements.durationEl.textContent = formatTime(duration);
 
-            // 시간 점프 감지 (1.5초 이상 차이나면 시크로 판단)
-            const timeDiff = Math.abs(currentTime - lastTime);
-            const isSeek = timeDiff > 1500 && lastTime > 0;
-            lastTime = currentTime;
+                // Find current lyrics with offset applied
+                if (state.currentLyrics?.parsedLyrics) {
+                    const lyrics = state.currentLyrics.parsedLyrics;
 
-            // Update progress
-            const percent = (currentTime / (duration * 1000)) * 100;
-            elements.progressFill.style.width = `${Math.min(percent, 100)}%`;
-            elements.currentTimeEl.textContent = formatTime(currentTime / 1000);
-            elements.durationEl.textContent = formatTime(duration);
+                    // 로컬 오프셋 적용 (양수: 가사가 빨리 표시됨, 음수: 가사가 늦게 표시됨)
+                    const localTime = currentTime + state.localOffset;
+                    let localIndex = findLyricsIndex(lyrics, localTime);
 
-            // Find current lyrics with offset applied
-            if (state.currentLyrics?.parsedLyrics) {
-                const lyrics = state.currentLyrics.parsedLyrics;
+                    // OBS 오프셋 적용
+                    const obsTime = currentTime + state.obsOffset;
+                    let obsIndex = findLyricsIndex(lyrics, obsTime);
 
-                // 로컬 오프셋 적용 (양수: 가사가 빨리 표시됨, 음수: 가사가 늦게 표시됨)
-                const localTime = currentTime + state.localOffset;
-                let localIndex = findLyricsIndex(lyrics, localTime);
+                    // 로컬 가사 업데이트
+                    if (isSeek || localIndex !== state.lastLyricsIndex) {
+                        state.lastLyricsIndex = localIndex;
+                        renderLocalLyrics(localIndex, lyrics);
+                    }
 
-                // OBS 오프셋 적용
-                const obsTime = currentTime + state.obsOffset;
-                let obsIndex = findLyricsIndex(lyrics, obsTime);
-
-                // 로컬 가사 업데이트
-                if (isSeek || localIndex !== state.lastLyricsIndex) {
-                    state.lastLyricsIndex = localIndex;
-                    renderLocalLyrics(localIndex, lyrics);
+                    // OBS 가사 업데이트
+                    if (isSeek || obsIndex !== state.lastObsLyricsIndex) {
+                        state.lastObsLyricsIndex = obsIndex;
+                        syncObsLyrics(obsIndex, lyrics);
+                    }
                 }
 
-                // OBS 가사 업데이트
-                if (isSeek || obsIndex !== state.lastObsLyricsIndex) {
-                    state.lastObsLyricsIndex = obsIndex;
-                    syncObsLyrics(obsIndex, lyrics);
-                }
+                state.animationFrameId = requestAnimationFrame(syncFrame);
             }
 
             state.animationFrameId = requestAnimationFrame(syncFrame);
         }
 
-        state.animationFrameId = requestAnimationFrame(syncFrame);
-    }
+        // 가사 인덱스 찾기 헬퍼 함수
+        function findLyricsIndex(lyrics, time) {
+            for (let i = 0; i < lyrics.length; i++) {
+                if (time >= lyrics[i].start && time < lyrics[i].end) {
+                    return i;
+                }
+            }
+            return -1;
+        }
 
-    // 가사 인덱스 찾기 헬퍼 함수
-    function findLyricsIndex(lyrics, time) {
-        for (let i = 0; i < lyrics.length; i++) {
-            if (time >= lyrics[i].start && time < lyrics[i].end) {
-                return i;
+        // 시간 이동 시 가사 강제 업데이트
+        function forceUpdateLyrics() {
+            state.lastLyricsIndex = -2;  // 강제 업데이트를 위해 유효하지 않은 값으로 설정
+            state.lastObsLyricsIndex = -2;
+            if (state.currentLyrics?.parsedLyrics && state.ytPlayer) {
+                const currentTime = state.ytPlayer.getCurrentTime() * 1000;
+                const lyrics = state.currentLyrics.parsedLyrics;
+
+                // 로컬 오프셋 적용
+                const localTime = currentTime + state.localOffset;
+                const localIndex = findLyricsIndex(lyrics, localTime);
+                state.lastLyricsIndex = localIndex;
+                renderLocalLyrics(localIndex, lyrics);
+
+                // OBS 오프셋 적용
+                const obsTime = currentTime + state.obsOffset;
+                const obsIndex = findLyricsIndex(lyrics, obsTime);
+                state.lastObsLyricsIndex = obsIndex;
+                syncObsLyrics(obsIndex, lyrics);
             }
         }
-        return -1;
-    }
 
-    // 시간 이동 시 가사 강제 업데이트
-    function forceUpdateLyrics() {
-        state.lastLyricsIndex = -2;  // 강제 업데이트를 위해 유효하지 않은 값으로 설정
-        state.lastObsLyricsIndex = -2;
-        if (state.currentLyrics?.parsedLyrics && state.ytPlayer) {
-            const currentTime = state.ytPlayer.getCurrentTime() * 1000;
-            const lyrics = state.currentLyrics.parsedLyrics;
-
-            // 로컬 오프셋 적용
-            const localTime = currentTime + state.localOffset;
-            const localIndex = findLyricsIndex(lyrics, localTime);
-            state.lastLyricsIndex = localIndex;
-            renderLocalLyrics(localIndex, lyrics);
-
-            // OBS 오프셋 적용
-            const obsTime = currentTime + state.obsOffset;
-            const obsIndex = findLyricsIndex(lyrics, obsTime);
-            state.lastObsLyricsIndex = obsIndex;
-            syncObsLyrics(obsIndex, lyrics);
-        }
-    }
-
-    function stopLyricsSync() {
-        if (state.animationFrameId) {
-            cancelAnimationFrame(state.animationFrameId);
-            state.animationFrameId = null;
-        }
-    }
-
-    // 로컬(재생 페이지) 가사 렌더링
-    function renderLocalLyrics(currentIndex, lyrics) {
-        if (currentIndex === -1) {
-            elements.lyricsDisplay.innerHTML = '<p class="lyrics-display-empty">가사가 여기에 표시됩니다</p>';
-            return;
+        function stopLyricsSync() {
+            if (state.animationFrameId) {
+                cancelAnimationFrame(state.animationFrameId);
+                state.animationFrameId = null;
+            }
         }
 
-        const prevLine = lyrics[currentIndex - 1];
-        const currentLine = lyrics[currentIndex];
-        const nextLine = lyrics[currentIndex + 1];
+        // 로컬(재생 페이지) 가사 렌더링
+        function renderLocalLyrics(currentIndex, lyrics) {
+            if (currentIndex === -1) {
+                elements.lyricsDisplay.innerHTML = '<p class="lyrics-display-empty">가사가 여기에 표시됩니다</p>';
+                return;
+            }
 
-        elements.lyricsDisplay.innerHTML = `
+            const prevLine = lyrics[currentIndex - 1];
+            const currentLine = lyrics[currentIndex];
+            const nextLine = lyrics[currentIndex + 1];
+
+            elements.lyricsDisplay.innerHTML = `
             <div class="current-lyrics">
                 ${prevLine ? `<p class="lyrics-line prev">${escapeHtml(prevLine.text)}</p>` : ''}
                 <p class="lyrics-line current">${escapeHtml(currentLine.text)}</p>
                 ${nextLine ? `<p class="lyrics-line next">${escapeHtml(nextLine.text)}</p>` : ''}
             </div>
         `;
-    }
+        }
 
-    // OBS 오버레이에 가사 동기화
-    function syncObsLyrics(currentIndex, lyrics) {
-        if (currentIndex === -1) {
+        // OBS 오버레이에 가사 동기화
+        function syncObsLyrics(currentIndex, lyrics) {
+            if (currentIndex === -1) {
+                syncToOBS({
+                    prev: '', current: '', next: '',
+                    songTitle: state.currentSongTitle,
+                    artist: state.currentArtist
+                });
+                return;
+            }
+
+            const prevLine = lyrics[currentIndex - 1];
+            const currentLine = lyrics[currentIndex];
+            const nextLine = lyrics[currentIndex + 1];
+
             syncToOBS({
-                prev: '', current: '', next: '',
+                prev: prevLine ? prevLine.text : '',
+                current: currentLine.text,
+                next: nextLine ? nextLine.text : '',
                 songTitle: state.currentSongTitle,
                 artist: state.currentArtist
             });
-            return;
         }
 
-        const prevLine = lyrics[currentIndex - 1];
-        const currentLine = lyrics[currentIndex];
-        const nextLine = lyrics[currentIndex + 1];
+        // 이전 호환성을 위한 래퍼 함수
+        function renderCurrentLyrics(currentIndex, lyrics) {
+            renderLocalLyrics(currentIndex, lyrics);
+            syncObsLyrics(currentIndex, lyrics);
+        }
 
-        syncToOBS({
-            prev: prevLine ? prevLine.text : '',
-            current: currentLine.text,
-            next: nextLine ? nextLine.text : '',
-            songTitle: state.currentSongTitle,
-            artist: state.currentArtist
-        });
-    }
+        // OBS 오버레이 동기화 (debounced)
+        let syncTimeout = null;
+        function syncToOBS(data) {
+            if (syncTimeout) clearTimeout(syncTimeout);
+            syncTimeout = setTimeout(() => {
+                fetch('/api/v1/overlay/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                }).catch(err => console.log('Sync error:', err));
+            }, 50);
+        }
 
-    // 이전 호환성을 위한 래퍼 함수
-    function renderCurrentLyrics(currentIndex, lyrics) {
-        renderLocalLyrics(currentIndex, lyrics);
-        syncObsLyrics(currentIndex, lyrics);
-    }
-
-    // OBS 오버레이 동기화 (debounced)
-    let syncTimeout = null;
-    function syncToOBS(data) {
-        if (syncTimeout) clearTimeout(syncTimeout);
-        syncTimeout = setTimeout(() => {
-            fetch('/api/v1/overlay/sync', {
+        // 재생목록을 OBS 오버레이로 동기화
+        function syncPlaylistToOBS() {
+            const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
+            fetch('/api/v1/overlay/sync-playlist', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            }).catch(err => console.log('Sync error:', err));
-        }, 50);
-    }
+                body: JSON.stringify({
+                    playlist: items,
+                    currentIndex: state.currentPlayingIndex
+                })
+            }).catch(err => console.log('Playlist sync error:', err));
+        }
 
-    // 재생목록을 OBS 오버레이로 동기화
-    function syncPlaylistToOBS() {
-        const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
-        fetch('/api/v1/overlay/sync-playlist', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                playlist: items,
-                currentIndex: state.currentPlayingIndex
-            })
-        }).catch(err => console.log('Playlist sync error:', err));
-    }
-
-    // Favorites
-    async function loadFavorites() {
-        try {
-            const response = await fetch('/api/v1/lyrics/favorites/my');
-            state.favorites = await response.json();
-            if (state.currentTab === 'favorites') {
-                renderPlaylist();
-                syncPlaylistToOBS();
+        // Favorites
+        async function loadFavorites() {
+            try {
+                const response = await fetch('/api/v1/lyrics/favorites/my');
+                state.favorites = await response.json();
+                if (state.currentTab === 'favorites') {
+                    renderPlaylist();
+                    syncPlaylistToOBS();
+                }
+            } catch (error) {
+                console.error('Failed to load favorites:', error);
             }
-        } catch (error) {
-            console.error('Failed to load favorites:', error);
         }
-    }
 
-    async function toggleFavorite(lyricsId, button) {
-        const isFavorited = button.classList.contains('favorited');
+        async function toggleFavorite(lyricsId, button) {
+            const isFavorited = button.classList.contains('favorited');
 
-        try {
-            if (isFavorited) {
-                await fetch(`/api/v1/lyrics/favorites/${lyricsId}`, { method: 'DELETE' });
-                button.classList.remove('favorited');
-                button.querySelector('svg').setAttribute('fill', 'none');
-                showToast('즐겨찾기에서 제거됨');
-            } else {
-                await fetch(`/api/v1/lyrics/favorites/${lyricsId}`, { method: 'POST' });
-                button.classList.add('favorited');
-                button.querySelector('svg').setAttribute('fill', 'currentColor');
-                showToast('즐겨찾기에 추가됨', 'success');
+            try {
+                if (isFavorited) {
+                    await fetch(`/api/v1/lyrics/favorites/${lyricsId}`, { method: 'DELETE' });
+                    button.classList.remove('favorited');
+                    button.querySelector('svg').setAttribute('fill', 'none');
+                    showToast('즐겨찾기에서 제거됨');
+                } else {
+                    await fetch(`/api/v1/lyrics/favorites/${lyricsId}`, { method: 'POST' });
+                    button.classList.add('favorited');
+                    button.querySelector('svg').setAttribute('fill', 'currentColor');
+                    showToast('즐겨찾기에 추가됨', 'success');
+                }
+                loadFavorites();
+            } catch (error) {
+                console.error('Failed to toggle favorite:', error);
+                showToast('오류가 발생했습니다', 'error');
             }
-            loadFavorites();
-        } catch (error) {
-            console.error('Failed to toggle favorite:', error);
-            showToast('오류가 발생했습니다', 'error');
-        }
-    }
-
-    // Volume Control
-    function updateVolume(value) {
-        state.volume = value;
-        state.isMuted = value === 0;
-        localStorage.setItem('overlay_volume', value);
-
-        if (state.ytPlayer && state.isPlayerReady) {
-            state.ytPlayer.setVolume(value);
-            state.ytPlayer.unMute();
         }
 
-        updateVolumeIcon();
-    }
+        // Volume Control
+        function updateVolume(value) {
+            state.volume = value;
+            state.isMuted = value === 0;
+            localStorage.setItem('overlay_volume', value);
 
-    function toggleMute() {
-        if (state.isMuted) {
-            updateVolume(state.volume || 50);
-            elements.volumeSlider.value = state.volume;
-        } else {
             if (state.ytPlayer && state.isPlayerReady) {
-                state.ytPlayer.mute();
+                state.ytPlayer.setVolume(value);
+                state.ytPlayer.unMute();
             }
-            state.isMuted = true;
+
             updateVolumeIcon();
         }
-    }
 
-    function updateVolumeIcon() {
-        const icon = elements.volumeIcon;
-        if (state.isMuted || state.volume === 0) {
-            icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>';
-        } else if (state.volume < 50) {
-            icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>';
-        } else {
-            icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>';
-        }
-    }
-
-    // Offset Control
-    function adjustOffset(type, delta) {
-        if (type === 'local') {
-            state.localOffset += delta;
-            localStorage.setItem('overlay_local_offset', state.localOffset.toString());
-        } else {
-            state.obsOffset += delta;
-            localStorage.setItem('overlay_obs_offset', state.obsOffset.toString());
-        }
-        updateOffsetDisplay();
-        forceUpdateLyrics();
-        showToast(`${type === 'local' ? '로컬' : 'OBS'} 오프셋: ${type === 'local' ? state.localOffset : state.obsOffset}ms`);
-    }
-
-    function resetOffsets() {
-        state.localOffset = 0;
-        state.obsOffset = 0;
-        localStorage.setItem('overlay_local_offset', '0');
-        localStorage.setItem('overlay_obs_offset', '0');
-        updateOffsetDisplay();
-        forceUpdateLyrics();
-        showToast('오프셋이 초기화되었습니다');
-    }
-
-    function updateOffsetDisplay() {
-        const formatOffset = (ms) => {
-            const sign = ms >= 0 ? '+' : '';
-            return `${sign}${ms}ms`;
-        };
-        elements.localOffsetValue.textContent = formatOffset(state.localOffset);
-        elements.obsOffsetValue.textContent = formatOffset(state.obsOffset);
-    }
-
-    // Modal
-    function closeModal() {
-        elements.lyricsModal.classList.remove('active');
-    }
-
-    function closeCustomSongModal() {
-        $('#customSongModal').classList.remove('active');
-        $('#customSongForm').reset();
-    }
-
-    async function registerCustomSong() {
-        const title = $('#customSongTitle').value.trim();
-        const artist = $('#customSongArtist').value.trim();
-        const submitBtn = $('#customSongSubmitBtn');
-
-        if (!title || !artist) {
-            showToast('제목과 가수를 모두 입력해주세요', 'error');
-            return;
-        }
-
-        submitBtn.disabled = true;
-        submitBtn.textContent = '등록 중...';
-
-        try {
-            const formData = new FormData();
-            formData.append('title', title);
-            formData.append('artist', artist);
-
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-            const response = await fetch('/api/v1/songs/custom', {
-                method: 'POST',
-                headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
-                body: formData
-            });
-
-            if (!response.ok) {
-                throw new Error('등록 실패');
-            }
-
-            const result = await response.json();
-
-            showToast(`"${title}" 노래가 등록되었습니다`, 'success');
-            closeCustomSongModal();
-
-            // Clear custom search cache and re-search
-            state.customSearchCache.clear();
-            if (state.currentSearchTab === 'custom' && state.lastSearchQuery) {
-                searchSongs(state.lastSearchQuery);
-            }
-
-            // Optionally, switch to custom tab and search for the new song
-            state.currentSearchTab = 'custom';
-            $$('[data-search-tab]').forEach(b => b.classList.remove('active'));
-            $('[data-search-tab="custom"]').classList.add('active');
-            elements.searchInput.value = title;
-            state.lastSearchQuery = title;
-            searchSongs(title);
-
-        } catch (error) {
-            console.error('Failed to register custom song:', error);
-            showToast('노래 등록에 실패했습니다', 'error');
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = '노래 등록';
-        }
-    }
-
-    // Helpers
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function formatTime(seconds) {
-        if (!seconds || isNaN(seconds)) return '0:00';
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    }
-
-    // Event Listeners
-    function initEventListeners() {
-        // Search
-        let searchDebounceTimer;
-        elements.searchInput.addEventListener('input', (e) => {
-            clearTimeout(searchDebounceTimer);
-            searchDebounceTimer = setTimeout(() => searchSongs(e.target.value), 300);
-        });
-
-        elements.searchBtn.addEventListener('click', () => searchSongs(elements.searchInput.value));
-        elements.searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                clearTimeout(searchDebounceTimer);
-                searchSongs(elements.searchInput.value);
-            }
-        });
-
-        // Close search results on outside click
-        document.addEventListener('click', (e) => {
-            if (!elements.searchResults.contains(e.target) &&
-                !elements.searchInput.contains(e.target) &&
-                !elements.searchBtn.contains(e.target)) {
-                elements.searchResults.classList.remove('active');
-            }
-        });
-
-        // Infinite scroll for search results
-        elements.searchResults.addEventListener('scroll', () => {
-            if (state.searchLoading || !state.searchHasMore) return;
-
-            const { scrollTop, scrollHeight, clientHeight } = elements.searchResults;
-            if (scrollTop + clientHeight >= scrollHeight - 100) {
-                if (state.currentSearchTab === 'itunes') {
-                    searchITunes(state.lastSearchQuery, true);
-                } else {
-                    searchCustomSongs(state.lastSearchQuery, true);
-                }
-            }
-        });
-
-        // Player Controls
-        elements.playBtn.addEventListener('click', () => {
-            if (!state.isPlayerReady) return;
-            if (state.isPlaying) {
-                state.ytPlayer.pauseVideo();
+        function toggleMute() {
+            if (state.isMuted) {
+                updateVolume(state.volume || 50);
+                elements.volumeSlider.value = state.volume;
             } else {
-                state.ytPlayer.playVideo();
-            }
-        });
-
-        elements.prevBtn.addEventListener('click', () => {
-            if (state.currentPlayingIndex > 0) {
-                playItem(state.currentPlayingIndex - 1);
-            }
-        });
-
-        elements.nextBtn.addEventListener('click', () => {
-            const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
-            if (state.currentPlayingIndex < items.length - 1) {
-                playItem(state.currentPlayingIndex + 1);
-            }
-        });
-
-        elements.progressBar.addEventListener('click', (e) => {
-            if (!state.isPlayerReady || !state.ytPlayer.getDuration) return;
-            const rect = elements.progressBar.getBoundingClientRect();
-            const percent = (e.clientX - rect.left) / rect.width;
-            state.ytPlayer.seekTo(state.ytPlayer.getDuration() * percent);
-            // 시간 이동 후 가사 즉시 업데이트
-            setTimeout(forceUpdateLyrics, 100);
-        });
-
-        // Volume
-        elements.volumeSlider.addEventListener('input', (e) => updateVolume(parseInt(e.target.value)));
-        elements.volumeBtn.addEventListener('click', toggleMute);
-
-        // Offset Controls
-        elements.localOffsetMinus.addEventListener('click', () => adjustOffset('local', -100));
-        elements.localOffsetPlus.addEventListener('click', () => adjustOffset('local', 100));
-        elements.obsOffsetMinus.addEventListener('click', () => adjustOffset('obs', -100));
-        elements.obsOffsetPlus.addEventListener('click', () => adjustOffset('obs', 100));
-        elements.offsetReset.addEventListener('click', resetOffsets);
-
-        // Initialize offset display
-        updateOffsetDisplay();
-
-        // Tabs
-        $$('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                $$('.tab-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                state.currentTab = btn.dataset.tab;
-                if (state.currentTab === 'playlist') {
-                    state.currentPlayingIndex = -1;
+                if (state.ytPlayer && state.isPlayerReady) {
+                    state.ytPlayer.mute();
                 }
-                renderPlaylist();
-                updateControlButtons();
-                syncPlaylistToOBS();
-            });
-        });
+                state.isMuted = true;
+                updateVolumeIcon();
+            }
+        }
+
+        function updateVolumeIcon() {
+            const icon = elements.volumeIcon;
+            if (state.isMuted || state.volume === 0) {
+                icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>';
+            } else if (state.volume < 50) {
+                icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>';
+            } else {
+                icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>';
+            }
+        }
+
+        // Offset Control
+        function adjustOffset(type, delta) {
+            if (type === 'local') {
+                state.localOffset += delta;
+                localStorage.setItem('overlay_local_offset', state.localOffset.toString());
+            } else {
+                state.obsOffset += delta;
+                localStorage.setItem('overlay_obs_offset', state.obsOffset.toString());
+            }
+            updateOffsetDisplay();
+            forceUpdateLyrics();
+            showToast(`${type === 'local' ? '로컬' : 'OBS'} 오프셋: ${type === 'local' ? state.localOffset : state.obsOffset}ms`);
+        }
+
+        function resetOffsets() {
+            state.localOffset = 0;
+            state.obsOffset = 0;
+            localStorage.setItem('overlay_local_offset', '0');
+            localStorage.setItem('overlay_obs_offset', '0');
+            updateOffsetDisplay();
+            forceUpdateLyrics();
+            showToast('오프셋이 초기화되었습니다');
+        }
+
+        function updateOffsetDisplay() {
+            const formatOffset = (ms) => {
+                const sign = ms >= 0 ? '+' : '';
+                return `${sign}${ms}ms`;
+            };
+            elements.localOffsetValue.textContent = formatOffset(state.localOffset);
+            elements.obsOffsetValue.textContent = formatOffset(state.obsOffset);
+        }
 
         // Modal
-        elements.modalClose.addEventListener('click', closeModal);
-        elements.lyricsModal.addEventListener('click', (e) => {
-            if (e.target === elements.lyricsModal) closeModal();
-        });
+        function closeModal() {
+            elements.lyricsModal.classList.remove('active');
+        }
 
-        // Video Modal
-        $('#videoModalClose').addEventListener('click', closeVideoModal);
-        $('#videoModal').addEventListener('click', (e) => {
-            if (e.target.id === 'videoModal') closeVideoModal();
-        });
-        $('#videoSearchBtn').addEventListener('click', searchVideosForSelection);
-        $('#videoSearchInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') searchVideosForSelection();
-        });
+        function closeCustomSongModal() {
+            $('#customSongModal').classList.remove('active');
+            $('#customSongForm').reset();
+        }
 
-        // Clear Playlist
-        elements.clearPlaylistBtn.addEventListener('click', clearPlaylist);
+        async function registerCustomSong() {
+            const title = $('#customSongTitle').value.trim();
+            const artist = $('#customSongArtist').value.trim();
+            const submitBtn = $('#customSongSubmitBtn');
 
-        // Search Tabs
-        $$('[data-search-tab]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                $$('[data-search-tab]').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                state.currentSearchTab = btn.dataset.searchTab;
+            if (!title || !artist) {
+                showToast('제목과 가수를 모두 입력해주세요', 'error');
+                return;
+            }
 
-                // Re-search with the same query if there's one
-                if (state.lastSearchQuery) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = '등록 중...';
+
+            try {
+                const formData = new FormData();
+                formData.append('title', title);
+                formData.append('artist', artist);
+
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                const response = await fetch('/api/v1/songs/custom', {
+                    method: 'POST',
+                    headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('등록 실패');
+                }
+
+                const result = await response.json();
+
+                showToast(`"${title}" 노래가 등록되었습니다`, 'success');
+                closeCustomSongModal();
+
+                // Clear custom search cache and re-search
+                state.customSearchCache.clear();
+                if (state.currentSearchTab === 'custom' && state.lastSearchQuery) {
                     searchSongs(state.lastSearchQuery);
                 }
-            });
-        });
 
-        // Custom Song Modal
-        $('#addCustomSongBtn').addEventListener('click', () => {
-            $('#customSongModal').classList.add('active');
-            $('#customSongTitle').focus();
-        });
+                // Optionally, switch to custom tab and search for the new song
+                state.currentSearchTab = 'custom';
+                $$('[data-search-tab]').forEach(b => b.classList.remove('active'));
+                $('[data-search-tab="custom"]').classList.add('active');
+                elements.searchInput.value = title;
+                state.lastSearchQuery = title;
+                searchSongs(title);
 
-        $('#customSongModalClose').addEventListener('click', closeCustomSongModal);
-        $('#customSongModal').addEventListener('click', (e) => {
-            if (e.target.id === 'customSongModal') closeCustomSongModal();
-        });
-
-        $('#customSongForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await registerCustomSong();
-        });
-
-        // Auto Remove Toggle
-        const autoRemoveToggle = $('#autoRemoveToggle');
-        autoRemoveToggle.checked = state.autoRemoveCompleted;
-        autoRemoveToggle.addEventListener('change', () => {
-            state.autoRemoveCompleted = autoRemoveToggle.checked;
-            localStorage.setItem('overlay_auto_remove', state.autoRemoveCompleted);
-            showToast(state.autoRemoveCompleted ? '재생 완료 시 자동 삭제 켜짐' : '재생 완료 시 자동 삭제 꺼짐');
-        });
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            // Ignore if typing in input
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-            switch(e.code) {
-                case 'Space':
-                    e.preventDefault();
-                    if (state.isPlayerReady) {
-                        if (state.isPlaying) {
-                            state.ytPlayer.pauseVideo();
-                        } else {
-                            state.ytPlayer.playVideo();
-                        }
-                    }
-                    break;
-                case 'ArrowLeft':
-                    e.preventDefault();
-                    if (state.currentPlayingIndex > 0) {
-                        playItem(state.currentPlayingIndex - 1);
-                    }
-                    break;
-                case 'ArrowRight':
-                    e.preventDefault();
-                    const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
-                    if (state.currentPlayingIndex < items.length - 1) {
-                        playItem(state.currentPlayingIndex + 1);
-                    }
-                    break;
-                case 'Escape':
-                    closeModal();
-                    closeVideoModal();
-                    closeCustomSongModal();
-                    elements.searchResults.classList.remove('active');
-                    break;
-                case 'BracketLeft':  // [
-                    e.preventDefault();
-                    adjustOffset('local', e.shiftKey ? -500 : -100);
-                    break;
-                case 'BracketRight':  // ]
-                    e.preventDefault();
-                    adjustOffset('local', e.shiftKey ? 500 : 100);
-                    break;
-                case 'Comma':  // ,
-                    e.preventDefault();
-                    adjustOffset('obs', e.shiftKey ? -500 : -100);
-                    break;
-                case 'Period':  // .
-                    e.preventDefault();
-                    adjustOffset('obs', e.shiftKey ? 500 : 100);
-                    break;
-                case 'Digit0':  // 0
-                    if (e.shiftKey) {
-                        e.preventDefault();
-                        resetOffsets();
-                    }
-                    break;
+            } catch (error) {
+                console.error('Failed to register custom song:', error);
+                showToast('노래 등록에 실패했습니다', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '노래 등록';
             }
-        });
-    }
+        }
 
-    // Initialize
-    function init() {
-        initEventListeners();
-        renderPlaylist();
-        loadFavorites();
-        updateControlButtons();
-        updateVolumeIcon();
-        // 초기 재생목록 동기화
-        setTimeout(syncPlaylistToOBS, 1000);
-    }
+        // Helpers
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
-    // Run on DOM ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-})();
+        function formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Event Listeners
+        function initEventListeners() {
+            // Search
+            let searchDebounceTimer;
+            elements.searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(() => searchSongs(e.target.value), 300);
+            });
+
+            elements.searchBtn.addEventListener('click', () => searchSongs(elements.searchInput.value));
+            elements.searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    clearTimeout(searchDebounceTimer);
+                    searchSongs(elements.searchInput.value);
+                }
+            });
+
+            // Close search results on outside click
+            document.addEventListener('click', (e) => {
+                if (!elements.searchResults.contains(e.target) &&
+                    !elements.searchInput.contains(e.target) &&
+                    !elements.searchBtn.contains(e.target)) {
+                    elements.searchResults.classList.remove('active');
+                }
+            });
+
+            // Infinite scroll for search results
+            elements.searchResults.addEventListener('scroll', () => {
+                if (state.searchLoading || !state.searchHasMore) return;
+
+                const { scrollTop, scrollHeight, clientHeight } = elements.searchResults;
+                if (scrollTop + clientHeight >= scrollHeight - 100) {
+                    if (state.currentSearchTab === 'itunes') {
+                        searchITunes(state.lastSearchQuery, true);
+                    } else {
+                        searchCustomSongs(state.lastSearchQuery, true);
+                    }
+                }
+            });
+
+            // Player Controls
+            elements.playBtn.addEventListener('click', () => {
+                if (!state.isPlayerReady) return;
+                if (state.isPlaying) {
+                    state.ytPlayer.pauseVideo();
+                } else {
+                    state.ytPlayer.playVideo();
+                }
+            });
+
+            elements.prevBtn.addEventListener('click', () => {
+                if (state.currentPlayingIndex > 0) {
+                    playItem(state.currentPlayingIndex - 1);
+                }
+            });
+
+            elements.nextBtn.addEventListener('click', () => {
+                const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
+                if (state.currentPlayingIndex < items.length - 1) {
+                    playItem(state.currentPlayingIndex + 1);
+                }
+            });
+
+            elements.progressBar.addEventListener('click', (e) => {
+                if (!state.isPlayerReady || !state.ytPlayer.getDuration) return;
+                const rect = elements.progressBar.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                state.ytPlayer.seekTo(state.ytPlayer.getDuration() * percent);
+                // 시간 이동 후 가사 즉시 업데이트
+                setTimeout(forceUpdateLyrics, 100);
+            });
+
+            // Volume
+            elements.volumeSlider.addEventListener('input', (e) => updateVolume(parseInt(e.target.value)));
+            elements.volumeBtn.addEventListener('click', toggleMute);
+
+            // Offset Controls
+            elements.localOffsetMinus.addEventListener('click', () => adjustOffset('local', -100));
+            elements.localOffsetPlus.addEventListener('click', () => adjustOffset('local', 100));
+            elements.obsOffsetMinus.addEventListener('click', () => adjustOffset('obs', -100));
+            elements.obsOffsetPlus.addEventListener('click', () => adjustOffset('obs', 100));
+            elements.offsetReset.addEventListener('click', resetOffsets);
+
+            // Initialize offset display
+            updateOffsetDisplay();
+
+            // Tabs
+            $$('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    $$('.tab-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.currentTab = btn.dataset.tab;
+                    if (state.currentTab === 'playlist') {
+                        state.currentPlayingIndex = -1;
+                    }
+                    renderPlaylist();
+                    updateControlButtons();
+                    syncPlaylistToOBS();
+                });
+            });
+
+            // Modal
+            elements.modalClose.addEventListener('click', closeModal);
+            elements.lyricsModal.addEventListener('click', (e) => {
+                if (e.target === elements.lyricsModal) closeModal();
+            });
+
+            // Video Modal
+            $('#videoModalClose').addEventListener('click', closeVideoModal);
+            $('#videoModal').addEventListener('click', (e) => {
+                if (e.target.id === 'videoModal') closeVideoModal();
+            });
+            $('#videoSearchBtn').addEventListener('click', searchVideosForSelection);
+            $('#videoSearchInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') searchVideosForSelection();
+            });
+
+            // Clear Playlist
+            elements.clearPlaylistBtn.addEventListener('click', clearPlaylist);
+
+            // Search Tabs
+            $$('[data-search-tab]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    $$('[data-search-tab]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.currentSearchTab = btn.dataset.searchTab;
+
+                    // Re-search with the same query if there's one
+                    if (state.lastSearchQuery) {
+                        searchSongs(state.lastSearchQuery);
+                    }
+                });
+            });
+
+            // Custom Song Modal
+            $('#addCustomSongBtn').addEventListener('click', () => {
+                $('#customSongModal').classList.add('active');
+                $('#customSongTitle').focus();
+            });
+
+            $('#customSongModalClose').addEventListener('click', closeCustomSongModal);
+            $('#customSongModal').addEventListener('click', (e) => {
+                if (e.target.id === 'customSongModal') closeCustomSongModal();
+            });
+
+            $('#customSongForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await registerCustomSong();
+            });
+
+            // Auto Remove Toggle
+            const autoRemoveToggle = $('#autoRemoveToggle');
+            autoRemoveToggle.checked = state.autoRemoveCompleted;
+            autoRemoveToggle.addEventListener('change', () => {
+                state.autoRemoveCompleted = autoRemoveToggle.checked;
+                localStorage.setItem('overlay_auto_remove', state.autoRemoveCompleted);
+                showToast(state.autoRemoveCompleted ? '재생 완료 시 자동 삭제 켜짐' : '재생 완료 시 자동 삭제 꺼짐');
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Ignore if typing in input
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+                switch (e.code) {
+                    case 'Space':
+                        e.preventDefault();
+                        if (state.isPlayerReady) {
+                            if (state.isPlaying) {
+                                state.ytPlayer.pauseVideo();
+                            } else {
+                                state.ytPlayer.playVideo();
+                            }
+                        }
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        if (state.currentPlayingIndex > 0) {
+                            playItem(state.currentPlayingIndex - 1);
+                        }
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
+                        if (state.currentPlayingIndex < items.length - 1) {
+                            playItem(state.currentPlayingIndex + 1);
+                        }
+                        break;
+                    case 'Escape':
+                        closeModal();
+                        closeVideoModal();
+                        closeCustomSongModal();
+                        elements.searchResults.classList.remove('active');
+                        break;
+                    case 'BracketLeft':  // [
+                        e.preventDefault();
+                        adjustOffset('local', e.shiftKey ? -500 : -100);
+                        break;
+                    case 'BracketRight':  // ]
+                        e.preventDefault();
+                        adjustOffset('local', e.shiftKey ? 500 : 100);
+                        break;
+                    case 'Comma':  // ,
+                        e.preventDefault();
+                        adjustOffset('obs', e.shiftKey ? -500 : -100);
+                        break;
+                    case 'Period':  // .
+                        e.preventDefault();
+                        adjustOffset('obs', e.shiftKey ? 500 : 100);
+                        break;
+                    case 'Digit0':  // 0
+                        if (e.shiftKey) {
+                            e.preventDefault();
+                            resetOffsets();
+                        }
+                        break;
+                }
+            });
+        }
+
+        // Initialize
+        function init() {
+            initEventListeners();
+            renderPlaylist();
+            loadFavorites();
+            updateControlButtons();
+            updateVolumeIcon();
+            // 초기 재생목록 동기화
+            setTimeout(syncPlaylistToOBS, 1000);
+        }
+
+        // Run on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
 </script>
 {% endblock %}

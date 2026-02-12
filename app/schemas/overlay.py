@@ -1,5 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Any
+from datetime import datetime
 
 
 class LyricsSyncSchema(BaseModel):
@@ -77,3 +78,28 @@ class OverlaySettingsSchema(BaseModel):
     playlist_highlight_color: str = "#FFE500"
     playlist_show_thumbnail: bool = True
     playlist_show_artist: bool = True
+
+
+class OverlayPresetCreateSchema(BaseModel):
+    """프리셋 생성"""
+    name: str = Field(..., min_length=1, max_length=100)
+    settings: OverlaySettingsSchema
+
+
+class OverlayPresetUpdateSchema(BaseModel):
+    """프리셋 수정"""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    settings: Optional[OverlaySettingsSchema] = None
+
+
+class OverlayPresetResponseSchema(BaseModel):
+    """프리셋 응답"""
+    id: int
+    name: str
+    settings: dict
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

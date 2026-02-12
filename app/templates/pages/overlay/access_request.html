@@ -98,6 +98,11 @@
         border: 1px solid #ef4444;
     }
 
+    .status-card.revoked {
+        background: #ede9fe;
+        border: 1px solid #8b5cf6;
+    }
+
     .status-header {
         display: flex;
         align-items: center;
@@ -124,6 +129,11 @@
         color: white;
     }
 
+    .status-card.revoked .status-icon {
+        background: #8b5cf6;
+        color: white;
+    }
+
     .status-title {
         font-weight: 700;
         font-size: 1rem;
@@ -137,6 +147,10 @@
         color: #991b1b;
     }
 
+    .status-card.revoked .status-title {
+        color: #5b21b6;
+    }
+
     .status-message {
         font-size: 0.9rem;
         line-height: 1.6;
@@ -148,6 +162,10 @@
 
     .status-card.rejected .status-message {
         color: #b91c1c;
+    }
+
+    .status-card.revoked .status-message {
+        color: #6d28d9;
     }
 
     .rejection-reason {
@@ -323,7 +341,7 @@
                     안내
                 </h3>
                 <p>
-                    Jamku Song의 노래하기 기능은 현재 정식 서비스가 아닌 베타 테스트 중입니다.
+                    Jamku Song의 노래하기 기능은 정식 서비스가 아닌 일부 스트리머에게만 공개된 기능입니다.
                     아래 양식을 작성하여 사용 요청을 보내주시면, 관리자 검토 후 승인/거절 여부를 알려드립니다.
                 </p>
             </div>
@@ -368,6 +386,53 @@
                 <div class="rejection-reason">
                     <div class="rejection-reason-label">거절 사유</div>
                     <div class="rejection-reason-text">{{ latest_request.rejection_reason }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Re-request Form -->
+            <form id="accessRequestForm">
+                <div class="form-group">
+                    <label class="form-label">
+                        방송 플랫폼 주소 <span class="required">*</span>
+                    </label>
+                    <input type="url" class="form-input" id="platformUrl" placeholder=""
+                        value="{{ latest_request.platform_url or '' }}" required>
+                    <p class="form-hint">치지직, 유튜브, SOOP 등 방송 채널 주소를 입력해주세요</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">추가 메시지</label>
+                    <textarea class="form-input form-textarea" id="message" placeholder="추가로 전달하고 싶은 내용이 있으면 작성해주세요"
+                        maxlength="1500"></textarea>
+                    <div class="char-count" id="charCount">0 / 1500</div>
+                </div>
+
+                <button type="submit" class="submit-btn">다시 요청하기</button>
+            </form>
+
+            {% elif latest_request and latest_request.status == 'revoked' %}
+            <!-- Revoked Status -->
+            <div class="status-card revoked">
+                <div class="status-header">
+                    <div class="status-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </div>
+                    <span class="status-title">권한이 회수되었습니다</span>
+                </div>
+                <p class="status-message">
+                    관리자에 의해 오버레이 사용 권한이 회수되었습니다. 아래 사유를 확인해주세요.
+                </p>
+                {% if latest_request.rejection_reason %}
+                <div class="rejection-reason" style="background: rgba(139, 92, 246, 0.1);">
+                    <div class="rejection-reason-label" style="color: #5b21b6;">회수 사유</div>
+                    <div class="rejection-reason-text" style="color: #6d28d9;">{{ latest_request.rejection_reason }}
+                    </div>
                 </div>
                 {% endif %}
             </div>

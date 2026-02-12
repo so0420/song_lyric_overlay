@@ -53,6 +53,7 @@
     .stat-value.pending { color: #f59e0b; }
     .stat-value.approved { color: #10b981; }
     .stat-value.rejected { color: #ef4444; }
+    .stat-value.revoked { color: #8b5cf6; }
 
     .stat-label {
         font-size: 0.85rem;
@@ -172,6 +173,11 @@
     .status-rejected {
         background: #fee2e2;
         color: #991b1b;
+    }
+
+    .status-revoked {
+        background: #ede9fe;
+        color: #5b21b6;
     }
 
     .request-body {
@@ -392,6 +398,119 @@
         padding: 48px;
         color: var(--text-sub);
     }
+
+    /* Section Tabs */
+    .section-tabs {
+        display: flex;
+        gap: 0;
+        margin-bottom: 24px;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .section-tab {
+        padding: 14px 24px;
+        border: none;
+        background: none;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--text-sub);
+        font-size: 1rem;
+        position: relative;
+        transition: color 0.2s;
+    }
+
+    .section-tab:hover {
+        color: var(--accent);
+    }
+
+    .section-tab.active {
+        color: var(--accent);
+    }
+
+    .section-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--accent);
+    }
+
+    .section-content {
+        animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    /* Revoke button */
+    .btn-revoke {
+        background: #f59e0b;
+        color: white;
+    }
+
+    .btn-revoke:hover {
+        background: #d97706;
+    }
+
+    .approved-date {
+        font-size: 0.85rem;
+        color: var(--text-sub);
+        margin-top: 4px;
+    }
+
+    /* Search box */
+    .search-box {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-box:focus-within {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .search-box svg {
+        color: var(--text-dim);
+        flex-shrink: 0;
+    }
+
+    .search-input {
+        flex: 1;
+        border: none;
+        outline: none;
+        font-size: 0.95rem;
+        background: transparent;
+    }
+
+    .search-input::placeholder {
+        color: var(--text-dim);
+    }
+
+    .clear-search {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        color: var(--text-dim);
+        border-radius: 4px;
+        transition: color 0.2s, background 0.2s;
+    }
+
+    .clear-search:hover {
+        color: var(--text-main);
+        background: #f1f5f9;
+    }
 </style>
 {% endblock %}
 
@@ -419,18 +538,54 @@
         <div class="stat-value rejected" id="rejectedCount">-</div>
         <div class="stat-label">거절됨</div>
     </div>
+    <div class="stat-card">
+        <div class="stat-value revoked" id="revokedCount">-</div>
+        <div class="stat-label">권한 회수</div>
+    </div>
 </div>
 
-<div class="filter-tabs">
-    <button class="filter-tab active" data-status="">전체</button>
-    <button class="filter-tab" data-status="pending">대기 중</button>
-    <button class="filter-tab" data-status="approved">승인됨</button>
-    <button class="filter-tab" data-status="rejected">거절됨</button>
+<!-- 탭 네비게이션 -->
+<div class="section-tabs">
+    <button class="section-tab active" data-section="requests">접근 요청</button>
+    <button class="section-tab" data-section="approved-users">승인된 사용자</button>
 </div>
 
-<div class="requests-container">
-    <div id="requestsList">
-        <div class="loading">불러오는 중...</div>
+<!-- 접근 요청 섹션 -->
+<div id="requestsSection" class="section-content">
+    <div class="filter-tabs">
+        <button class="filter-tab active" data-status="">전체</button>
+        <button class="filter-tab" data-status="pending">대기 중</button>
+        <button class="filter-tab" data-status="approved">승인됨</button>
+        <button class="filter-tab" data-status="rejected">거절됨</button>
+        <button class="filter-tab" data-status="revoked">권한 회수</button>
+    </div>
+
+    <div class="requests-container">
+        <div id="requestsList">
+            <div class="loading">불러오는 중...</div>
+        </div>
+    </div>
+</div>
+
+<!-- 승인된 사용자 섹션 -->
+<div id="approvedUsersSection" class="section-content" style="display: none;">
+    <div class="search-box">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="userSearchInput" class="search-input" placeholder="이름 또는 이메일로 검색...">
+        <button id="clearSearchBtn" class="clear-search" style="display: none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+    </div>
+    <div class="requests-container">
+        <div id="approvedUsersList">
+            <div class="loading">불러오는 중...</div>
+        </div>
     </div>
 </div>
 
@@ -450,13 +605,51 @@
     </div>
 </div>
 
+<!-- Revoke Modal -->
+<div class="modal-overlay" id="revokeModal">
+    <div class="modal">
+        <h3 class="modal-title">권한 취소</h3>
+        <p style="color: var(--text-sub); margin-bottom: 16px; font-size: 0.9rem;">
+            권한 취소 사유를 입력해주세요. 사용자에게 거절 사유로 표시됩니다.
+        </p>
+        <textarea class="modal-input" id="revokeReason" placeholder="권한 취소 사유를 입력하세요"></textarea>
+        <input type="hidden" id="revokeUserId">
+        <div class="modal-actions">
+            <button class="btn btn-cancel" onclick="closeRevokeModal()">취소</button>
+            <button class="btn btn-revoke" onclick="confirmRevoke()">권한 취소</button>
+        </div>
+    </div>
+</div>
+
 <div class="toast" id="toast"></div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
 let requests = [];
+let approvedUsers = [];
 let currentFilter = '';
+let currentSection = 'requests';
+let searchQuery = '';
+let searchDebounceTimer = null;
+
+// Section tabs
+document.querySelectorAll('.section-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentSection = tab.dataset.section;
+
+        if (currentSection === 'requests') {
+            document.getElementById('requestsSection').style.display = 'block';
+            document.getElementById('approvedUsersSection').style.display = 'none';
+        } else {
+            document.getElementById('requestsSection').style.display = 'none';
+            document.getElementById('approvedUsersSection').style.display = 'block';
+            loadApprovedUsers();
+        }
+    });
+});
 
 // Filter tabs
 document.querySelectorAll('.filter-tab').forEach(tab => {
@@ -508,13 +701,15 @@ function renderRequests() {
         const statusClass = {
             pending: 'status-pending',
             approved: 'status-approved',
-            rejected: 'status-rejected'
+            rejected: 'status-rejected',
+            revoked: 'status-revoked'
         }[req.status];
 
         const statusText = {
             pending: '대기 중',
             approved: '승인됨',
-            rejected: '거절됨'
+            rejected: '거절됨',
+            revoked: '권한 회수'
         }[req.status];
 
         const initial = (req.user_name || req.user_email || '?')[0].toUpperCase();
@@ -547,6 +742,13 @@ function renderRequests() {
                 <div class="rejection-info">
                     <div class="rejection-label">거절 사유</div>
                     <div class="rejection-reason">${escapeHtml(req.rejection_reason)}</div>
+                </div>
+            `;
+        } else if (req.status === 'revoked' && req.rejection_reason) {
+            rejectionHtml = `
+                <div class="rejection-info" style="background: #ede9fe;">
+                    <div class="rejection-label" style="color: #5b21b6;">회수 사유</div>
+                    <div class="rejection-reason" style="color: #6d28d9;">${escapeHtml(req.rejection_reason)}</div>
                 </div>
             `;
         }
@@ -585,6 +787,7 @@ function updateStats() {
     const pending = requests.filter(r => r.status === 'pending').length;
     const approved = requests.filter(r => r.status === 'approved').length;
     const rejected = requests.filter(r => r.status === 'rejected').length;
+    const revoked = requests.filter(r => r.status === 'revoked').length;
 
     // If we're filtering, fetch all for accurate counts
     if (currentFilter) {
@@ -592,11 +795,13 @@ function updateStats() {
             document.getElementById('pendingCount').textContent = all.filter(r => r.status === 'pending').length;
             document.getElementById('approvedCount').textContent = all.filter(r => r.status === 'approved').length;
             document.getElementById('rejectedCount').textContent = all.filter(r => r.status === 'rejected').length;
+            document.getElementById('revokedCount').textContent = all.filter(r => r.status === 'revoked').length;
         });
     } else {
         document.getElementById('pendingCount').textContent = pending;
         document.getElementById('approvedCount').textContent = approved;
         document.getElementById('rejectedCount').textContent = rejected;
+        document.getElementById('revokedCount').textContent = revoked;
     }
 }
 
@@ -675,13 +880,166 @@ function showToast(message, type = '') {
     }, 3000);
 }
 
+// Search functionality
+const searchInput = document.getElementById('userSearchInput');
+const clearSearchBtn = document.getElementById('clearSearchBtn');
+
+searchInput.addEventListener('input', (e) => {
+    searchQuery = e.target.value.trim();
+    clearSearchBtn.style.display = searchQuery ? 'block' : 'none';
+
+    // Debounce search
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+        loadApprovedUsers();
+    }, 300);
+});
+
+clearSearchBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    searchQuery = '';
+    clearSearchBtn.style.display = 'none';
+    loadApprovedUsers();
+});
+
+// Approved users
+async function loadApprovedUsers() {
+    const container = document.getElementById('approvedUsersList');
+    container.innerHTML = '<div class="loading">불러오는 중...</div>';
+
+    try {
+        let url = '/api/v1/admin/approved-users';
+        if (searchQuery) {
+            url += `?search=${encodeURIComponent(searchQuery)}`;
+        }
+        const res = await fetch(url);
+        if (res.ok) {
+            approvedUsers = await res.json();
+            renderApprovedUsers();
+        }
+    } catch (e) {
+        container.innerHTML = '<div class="loading">불러오기 실패</div>';
+    }
+}
+
+function renderApprovedUsers() {
+    const container = document.getElementById('approvedUsersList');
+
+    if (approvedUsers.length === 0) {
+        const message = searchQuery
+            ? `"${searchQuery}"에 대한 검색 결과가 없습니다`
+            : '승인된 사용자가 없습니다';
+        container.innerHTML = `
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <p>${message}</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = approvedUsers.map(user => {
+        const initial = (user.name || user.email || '?')[0].toUpperCase();
+        const approvedAt = user.approved_at ? new Date(user.approved_at).toLocaleString('ko-KR') : '-';
+
+        return `
+            <div class="request-card">
+                <div class="request-header">
+                    <div class="user-info">
+                        <div class="user-avatar">${initial}</div>
+                        <div class="user-details">
+                            <span class="user-name">${escapeHtml(user.name || '이름 없음')}</span>
+                            <span class="user-email">${escapeHtml(user.email || '')}</span>
+                        </div>
+                    </div>
+                    <span class="request-status status-approved">승인됨</span>
+                </div>
+                <div class="request-body">
+                    ${user.platform_url ? `
+                    <div class="platform-url">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                        <a href="${escapeHtml(user.platform_url)}" target="_blank" rel="noopener">${escapeHtml(user.platform_url)}</a>
+                    </div>
+                    ` : ''}
+                    <div class="approved-date">승인일: ${approvedAt}</div>
+                </div>
+                <div class="request-actions">
+                    <button class="btn btn-revoke" onclick="openRevokeModal(${user.id}, '${escapeHtml(user.name || user.email)}')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                        권한 취소
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openRevokeModal(userId, userName) {
+    document.getElementById('revokeUserId').value = userId;
+    document.getElementById('revokeReason').value = '';
+    document.querySelector('#revokeModal .modal-title').textContent = `권한 취소 - ${userName}`;
+    document.getElementById('revokeModal').classList.add('active');
+}
+
+function closeRevokeModal() {
+    document.getElementById('revokeModal').classList.remove('active');
+}
+
+async function confirmRevoke() {
+    const userId = document.getElementById('revokeUserId').value;
+    const reason = document.getElementById('revokeReason').value.trim();
+
+    if (!reason) {
+        showToast('권한 취소 사유를 입력해주세요', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/v1/admin/users/${userId}/revoke-overlay`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason })
+        });
+
+        if (res.ok) {
+            showToast('권한이 취소되었습니다', 'success');
+            closeRevokeModal();
+            loadApprovedUsers();
+        } else {
+            const data = await res.json();
+            showToast(data.detail || '권한 취소에 실패했습니다', 'error');
+        }
+    } catch (e) {
+        showToast('오류가 발생했습니다', 'error');
+    }
+}
+
 // Close modal on ESC or overlay click
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeRejectModal();
+    if (e.key === 'Escape') {
+        closeRejectModal();
+        closeRevokeModal();
+    }
 });
 
 document.getElementById('rejectModal').addEventListener('click', (e) => {
     if (e.target.id === 'rejectModal') closeRejectModal();
+});
+
+document.getElementById('revokeModal').addEventListener('click', (e) => {
+    if (e.target.id === 'revokeModal') closeRevokeModal();
 });
 
 // Initial load

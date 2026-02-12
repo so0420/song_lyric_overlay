@@ -140,13 +140,77 @@ class AccessRequestRepository:
             return result['is_admin'] == 1 or result['overlay_approved'] == 1
         return False
 
-    async def revoke_approval(self, user_id: int) -> bool:
-        """승인 취소"""
+    async def revoke_approval(self, user_id: int, admin_id: int, reason: str) -> bool:
+        """승인 취소 (권한 회수)"""
+        # 사용자 승인 상태 업데이트
         await self.db.execute_query(
             "UPDATE users SET overlay_approved = 0 WHERE id = %s",
             (user_id,)
         )
+
+        # 가장 최근 승인된 요청을 회수로 변경
+        latest_approved = await self.db.fetch_one(
+            """SELECT id FROM overlay_access_requests
+               WHERE user_id = %s AND status = 'approved'
+               ORDER BY created_at DESC LIMIT 1""",
+            (user_id,)
+        )
+
+        if latest_approved:
+            await self.db.execute_query(
+                """UPDATE overlay_access_requests
+                   SET status = 'revoked', rejection_reason = %s, reviewed_by = %s, reviewed_at = CURRENT_TIMESTAMP
+                   WHERE id = %s""",
+                (reason, admin_id, latest_approved['id'])
+            )
+        else:
+            # 승인된 요청이 없으면 새 회수 레코드 생성
+            await self.db.execute_query(
+                """INSERT INTO overlay_access_requests
+                   (user_id, platform_url, message, status, rejection_reason, reviewed_by, reviewed_at)
+                   VALUES (%s, '권한 회수', '관리자에 의해 권한이 회수됨', 'revoked', %s, %s, CURRENT_TIMESTAMP)""",
+                (user_id, reason, admin_id)
+            )
+
         return True
+
+    async def get_approved_users(self, search: str = None, limit: int = 50, offset: int = 0) -> list:
+        """승인된 사용자 목록 조회"""
+        if search:
+            search_pattern = f"%{search}%"
+            results = await self.db.fetch_all(
+                """SELECT u.id, u.name, u.email, u.overlay_approved, u.created_at,
+                          r.platform_url, r.reviewed_at as approved_at
+                   FROM users u
+                   LEFT JOIN (
+                       SELECT user_id, platform_url, reviewed_at,
+                              ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY reviewed_at DESC) as rn
+                       FROM overlay_access_requests
+                       WHERE status = 'approved'
+                   ) r ON u.id = r.user_id AND r.rn = 1
+                   WHERE u.overlay_approved = 1 AND u.is_admin = 0
+                     AND (u.name LIKE %s OR u.email LIKE %s)
+                   ORDER BY r.reviewed_at DESC
+                   LIMIT %s OFFSET %s""",
+                (search_pattern, search_pattern, limit, offset)
+            )
+        else:
+            results = await self.db.fetch_all(
+                """SELECT u.id, u.name, u.email, u.overlay_approved, u.created_at,
+                          r.platform_url, r.reviewed_at as approved_at
+                   FROM users u
+                   LEFT JOIN (
+                       SELECT user_id, platform_url, reviewed_at,
+                              ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY reviewed_at DESC) as rn
+                       FROM overlay_access_requests
+                       WHERE status = 'approved'
+                   ) r ON u.id = r.user_id AND r.rn = 1
+                   WHERE u.overlay_approved = 1 AND u.is_admin = 0
+                   ORDER BY r.reviewed_at DESC
+                   LIMIT %s OFFSET %s""",
+                (limit, offset)
+            )
+        return [dict(r) for r in results]
 
 
 def get_access_request_repository() -> AccessRequestRepository:

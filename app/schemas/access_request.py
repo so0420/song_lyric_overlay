@@ -8,6 +8,7 @@ class AccessRequestStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    REVOKED = "revoked"
 
 
 class AccessRequestCreateSchema(BaseModel):

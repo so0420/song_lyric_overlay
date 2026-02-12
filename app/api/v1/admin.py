@@ -159,12 +159,26 @@ async def reject_access_request(
     return {"success": True, "message": "요청이 거절되었습니다"}
 
 
+@router.get("/approved-users")
+async def get_approved_users(
+    search: Optional[str] = Query(None, description="이름 또는 이메일 검색"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user=Depends(require_admin),
+    repo: AccessRequestRepository = Depends(get_access_request_repository)
+):
+    """승인된 사용자 목록 조회"""
+    users = await repo.get_approved_users(search=search, limit=limit, offset=offset)
+    return users
+
+
 @router.post("/users/{user_id}/revoke-overlay")
 async def revoke_overlay_access(
     user_id: int,
+    data: AccessRequestRejectSchema,
     user=Depends(require_admin),
     repo: AccessRequestRepository = Depends(get_access_request_repository)
 ):
     """사용자의 오버레이 접근 권한 취소"""
-    await repo.revoke_approval(user_id)
+    await repo.revoke_approval(user_id, user['id'], data.reason)
     return {"success": True, "message": "접근 권한이 취소되었습니다"}

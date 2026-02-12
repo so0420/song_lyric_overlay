@@ -1,0 +1,511 @@
+{% extends "base/base.html" %}
+
+{% block title %}오버레이 사용 요청 - Jamku Song{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .access-container {
+        max-width: 600px;
+        margin: 40px auto;
+    }
+
+    .access-card {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .access-header {
+        padding: 32px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        text-align: center;
+    }
+
+    .access-icon {
+        width: 64px;
+        height: 64px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+    }
+
+    .access-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .access-subtitle {
+        opacity: 0.9;
+        font-size: 0.95rem;
+    }
+
+    .access-body {
+        padding: 32px;
+    }
+
+    .info-box {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+
+    .info-box h3 {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .info-box p {
+        color: var(--text-sub);
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+
+    .info-box ul {
+        color: var(--text-sub);
+        font-size: 0.9rem;
+        line-height: 1.8;
+        padding-left: 20px;
+        margin: 0;
+    }
+
+    /* Status Cards */
+    .status-card {
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .status-card.pending {
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+    }
+
+    .status-card.rejected {
+        background: #fee2e2;
+        border: 1px solid #ef4444;
+    }
+
+    .status-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .status-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .status-card.pending .status-icon {
+        background: #f59e0b;
+        color: white;
+    }
+
+    .status-card.rejected .status-icon {
+        background: #ef4444;
+        color: white;
+    }
+
+    .status-title {
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .status-card.pending .status-title {
+        color: #92400e;
+    }
+
+    .status-card.rejected .status-title {
+        color: #991b1b;
+    }
+
+    .status-message {
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+
+    .status-card.pending .status-message {
+        color: #a16207;
+    }
+
+    .status-card.rejected .status-message {
+        color: #b91c1c;
+    }
+
+    .rejection-reason {
+        background: rgba(255, 255, 255, 0.7);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-top: 12px;
+        font-size: 0.9rem;
+    }
+
+    .rejection-reason-label {
+        font-weight: 600;
+        color: #991b1b;
+        margin-bottom: 4px;
+    }
+
+    .rejection-reason-text {
+        color: #7f1d1d;
+    }
+
+    /* Form */
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: var(--text-main);
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+    }
+
+    .form-label .required {
+        color: #ef4444;
+        margin-left: 2px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 14px 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        font-size: 1rem;
+        outline: none;
+        transition: all 0.2s;
+        box-sizing: border-box;
+    }
+
+    .form-input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .form-textarea {
+        resize: vertical;
+        min-height: 120px;
+        font-family: inherit;
+    }
+
+    .form-hint {
+        font-size: 0.8rem;
+        color: var(--text-dim);
+        margin-top: 6px;
+    }
+
+    .char-count {
+        text-align: right;
+        font-size: 0.8rem;
+        color: var(--text-dim);
+        margin-top: 4px;
+    }
+
+    .char-count.warning {
+        color: #f59e0b;
+    }
+
+    .char-count.error {
+        color: #ef4444;
+    }
+
+    .submit-btn {
+        width: 100%;
+        padding: 16px;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .submit-btn:hover:not(:disabled) {
+        background: var(--accent-hover);
+        transform: translateY(-2px);
+    }
+
+    .submit-btn:disabled {
+        background: #94a3b8;
+        cursor: not-allowed;
+    }
+
+    .back-link {
+        display: block;
+        text-align: center;
+        margin-top: 16px;
+        color: var(--text-sub);
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+
+    .back-link:hover {
+        color: var(--accent);
+    }
+
+    /* Toast */
+    .toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: var(--text-main);
+        color: white;
+        padding: 16px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        transform: translateY(100px);
+        opacity: 0;
+        transition: all 0.3s ease;
+        z-index: 1000;
+    }
+
+    .toast.show {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    .toast.success {
+        background: #059669;
+    }
+
+    .toast.error {
+        background: #dc2626;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="access-container">
+    <div class="access-card">
+        <div class="access-header">
+            <div class="access-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+            </div>
+            <h1 class="access-title">오버레이 사용 요청</h1>
+            <p class="access-subtitle">노래하기 기능은 승인된 사용자만 이용 가능합니다</p>
+        </div>
+
+        <div class="access-body">
+            <!-- Info Box -->
+            <div class="info-box">
+                <h3>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    안내
+                </h3>
+                <p>
+                    Jamku Song의 노래하기 기능은 현재 정식 서비스가 아닌 베타 테스트 중입니다.
+                    아래 양식을 작성하여 사용 요청을 보내주시면, 관리자 검토 후 승인/거절 여부를 알려드립니다.
+                </p>
+            </div>
+
+            {% if latest_request and latest_request.status == 'pending' %}
+            <!-- Pending Status -->
+            <div class="status-card pending">
+                <div class="status-header">
+                    <div class="status-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </div>
+                    <span class="status-title">요청 검토 중</span>
+                </div>
+                <p class="status-message">
+                    요청이 접수되었습니다. 관리자가 검토 중이며, 승인되면 노래하기 기능을 사용할 수 있습니다.<br>
+                    요청일: {{ latest_request.created_at.strftime('%Y년 %m월 %d일 %H:%M') }}
+                </p>
+            </div>
+
+            {% elif latest_request and latest_request.status == 'rejected' %}
+            <!-- Rejected Status -->
+            <div class="status-card rejected">
+                <div class="status-header">
+                    <div class="status-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                    </div>
+                    <span class="status-title">요청이 거절되었습니다</span>
+                </div>
+                <p class="status-message">
+                    안타깝게도 요청이 승인되지 않았습니다. 아래 거절 사유를 확인해주세요.
+                </p>
+                {% if latest_request.rejection_reason %}
+                <div class="rejection-reason">
+                    <div class="rejection-reason-label">거절 사유</div>
+                    <div class="rejection-reason-text">{{ latest_request.rejection_reason }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Re-request Form -->
+            <form id="accessRequestForm">
+                <div class="form-group">
+                    <label class="form-label">
+                        방송 플랫폼 주소 <span class="required">*</span>
+                    </label>
+                    <input type="url" class="form-input" id="platformUrl" placeholder=""
+                        value="{{ latest_request.platform_url or '' }}" required>
+                    <p class="form-hint">치지직, 유튜브, SOOP 등 방송 채널 주소를 입력해주세요</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">추가 메시지</label>
+                    <textarea class="form-input form-textarea" id="message" placeholder="추가로 전달하고 싶은 내용이 있으면 작성해주세요"
+                        maxlength="1500"></textarea>
+                    <div class="char-count" id="charCount">0 / 1500</div>
+                </div>
+
+                <button type="submit" class="submit-btn">다시 요청하기</button>
+            </form>
+
+            {% else %}
+            <!-- New Request Form -->
+            <form id="accessRequestForm">
+                <div class="form-group">
+                    <label class="form-label">
+                        방송 플랫폼 주소 <span class="required">*</span>
+                    </label>
+                    <input type="url" class="form-input" id="platformUrl" placeholder="" required>
+                    <p class="form-hint">치지직, 유튜브, SOOP 등 방송 채널 주소를 입력해주세요</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">추가 메시지</label>
+                    <textarea class="form-input form-textarea" id="message"
+                        placeholder="추가로 전달하고 싶은 내용이 있으면 작성해주세요 (선택사항)" maxlength="1500"></textarea>
+                    <div class="char-count" id="charCount">0 / 1500</div>
+                </div>
+
+                <button type="submit" class="submit-btn">사용 요청 보내기</button>
+            </form>
+            {% endif %}
+
+            <a href="/" class="back-link">홈으로 돌아가기</a>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const messageTextarea = document.getElementById('message');
+    const charCount = document.getElementById('charCount');
+    const form = document.getElementById('accessRequestForm');
+
+    {% if latest_request and latest_request.status == 'pending' %}
+    // 대기 중인 경우 폼 비활성화
+    if (form) {
+        form.style.display = 'none';
+    }
+    {% endif %}
+
+    // Character count
+    if (messageTextarea) {
+        messageTextarea.addEventListener('input', () => {
+            const count = messageTextarea.value.length;
+            charCount.textContent = `${count} / 1500`;
+
+            charCount.classList.remove('warning', 'error');
+            if (count > 1400) {
+                charCount.classList.add('warning');
+            }
+            if (count >= 1500) {
+                charCount.classList.add('error');
+            }
+        });
+    }
+
+    // Form submission
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const platformUrl = document.getElementById('platformUrl').value.trim();
+            const message = messageTextarea ? messageTextarea.value.trim() : '';
+
+            if (!platformUrl) {
+                showToast('방송 플랫폼 주소를 입력해주세요', 'error');
+                return;
+            }
+
+            const submitBtn = form.querySelector('.submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '요청 중...';
+
+            try {
+                const res = await fetch('/api/v1/access/request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        platform_url: platformUrl,
+                        message: message || null
+                    })
+                });
+
+                if (res.ok) {
+                    showToast('요청이 접수되었습니다', 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || '요청에 실패했습니다', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '사용 요청 보내기';
+                }
+            } catch (e) {
+                showToast('오류가 발생했습니다', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '사용 요청 보내기';
+            }
+        });
+    }
+
+    function showToast(message, type = '') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = 'toast show ' + type;
+
+        setTimeout(() => {
+            toast.className = 'toast';
+        }, 3000);
+    }
+</script>
+{% endblock %}

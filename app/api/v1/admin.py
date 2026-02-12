@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from app.core.auth import require_admin
 from app.core.overlay_websocket import overlay_manager
 from app.database.mariadb import db_handler
+from app.database.access_request_repository import get_access_request_repository, AccessRequestRepository
+from app.schemas.access_request import AccessRequestRejectSchema, AccessRequestResponseSchema
+from typing import List, Optional
 
 router = APIRouter()
 
@@ -90,3 +93,78 @@ async def broadcast_message(
         "success": True,
         "message": f"{total_sent}개의 연결에 메시지가 전송되었습니다."
     }
+
+
+# ============ Access Request Management ============
+
+@router.get("/access-requests", response_model=List[AccessRequestResponseSchema])
+async def get_access_requests(
+    status: Optional[str] = Query(None, description="필터: pending, approved, rejected"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user=Depends(require_admin),
+    repo: AccessRequestRepository = Depends(get_access_request_repository)
+):
+    """접근 요청 목록 조회"""
+    return await repo.get_all_requests(status=status, limit=limit, offset=offset)
+
+
+@router.get("/access-requests/pending-count")
+async def get_pending_count(
+    user=Depends(require_admin),
+    repo: AccessRequestRepository = Depends(get_access_request_repository)
+):
+    """대기 중인 요청 수 조회"""
+    count = await repo.get_pending_count()
+    return {"count": count}
+
+
+@router.get("/access-requests/{request_id}", response_model=AccessRequestResponseSchema)
+async def get_access_request(
+    request_id: int,
+    user=Depends(require_admin),
+    repo: AccessRequestRepository = Depends(get_access_request_repository)
+):
+    """특정 요청 조회"""
+    request = await repo.get_request_by_id(request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="요청을 찾을 수 없습니다")
+    return request
+
+
+@router.post("/access-requests/{request_id}/approve")
+async def approve_access_request(
+    request_id: int,
+    user=Depends(require_admin),
+    repo: AccessRequestRepository = Depends(get_access_request_repository)
+):
+    """요청 승인"""
+    success = await repo.approve_request(request_id, user['id'])
+    if not success:
+        raise HTTPException(status_code=400, detail="요청을 승인할 수 없습니다. 이미 처리되었거나 존재하지 않는 요청입니다.")
+    return {"success": True, "message": "요청이 승인되었습니다"}
+
+
+@router.post("/access-requests/{request_id}/reject")
+async def reject_access_request(
+    request_id: int,
+    data: AccessRequestRejectSchema,
+    user=Depends(require_admin),
+    repo: AccessRequestRepository = Depends(get_access_request_repository)
+):
+    """요청 거절"""
+    success = await repo.reject_request(request_id, user['id'], data.reason)
+    if not success:
+        raise HTTPException(status_code=400, detail="요청을 거절할 수 없습니다. 이미 처리되었거나 존재하지 않는 요청입니다.")
+    return {"success": True, "message": "요청이 거절되었습니다"}
+
+
+@router.post("/users/{user_id}/revoke-overlay")
+async def revoke_overlay_access(
+    user_id: int,
+    user=Depends(require_admin),
+    repo: AccessRequestRepository = Depends(get_access_request_repository)
+):
+    """사용자의 오버레이 접근 권한 취소"""
+    await repo.revoke_approval(user_id)
+    return {"success": True, "message": "접근 권한이 취소되었습니다"}

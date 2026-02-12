@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `picture` TEXT COMMENT '프로필 이미지 URL',
     `is_active` TINYINT(1) DEFAULT 1 COMMENT '활성 상태 (1: 활성, 0: 비활성)',
     `is_admin` TINYINT(1) DEFAULT 0 COMMENT '관리자 여부 (1: 관리자, 0: 일반 사용자)',
+    `overlay_approved` TINYINT(1) DEFAULT 0 COMMENT '오버레이 기능 사용 승인 (1: 승인, 0: 미승인)',
     `last_login` TIMESTAMP NULL COMMENT '최근 로그인 일시',
     `ip` VARCHAR(45) COMMENT '최근 로그인 IP',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '가입 일시',
@@ -170,3 +171,28 @@ CREATE TABLE IF NOT EXISTS `user_overlay_presets` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX idx_preset_user_id ON user_overlay_presets(user_id);
+
+-- -------------------------------------------------------------------------------------------------------------
+-- Overlay Access Requests
+-- -------------------------------------------------------------------------------------------------------------
+
+-- 오버레이 기능 사용 요청 테이블
+CREATE TABLE IF NOT EXISTS `overlay_access_requests` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` BIGINT NOT NULL COMMENT 'users 테이블 참조 ID',
+    `platform_url` VARCHAR(500) NOT NULL COMMENT '방송 플랫폼 주소',
+    `message` TEXT NULL COMMENT '추가 메시지 (최대 1500자)',
+    `status` ENUM('pending', 'approved', 'rejected') DEFAULT 'pending' COMMENT '요청 상태',
+    `rejection_reason` TEXT NULL COMMENT '거절 사유',
+    `reviewed_by` BIGINT NULL COMMENT '검토한 관리자 ID',
+    `reviewed_at` TIMESTAMP NULL COMMENT '검토 일시',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    -- 외래 키 설정
+    CONSTRAINT `fk_access_request_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_access_request_reviewer` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_access_request_user_id ON overlay_access_requests(user_id);
+CREATE INDEX idx_access_request_status ON overlay_access_requests(status);

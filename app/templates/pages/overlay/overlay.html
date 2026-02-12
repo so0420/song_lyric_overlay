@@ -34,6 +34,14 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 24px;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .page-header-right {
+        display: flex;
+        align-items: center;
+        gap: 20px;
     }
 
     .page-title {
@@ -47,6 +55,7 @@
         color: var(--text-dim);
         display: flex;
         gap: 12px;
+        flex-wrap: wrap;
     }
 
     .kbd {
@@ -55,6 +64,34 @@
         border-radius: 4px;
         font-family: monospace;
         font-size: 0.75rem;
+    }
+
+    /* 버튼 텍스트 (반응형 숨김용) */
+    .btn-text {
+        display: inline;
+    }
+
+    /* 반응형 - 중간 화면: 키보드 힌트 일부 숨김 */
+    @media (max-width: 1100px) {
+        .keyboard-hint {
+            display: none;
+        }
+        .page-header-right {
+            gap: 12px;
+        }
+    }
+
+    /* 반응형 - 작은 화면: 버튼 텍스트 숨김 */
+    @media (max-width: 768px) {
+        .page-header .btn-text {
+            display: none;
+        }
+        .page-header .btn {
+            padding: 10px 12px;
+        }
+        .page-title {
+            font-size: 1.4rem;
+        }
     }
 
     /* Search */
@@ -1403,20 +1440,20 @@
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">노래하기</h1>
-    <div style="display: flex; align-items: center; gap: 20px;">
+    <div class="page-header-right">
         <div class="keyboard-hint">
             <span><span class="kbd">Space</span> 재생</span>
             <span><span class="kbd">←</span><span class="kbd">→</span> 이전/다음</span>
             <span><span class="kbd">[</span><span class="kbd">]</span> 로컬 오프셋</span>
             <span><span class="kbd">,</span><span class="kbd">.</span> OBS 오프셋</span>
         </div>
-        <a href="/overlay/settings" class="btn btn-outline" style="gap: 8px; padding: 10px 16px;">
+        <a href="/overlay/settings" class="btn btn-outline" style="gap: 8px; padding: 10px 16px;" title="OBS 오버레이 설정">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
                 <line x1="8" y1="21" x2="16" y2="21"></line>
                 <line x1="12" y1="17" x2="12" y2="21"></line>
             </svg>
-            OBS 오버레이 설정
+            <span class="btn-text">OBS 오버레이 설정</span>
         </a>
     </div>
 </div>

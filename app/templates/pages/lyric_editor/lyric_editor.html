@@ -68,6 +68,62 @@
         box-shadow: var(--premium-shadow);
         border: 1px solid var(--border-color);
         margin-bottom: 20px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    /* 툴바 버튼 텍스트 (반응형 숨김용) */
+    .btn-text {
+        display: inline;
+    }
+
+    /* 툴바 반응형 - 중간 화면 */
+    @media (max-width: 1400px) {
+        .toolbar {
+            padding: 10px 16px;
+        }
+        .toolbar-group {
+            gap: 8px;
+        }
+        .version-title-box input {
+            width: 120px;
+        }
+    }
+
+    /* 툴바 반응형 - 작은 화면: 버튼 텍스트 숨김 */
+    @media (max-width: 1100px) {
+        .toolbar .btn-text {
+            display: none;
+        }
+        .toolbar .btn {
+            padding: 0 12px;
+        }
+        .toolbar .btn svg {
+            margin-right: 0 !important;
+        }
+        .version-title-box {
+            display: none;
+        }
+        .toolbar .btn-action-group {
+            padding-right: 0;
+            border-right: none;
+        }
+        .toolbar-title {
+            font-size: 1rem;
+        }
+    }
+
+    /* 툴바 반응형 - 아주 작은 화면 */
+    @media (max-width: 768px) {
+        .toolbar {
+            padding: 8px 12px;
+        }
+        .toolbar-logo {
+            display: none;
+        }
+        .toolbar-title {
+            font-size: 0.9rem;
+        }
     }
 
     .video-wrapper {
@@ -622,26 +678,26 @@
 {% block content %}
 <div class="toolbar">
     <div class="toolbar-group">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="var(--accent)">
+        <svg class="toolbar-logo" width="32" height="32" viewBox="0 0 24 24" fill="var(--accent)">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
         </svg>
-        <h1 style="font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em;">가사 자막 편집기</h1>
+        <h1 class="toolbar-title" style="font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em;">가사 자막 편집기</h1>
     </div>
     <div class="toolbar-group">
         <div class="btn-action-group" style="padding-right: 12px; border-right: 1px solid #f1f5f9;">
             <button id="btn-search-public" class="btn btn-outline" style="height: 42px;"
-                onclick="showPublicLyricsSearchModal()">
+                onclick="showPublicLyricsSearchModal()" title="가사 검색">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
-                가사 검색
+                <span class="btn-text">가사 검색</span>
             </button>
-            <button id="btn-load-history" class="btn btn-outline" style="height: 42px;" onclick="showHistoryModal()">
+            <button id="btn-load-history" class="btn btn-outline" style="height: 42px;" onclick="showHistoryModal()" title="내 작업 목록">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                내 작업 목록
+                <span class="btn-text">내 작업 목록</span>
             </button>
         </div>
         <div class="version-title-box">
@@ -653,14 +709,14 @@
                 value="{{ lyrics.title if lyrics else '' }}">
         </div>
         <button id="btn-save" class="btn btn-primary" style="height: 42px; padding: 0 20px; font-weight: 700;"
-            onclick="saveLyrics()">
+            onclick="saveLyrics()" title="저장하기">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                 style="margin-right: 4px;">
                 <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
                 <polyline points="17 21 17 13 7 13 7 21"></polyline>
                 <polyline points="7 3 7 8 15 8"></polyline>
             </svg>
-            저장하기
+            <span class="btn-text">저장하기</span>
         </button>
         <button class="btn btn-outline"
             style="aspect-ratio: 1; padding: 0; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;"

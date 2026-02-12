@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from typing import Optional, Any
 from app.utils.config import settings
 
+
 class MariaDBHandler:
     def __init__(self):
         # 모듈 로드 시점의 설정을 일단 저장
@@ -20,13 +21,13 @@ class MariaDBHandler:
             # 최신 설정을 다시 읽어옵니다. (load_dotenv 이후의 값 보장)
             host = settings.db_host
             if host == "localhost":
-                host = "127.0.0.1" # Windows에서 localhost는 가끔 문제를 일으키므로 127.0.0.1 추천
-                
+                host = "127.0.0.1"  # Windows에서 localhost는 가끔 문제를 일으키므로 127.0.0.1 추천
+
             port = settings.db_port
             user = settings.db_user
             password = settings.db_password
             db = settings.db_name
-            
+
             self._pool = await aiomysql.create_pool(
                 host=host,
                 port=port,
@@ -83,6 +84,32 @@ class MariaDBHandler:
                 await conn.rollback()
                 raise
 
+    async def execute_query(self, query, params=None):
+        async with self.session() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(query, params)
+                return cursor.lastrowid
+
+    async def execute_many(self, query, params_list):
+        if not params_list:
+            return 0
+        async with self.session() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.executemany(query, params_list)
+                return cursor.rowcount
+
+    async def fetch_one(self, query, params=None):
+        async with self.session() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(query, params)
+                return await cursor.fetchone()
+
+    async def fetch_all(self, query, params=None):
+        async with self.session() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(query, params)
+                return await cursor.fetchall()
+
 
 class TransactionContext:
     """트랜잭션 내에서 쿼리를 실행하기 위한 컨텍스트"""
@@ -116,33 +143,9 @@ class TransactionContext:
             await cursor.execute(query, params)
             return await cursor.fetchall()
 
-    async def execute_query(self, query, params=None):
-        async with self.session() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(query, params)
-                return cursor.lastrowid
-
-    async def execute_many(self, query, params_list):
-        if not params_list:
-            return 0
-        async with self.session() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.executemany(query, params_list)
-                return cursor.rowcount
-
-    async def fetch_one(self, query, params=None):
-        async with self.session() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(query, params)
-                return await cursor.fetchone()
-
-    async def fetch_all(self, query, params=None):
-        async with self.session() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(query, params)
-                return await cursor.fetchall()
 
 db_handler = MariaDBHandler()
+
 
 def get_mariadb_handler():
     return db_handler

@@ -65,18 +65,32 @@ async def verify_csrf(
     """Form/AJAX 요청의 CSRF 토큰을 검증하는 의존성
 
     토큰은 X-CSRF-Token 헤더로 전달해야 합니다.
-    JSON 요청은 Origin 검증 + SameSite 쿠키로 보호됩니다.
+    JSON/AJAX 요청은 Origin 검증 + SameSite 쿠키로 보호됩니다.
     """
     content_type = request.headers.get("content-type", "")
 
-    # JSON API 요청: Origin/Referer 검증
-    if "application/json" in content_type:
+    # JSON API 요청 또는 AJAX 요청 (body 없는 POST 등): Origin/Referer 검증
+    # X-Requested-With 헤더가 있거나, JSON content-type이거나, Fetch API 요청인 경우
+    is_ajax = (
+        "application/json" in content_type or
+        request.headers.get("x-requested-with") == "XMLHttpRequest" or
+        request.headers.get("sec-fetch-mode") == "cors" or
+        request.headers.get("sec-fetch-site") == "same-origin"
+    )
+
+    if is_ajax:
         if not validate_origin(request):
             raise HTTPException(status_code=403, detail="잘못된 요청 출처입니다.")
         return True
 
-    # Form 요청: CSRF 토큰 검증
-    if not validate_csrf_token(request, x_csrf_token):
+    # CSRF 토큰이 제공된 경우 검증
+    if x_csrf_token:
+        if not validate_csrf_token(request, x_csrf_token):
+            raise HTTPException(status_code=403, detail="CSRF 토큰이 유효하지 않습니다.")
+        return True
+
+    # 토큰이 없으면 Origin/Referer 검증으로 대체
+    if not validate_origin(request):
         raise HTTPException(status_code=403, detail="CSRF 토큰이 유효하지 않습니다. X-CSRF-Token 헤더를 확인해주세요.")
 
     return True

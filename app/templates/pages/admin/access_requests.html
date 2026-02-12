@@ -29,231 +29,230 @@
         color: var(--accent);
     }
 
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
-    }
-
-    .stat-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 20px;
-        text-align: center;
-    }
-
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        line-height: 1;
-    }
-
-    .stat-value.pending { color: #f59e0b; }
-    .stat-value.approved { color: #10b981; }
-    .stat-value.rejected { color: #ef4444; }
-    .stat-value.revoked { color: #8b5cf6; }
-
-    .stat-label {
-        font-size: 0.85rem;
-        color: var(--text-sub);
-        margin-top: 8px;
-    }
-
-    .filter-tabs {
+    /* Stats */
+    .stats-row {
         display: flex;
-        gap: 8px;
+        gap: 24px;
         margin-bottom: 24px;
         flex-wrap: wrap;
     }
 
-    .filter-tab {
-        padding: 10px 20px;
-        border: 1px solid var(--border-color);
-        background: white;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-        font-size: 0.9rem;
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    .filter-tab:hover {
+    .stat-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+
+    .stat-dot.pending { background: #f59e0b; }
+    .stat-dot.approved { background: #10b981; }
+    .stat-dot.rejected { background: #ef4444; }
+    .stat-dot.revoked { background: #8b5cf6; }
+
+    .stat-text {
+        font-size: 0.9rem;
+        color: var(--text-sub);
+    }
+
+    .stat-count {
+        font-weight: 700;
+        color: var(--text-main);
+    }
+
+    /* Tabs */
+    .tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 20px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .tab {
+        padding: 12px 20px;
+        border: none;
+        background: none;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--text-sub);
+        font-size: 0.9rem;
+        position: relative;
+        transition: color 0.2s;
+    }
+
+    .tab:hover { color: var(--text-main); }
+
+    .tab.active {
+        color: var(--accent);
+    }
+
+    .tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--accent);
+    }
+
+    /* Filter Pills */
+    .filters {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+
+    .filter-pill {
+        padding: 6px 14px;
+        border: 1px solid var(--border-color);
+        background: white;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: var(--text-sub);
+    }
+
+    .filter-pill:hover {
         border-color: var(--accent);
         color: var(--accent);
     }
 
-    .filter-tab.active {
+    .filter-pill.active {
         background: var(--accent);
         border-color: var(--accent);
         color: white;
     }
 
-    .requests-container {
+    /* Table */
+    .table-container {
         background: white;
         border: 1px solid var(--border-color);
-        border-radius: 16px;
+        border-radius: 12px;
         overflow: hidden;
     }
 
-    .request-card {
-        padding: 20px 24px;
-        border-bottom: 1px solid var(--border-color);
-        transition: background 0.2s;
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
     }
 
-    .request-card:last-child {
+    .data-table th {
+        text-align: left;
+        padding: 12px 16px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: #f8fafc;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .data-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.9rem;
+        vertical-align: middle;
+    }
+
+    .data-table tr:last-child td {
         border-bottom: none;
     }
 
-    .request-card:hover {
-        background: #f8fafc;
+    .data-table tr:hover td {
+        background: #fafbfc;
     }
 
-    .request-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 12px;
-    }
-
-    .user-info {
+    .user-cell {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
     }
 
     .user-avatar {
-        width: 40px;
-        height: 40px;
+        width: 32px;
+        height: 32px;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
-        font-weight: 700;
-    }
-
-    .user-details {
-        display: flex;
-        flex-direction: column;
+        font-size: 0.8rem;
+        font-weight: 600;
+        flex-shrink: 0;
     }
 
     .user-name {
         font-weight: 600;
         color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 150px;
     }
 
     .user-email {
-        font-size: 0.85rem;
-        color: var(--text-sub);
-    }
-
-    .request-status {
-        display: inline-flex;
-        align-items: center;
-        padding: 6px 12px;
-        border-radius: 9999px;
         font-size: 0.8rem;
-        font-weight: 600;
+        color: var(--text-dim);
     }
 
-    .status-pending {
-        background: #fef3c7;
-        color: #92400e;
+    .url-cell {
+        max-width: 200px;
     }
 
-    .status-approved {
-        background: #d1fae5;
-        color: #065f46;
-    }
-
-    .status-rejected {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
-    .status-revoked {
-        background: #ede9fe;
-        color: #5b21b6;
-    }
-
-    .request-body {
-        margin-bottom: 16px;
-    }
-
-    .platform-url {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 8px;
-    }
-
-    .platform-url a {
+    .url-cell a {
         color: var(--accent);
         text-decoration: none;
-        word-break: break-all;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    .platform-url a:hover {
+    .url-cell a:hover {
         text-decoration: underline;
     }
 
-    .request-message {
-        background: #f8fafc;
-        padding: 12px 16px;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        color: var(--text-sub);
-        line-height: 1.6;
-        white-space: pre-wrap;
-        margin-top: 12px;
-    }
-
-    .request-date {
-        font-size: 0.8rem;
-        color: var(--text-dim);
-        margin-top: 8px;
-    }
-
-    .rejection-info {
-        background: #fee2e2;
-        padding: 12px 16px;
-        border-radius: 8px;
-        margin-top: 12px;
-    }
-
-    .rejection-label {
-        font-size: 0.8rem;
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
         font-weight: 600;
-        color: #991b1b;
-        margin-bottom: 4px;
     }
 
-    .rejection-reason {
-        font-size: 0.9rem;
-        color: #7f1d1d;
+    .status-badge.pending { background: #fef3c7; color: #92400e; }
+    .status-badge.approved { background: #d1fae5; color: #065f46; }
+    .status-badge.rejected { background: #fee2e2; color: #991b1b; }
+    .status-badge.revoked { background: #ede9fe; color: #5b21b6; }
+
+    .date-cell {
+        font-size: 0.8rem;
+        color: var(--text-sub);
+        white-space: nowrap;
     }
 
-    .request-actions {
-        display: flex;
-        gap: 12px;
-        margin-top: 16px;
+    .actions-cell {
+        white-space: nowrap;
     }
 
-    .btn {
-        padding: 10px 20px;
-        border-radius: 8px;
+    .btn-sm {
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.8rem;
         font-weight: 600;
         cursor: pointer;
         border: none;
         transition: all 0.2s;
-        font-size: 0.9rem;
-        display: flex;
-        align-items: center;
-        gap: 8px;
     }
 
     .btn-approve {
@@ -261,39 +260,81 @@
         color: white;
     }
 
-    .btn-approve:hover {
-        background: #059669;
-    }
+    .btn-approve:hover { background: #059669; }
 
     .btn-reject {
         background: #ef4444;
         color: white;
+        margin-left: 6px;
     }
 
-    .btn-reject:hover {
-        background: #dc2626;
+    .btn-reject:hover { background: #dc2626; }
+
+    .btn-revoke {
+        background: #f59e0b;
+        color: white;
     }
 
-    .empty-state {
+    .btn-revoke:hover { background: #d97706; }
+
+    .reason-row td {
+        background: #fafbfc;
+        padding: 8px 16px 14px 58px;
+        font-size: 0.85rem;
+        color: var(--text-sub);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .reason-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    /* Search */
+    .search-box {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 8px 14px;
+        margin-bottom: 16px;
+        max-width: 300px;
+    }
+
+    .search-box:focus-within {
+        border-color: var(--accent);
+    }
+
+    .search-box svg {
+        color: var(--text-dim);
+        flex-shrink: 0;
+        width: 16px;
+        height: 16px;
+    }
+
+    .search-input {
+        flex: 1;
+        border: none;
+        outline: none;
+        font-size: 0.9rem;
+    }
+
+    /* Empty & Loading */
+    .empty-state, .loading {
         text-align: center;
         padding: 48px 24px;
         color: var(--text-sub);
     }
 
-    .empty-state svg {
-        width: 64px;
-        height: 64px;
-        margin-bottom: 16px;
-        opacity: 0.5;
-    }
-
     /* Modal */
     .modal-overlay {
         position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
+        top: 0; left: 0; right: 0; bottom: 0;
         background: rgba(0, 0, 0, 0.5);
         display: flex;
         align-items: center;
@@ -311,46 +352,40 @@
 
     .modal {
         background: white;
-        border-radius: 16px;
+        border-radius: 12px;
         padding: 24px;
         width: 100%;
-        max-width: 500px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-        transform: translateY(-20px);
-        transition: transform 0.2s;
-    }
-
-    .modal-overlay.active .modal {
-        transform: translateY(0);
+        max-width: 400px;
+        margin: 16px;
     }
 
     .modal-title {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         font-weight: 700;
         margin-bottom: 16px;
     }
 
     .modal-input {
         width: 100%;
-        padding: 14px 16px;
+        padding: 12px;
         border: 1px solid var(--border-color);
-        border-radius: 10px;
-        font-size: 1rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
         margin-bottom: 16px;
-        outline: none;
-        box-sizing: border-box;
         resize: vertical;
-        min-height: 100px;
+        min-height: 80px;
         font-family: inherit;
+        box-sizing: border-box;
     }
 
     .modal-input:focus {
+        outline: none;
         border-color: var(--accent);
     }
 
     .modal-actions {
         display: flex;
-        gap: 12px;
+        gap: 8px;
         justify-content: flex-end;
     }
 
@@ -359,21 +394,17 @@
         color: var(--text-sub);
     }
 
-    .btn-cancel:hover {
-        background: #e2e8f0;
-    }
+    .btn-cancel:hover { background: #e2e8f0; }
 
     /* Toast */
     .toast {
         position: fixed;
         bottom: 24px;
         right: 24px;
-        background: var(--text-main);
-        color: white;
-        padding: 16px 24px;
-        border-radius: 12px;
+        padding: 12px 20px;
+        border-radius: 8px;
         font-weight: 600;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        font-size: 0.9rem;
         transform: translateY(100px);
         opacity: 0;
         transition: all 0.3s ease;
@@ -385,131 +416,18 @@
         opacity: 1;
     }
 
-    .toast.success {
-        background: #059669;
-    }
+    .toast.success { background: #059669; color: white; }
+    .toast.error { background: #dc2626; color: white; }
 
-    .toast.error {
-        background: #dc2626;
-    }
+    /* Responsive */
+    @media (max-width: 768px) {
+        .data-table th:nth-child(3),
+        .data-table td:nth-child(3) {
+            display: none;
+        }
 
-    .loading {
-        text-align: center;
-        padding: 48px;
-        color: var(--text-sub);
-    }
-
-    /* Section Tabs */
-    .section-tabs {
-        display: flex;
-        gap: 0;
-        margin-bottom: 24px;
-        border-bottom: 2px solid var(--border-color);
-    }
-
-    .section-tab {
-        padding: 14px 24px;
-        border: none;
-        background: none;
-        font-weight: 600;
-        cursor: pointer;
-        color: var(--text-sub);
-        font-size: 1rem;
-        position: relative;
-        transition: color 0.2s;
-    }
-
-    .section-tab:hover {
-        color: var(--accent);
-    }
-
-    .section-tab.active {
-        color: var(--accent);
-    }
-
-    .section-tab.active::after {
-        content: '';
-        position: absolute;
-        bottom: -2px;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: var(--accent);
-    }
-
-    .section-content {
-        animation: fadeIn 0.2s ease;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-
-    /* Revoke button */
-    .btn-revoke {
-        background: #f59e0b;
-        color: white;
-    }
-
-    .btn-revoke:hover {
-        background: #d97706;
-    }
-
-    .approved-date {
-        font-size: 0.85rem;
-        color: var(--text-sub);
-        margin-top: 4px;
-    }
-
-    /* Search box */
-    .search-box {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        background: white;
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 12px 16px;
-        margin-bottom: 16px;
-        transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    .search-box:focus-within {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-    }
-
-    .search-box svg {
-        color: var(--text-dim);
-        flex-shrink: 0;
-    }
-
-    .search-input {
-        flex: 1;
-        border: none;
-        outline: none;
-        font-size: 0.95rem;
-        background: transparent;
-    }
-
-    .search-input::placeholder {
-        color: var(--text-dim);
-    }
-
-    .clear-search {
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 4px;
-        color: var(--text-dim);
-        border-radius: 4px;
-        transition: color 0.2s, background 0.2s;
-    }
-
-    .clear-search:hover {
-        color: var(--text-main);
-        background: #f1f5f9;
+        .user-name { max-width: 100px; }
+        .url-cell { max-width: 120px; }
     }
 </style>
 {% endblock %}
@@ -518,105 +436,111 @@
 <div class="page-header">
     <h1 class="page-title">접근 요청 관리</h1>
     <a href="/admin" class="back-link">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
         </svg>
-        대시보드로 돌아가기
+        대시보드
     </a>
 </div>
 
-<div class="stats-grid" id="statsGrid">
-    <div class="stat-card">
-        <div class="stat-value pending" id="pendingCount">-</div>
-        <div class="stat-label">대기 중</div>
+<div class="stats-row">
+    <div class="stat-item">
+        <span class="stat-dot pending"></span>
+        <span class="stat-text">대기 <span class="stat-count" id="pendingCount">0</span></span>
     </div>
-    <div class="stat-card">
-        <div class="stat-value approved" id="approvedCount">-</div>
-        <div class="stat-label">승인됨</div>
+    <div class="stat-item">
+        <span class="stat-dot approved"></span>
+        <span class="stat-text">승인 <span class="stat-count" id="approvedCount">0</span></span>
     </div>
-    <div class="stat-card">
-        <div class="stat-value rejected" id="rejectedCount">-</div>
-        <div class="stat-label">거절됨</div>
+    <div class="stat-item">
+        <span class="stat-dot rejected"></span>
+        <span class="stat-text">거절 <span class="stat-count" id="rejectedCount">0</span></span>
     </div>
-    <div class="stat-card">
-        <div class="stat-value revoked" id="revokedCount">-</div>
-        <div class="stat-label">권한 회수</div>
+    <div class="stat-item">
+        <span class="stat-dot revoked"></span>
+        <span class="stat-text">회수 <span class="stat-count" id="revokedCount">0</span></span>
     </div>
 </div>
 
-<!-- 탭 네비게이션 -->
-<div class="section-tabs">
-    <button class="section-tab active" data-section="requests">접근 요청</button>
-    <button class="section-tab" data-section="approved-users">승인된 사용자</button>
+<div class="tabs">
+    <button class="tab active" data-section="requests">요청 목록</button>
+    <button class="tab" data-section="users">승인된 사용자</button>
 </div>
 
-<!-- 접근 요청 섹션 -->
-<div id="requestsSection" class="section-content">
-    <div class="filter-tabs">
-        <button class="filter-tab active" data-status="">전체</button>
-        <button class="filter-tab" data-status="pending">대기 중</button>
-        <button class="filter-tab" data-status="approved">승인됨</button>
-        <button class="filter-tab" data-status="rejected">거절됨</button>
-        <button class="filter-tab" data-status="revoked">권한 회수</button>
+<!-- 요청 목록 섹션 -->
+<div id="requestsSection">
+    <div class="filters">
+        <button class="filter-pill active" data-status="">전체</button>
+        <button class="filter-pill" data-status="pending">대기 중</button>
+        <button class="filter-pill" data-status="approved">승인됨</button>
+        <button class="filter-pill" data-status="rejected">거절됨</button>
+        <button class="filter-pill" data-status="revoked">회수됨</button>
     </div>
-
-    <div class="requests-container">
-        <div id="requestsList">
-            <div class="loading">불러오는 중...</div>
-        </div>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>사용자</th>
+                    <th>플랫폼</th>
+                    <th>상태</th>
+                    <th>요청일</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="requestsBody">
+                <tr><td colspan="5" class="loading">불러오는 중...</td></tr>
+            </tbody>
+        </table>
     </div>
 </div>
 
 <!-- 승인된 사용자 섹션 -->
-<div id="approvedUsersSection" class="section-content" style="display: none;">
+<div id="usersSection" style="display: none;">
     <div class="search-box">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-        <input type="text" id="userSearchInput" class="search-input" placeholder="이름 또는 이메일로 검색...">
-        <button id="clearSearchBtn" class="clear-search" style="display: none;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-        </button>
+        <input type="text" id="searchInput" class="search-input" placeholder="이름 또는 이메일 검색...">
     </div>
-    <div class="requests-container">
-        <div id="approvedUsersList">
-            <div class="loading">불러오는 중...</div>
-        </div>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>사용자</th>
+                    <th>플랫폼</th>
+                    <th>승인일</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="usersBody">
+                <tr><td colspan="4" class="loading">불러오는 중...</td></tr>
+            </tbody>
+        </table>
     </div>
 </div>
 
-<!-- Reject Modal -->
+<!-- Modals -->
 <div class="modal-overlay" id="rejectModal">
     <div class="modal">
         <h3 class="modal-title">요청 거절</h3>
-        <p style="color: var(--text-sub); margin-bottom: 16px; font-size: 0.9rem;">
-            거절 사유를 입력해주세요. 사용자에게 표시됩니다.
-        </p>
-        <textarea class="modal-input" id="rejectReason" placeholder="거절 사유를 입력하세요"></textarea>
+        <textarea class="modal-input" id="rejectReason" placeholder="거절 사유를 입력하세요 (사용자에게 표시됨)"></textarea>
         <input type="hidden" id="rejectRequestId">
         <div class="modal-actions">
-            <button class="btn btn-cancel" onclick="closeRejectModal()">취소</button>
-            <button class="btn btn-reject" onclick="confirmReject()">거절하기</button>
+            <button class="btn-sm btn-cancel" onclick="closeModal('rejectModal')">취소</button>
+            <button class="btn-sm btn-reject" onclick="confirmReject()">거절</button>
         </div>
     </div>
 </div>
 
-<!-- Revoke Modal -->
 <div class="modal-overlay" id="revokeModal">
     <div class="modal">
-        <h3 class="modal-title">권한 취소</h3>
-        <p style="color: var(--text-sub); margin-bottom: 16px; font-size: 0.9rem;">
-            권한 취소 사유를 입력해주세요. 사용자에게 거절 사유로 표시됩니다.
-        </p>
-        <textarea class="modal-input" id="revokeReason" placeholder="권한 취소 사유를 입력하세요"></textarea>
+        <h3 class="modal-title" id="revokeModalTitle">권한 취소</h3>
+        <textarea class="modal-input" id="revokeReason" placeholder="취소 사유를 입력하세요 (사용자에게 표시됨)"></textarea>
         <input type="hidden" id="revokeUserId">
         <div class="modal-actions">
-            <button class="btn btn-cancel" onclick="closeRevokeModal()">취소</button>
-            <button class="btn btn-revoke" onclick="confirmRevoke()">권한 취소</button>
+            <button class="btn-sm btn-cancel" onclick="closeModal('revokeModal')">취소</button>
+            <button class="btn-sm btn-revoke" onclick="confirmRevoke()">권한 취소</button>
         </div>
     </div>
 </div>
@@ -627,387 +551,256 @@
 {% block extra_scripts %}
 <script>
 let requests = [];
-let approvedUsers = [];
+let users = [];
 let currentFilter = '';
-let currentSection = 'requests';
-let searchQuery = '';
-let searchDebounceTimer = null;
+let searchDebounce = null;
 
-// Section tabs
-document.querySelectorAll('.section-tab').forEach(tab => {
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
-        document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
-        currentSection = tab.dataset.section;
 
-        if (currentSection === 'requests') {
-            document.getElementById('requestsSection').style.display = 'block';
-            document.getElementById('approvedUsersSection').style.display = 'none';
-        } else {
-            document.getElementById('requestsSection').style.display = 'none';
-            document.getElementById('approvedUsersSection').style.display = 'block';
-            loadApprovedUsers();
-        }
+        const section = tab.dataset.section;
+        document.getElementById('requestsSection').style.display = section === 'requests' ? 'block' : 'none';
+        document.getElementById('usersSection').style.display = section === 'users' ? 'block' : 'none';
+
+        if (section === 'users') loadUsers();
     });
 });
 
-// Filter tabs
-document.querySelectorAll('.filter-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        currentFilter = tab.dataset.status;
+// Filter pills
+document.querySelectorAll('.filter-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+        document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        currentFilter = pill.dataset.status;
         loadRequests();
     });
 });
 
+// Search
+document.getElementById('searchInput').addEventListener('input', (e) => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => loadUsers(e.target.value), 300);
+});
+
+// Load requests
 async function loadRequests() {
-    const container = document.getElementById('requestsList');
-    container.innerHTML = '<div class="loading">불러오는 중...</div>';
+    const tbody = document.getElementById('requestsBody');
+    tbody.innerHTML = '<tr><td colspan="5" class="loading">불러오는 중...</td></tr>';
 
     try {
         let url = '/api/v1/admin/access-requests';
-        if (currentFilter) {
-            url += `?status=${currentFilter}`;
-        }
+        if (currentFilter) url += `?status=${currentFilter}`;
 
         const res = await fetch(url);
-        if (res.ok) {
-            requests = await res.json();
-            renderRequests();
-            updateStats();
-        }
+        requests = await res.json();
+        renderRequests();
+        updateStats();
     } catch (e) {
-        container.innerHTML = '<div class="loading">불러오기 실패</div>';
+        tbody.innerHTML = '<tr><td colspan="5" class="loading">불러오기 실패</td></tr>';
     }
 }
 
 function renderRequests() {
-    const container = document.getElementById('requestsList');
+    const tbody = document.getElementById('requestsBody');
 
     if (requests.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                </svg>
-                <p>요청이 없습니다</p>
-            </div>
-        `;
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">요청이 없습니다</td></tr>';
         return;
     }
 
-    container.innerHTML = requests.map(req => {
-        const statusClass = {
-            pending: 'status-pending',
-            approved: 'status-approved',
-            rejected: 'status-rejected',
-            revoked: 'status-revoked'
-        }[req.status];
-
-        const statusText = {
-            pending: '대기 중',
-            approved: '승인됨',
-            rejected: '거절됨',
-            revoked: '권한 회수'
-        }[req.status];
-
+    tbody.innerHTML = requests.map(req => {
         const initial = (req.user_name || req.user_email || '?')[0].toUpperCase();
-        const date = new Date(req.created_at).toLocaleString('ko-KR');
+        const date = new Date(req.created_at).toLocaleDateString('ko-KR');
+        const statusMap = { pending: '대기 중', approved: '승인됨', rejected: '거절됨', revoked: '회수됨' };
 
-        let actionsHtml = '';
+        let actions = '';
         if (req.status === 'pending') {
-            actionsHtml = `
-                <div class="request-actions">
-                    <button class="btn btn-approve" onclick="approveRequest(${req.id})">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        승인
-                    </button>
-                    <button class="btn btn-reject" onclick="openRejectModal(${req.id})">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                        거절
-                    </button>
-                </div>
+            actions = `
+                <button class="btn-sm btn-approve" onclick="approveRequest(${req.id})">승인</button>
+                <button class="btn-sm btn-reject" onclick="openRejectModal(${req.id})">거절</button>
             `;
         }
 
-        let rejectionHtml = '';
-        if (req.status === 'rejected' && req.rejection_reason) {
-            rejectionHtml = `
-                <div class="rejection-info">
-                    <div class="rejection-label">거절 사유</div>
-                    <div class="rejection-reason">${escapeHtml(req.rejection_reason)}</div>
-                </div>
-            `;
-        } else if (req.status === 'revoked' && req.rejection_reason) {
-            rejectionHtml = `
-                <div class="rejection-info" style="background: #ede9fe;">
-                    <div class="rejection-label" style="color: #5b21b6;">회수 사유</div>
-                    <div class="rejection-reason" style="color: #6d28d9;">${escapeHtml(req.rejection_reason)}</div>
-                </div>
+        let reasonRow = '';
+        if ((req.status === 'rejected' || req.status === 'revoked') && req.rejection_reason) {
+            const label = req.status === 'rejected' ? '거절 사유' : '회수 사유';
+            reasonRow = `
+                <tr class="reason-row">
+                    <td colspan="5">
+                        <div class="reason-label">${label}</div>
+                        ${escapeHtml(req.rejection_reason)}
+                    </td>
+                </tr>
             `;
         }
 
         return `
-            <div class="request-card">
-                <div class="request-header">
-                    <div class="user-info">
+            <tr>
+                <td>
+                    <div class="user-cell">
                         <div class="user-avatar">${initial}</div>
-                        <div class="user-details">
-                            <span class="user-name">${escapeHtml(req.user_name || '이름 없음')}</span>
-                            <span class="user-email">${escapeHtml(req.user_email || '')}</span>
+                        <div>
+                            <div class="user-name">${escapeHtml(req.user_name || '이름 없음')}</div>
+                            <div class="user-email">${escapeHtml(req.user_email || '')}</div>
                         </div>
                     </div>
-                    <span class="request-status ${statusClass}">${statusText}</span>
-                </div>
-                <div class="request-body">
-                    <div class="platform-url">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                        </svg>
-                        <a href="${escapeHtml(req.platform_url)}" target="_blank" rel="noopener">${escapeHtml(req.platform_url)}</a>
-                    </div>
-                    ${req.message ? `<div class="request-message">${escapeHtml(req.message)}</div>` : ''}
-                    ${rejectionHtml}
-                    <div class="request-date">요청일: ${date}</div>
-                </div>
-                ${actionsHtml}
-            </div>
+                </td>
+                <td class="url-cell">
+                    <a href="${escapeHtml(req.platform_url)}" target="_blank">${escapeHtml(req.platform_url)}</a>
+                </td>
+                <td><span class="status-badge ${req.status}">${statusMap[req.status]}</span></td>
+                <td class="date-cell">${date}</td>
+                <td class="actions-cell">${actions}</td>
+            </tr>
+            ${reasonRow}
         `;
     }).join('');
 }
 
 function updateStats() {
-    const pending = requests.filter(r => r.status === 'pending').length;
-    const approved = requests.filter(r => r.status === 'approved').length;
-    const rejected = requests.filter(r => r.status === 'rejected').length;
-    const revoked = requests.filter(r => r.status === 'revoked').length;
-
-    // If we're filtering, fetch all for accurate counts
     if (currentFilter) {
-        fetch('/api/v1/admin/access-requests').then(res => res.json()).then(all => {
+        fetch('/api/v1/admin/access-requests').then(r => r.json()).then(all => {
             document.getElementById('pendingCount').textContent = all.filter(r => r.status === 'pending').length;
             document.getElementById('approvedCount').textContent = all.filter(r => r.status === 'approved').length;
             document.getElementById('rejectedCount').textContent = all.filter(r => r.status === 'rejected').length;
             document.getElementById('revokedCount').textContent = all.filter(r => r.status === 'revoked').length;
         });
     } else {
-        document.getElementById('pendingCount').textContent = pending;
-        document.getElementById('approvedCount').textContent = approved;
-        document.getElementById('rejectedCount').textContent = rejected;
-        document.getElementById('revokedCount').textContent = revoked;
+        document.getElementById('pendingCount').textContent = requests.filter(r => r.status === 'pending').length;
+        document.getElementById('approvedCount').textContent = requests.filter(r => r.status === 'approved').length;
+        document.getElementById('rejectedCount').textContent = requests.filter(r => r.status === 'rejected').length;
+        document.getElementById('revokedCount').textContent = requests.filter(r => r.status === 'revoked').length;
     }
 }
 
-async function approveRequest(requestId) {
-    if (!confirm('이 요청을 승인하시겠습니까?')) return;
+// Load users
+async function loadUsers(search = '') {
+    const tbody = document.getElementById('usersBody');
+    tbody.innerHTML = '<tr><td colspan="4" class="loading">불러오는 중...</td></tr>';
 
     try {
-        const res = await fetch(`/api/v1/admin/access-requests/${requestId}/approve`, {
-            method: 'POST'
-        });
+        let url = '/api/v1/admin/approved-users';
+        if (search) url += `?search=${encodeURIComponent(search)}`;
 
-        if (res.ok) {
-            showToast('요청이 승인되었습니다', 'success');
-            loadRequests();
-        } else {
-            const data = await res.json();
-            showToast(data.detail || '승인에 실패했습니다', 'error');
-        }
+        const res = await fetch(url);
+        users = await res.json();
+        renderUsers();
     } catch (e) {
-        showToast('오류가 발생했습니다', 'error');
+        tbody.innerHTML = '<tr><td colspan="4" class="loading">불러오기 실패</td></tr>';
     }
 }
 
-function openRejectModal(requestId) {
-    document.getElementById('rejectRequestId').value = requestId;
+function renderUsers() {
+    const tbody = document.getElementById('usersBody');
+
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">승인된 사용자가 없습니다</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = users.map(user => {
+        const initial = (user.name || user.email || '?')[0].toUpperCase();
+        const date = user.approved_at ? new Date(user.approved_at).toLocaleDateString('ko-KR') : '-';
+
+        return `
+            <tr>
+                <td>
+                    <div class="user-cell">
+                        <div class="user-avatar">${initial}</div>
+                        <div>
+                            <div class="user-name">${escapeHtml(user.name || '이름 없음')}</div>
+                            <div class="user-email">${escapeHtml(user.email || '')}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="url-cell">
+                    ${user.platform_url ? `<a href="${escapeHtml(user.platform_url)}" target="_blank">${escapeHtml(user.platform_url)}</a>` : '-'}
+                </td>
+                <td class="date-cell">${date}</td>
+                <td class="actions-cell">
+                    <button class="btn-sm btn-revoke" onclick="openRevokeModal(${user.id}, '${escapeHtml(user.name || user.email)}')">권한 취소</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Actions
+async function approveRequest(id) {
+    if (!confirm('승인하시겠습니까?')) return;
+
+    try {
+        const res = await fetch(`/api/v1/admin/access-requests/${id}/approve`, { method: 'POST' });
+        if (res.ok) {
+            showToast('승인되었습니다', 'success');
+            loadRequests();
+        } else {
+            showToast('승인 실패', 'error');
+        }
+    } catch (e) {
+        showToast('오류 발생', 'error');
+    }
+}
+
+function openRejectModal(id) {
+    document.getElementById('rejectRequestId').value = id;
     document.getElementById('rejectReason').value = '';
     document.getElementById('rejectModal').classList.add('active');
 }
 
-function closeRejectModal() {
-    document.getElementById('rejectModal').classList.remove('active');
+function openRevokeModal(id, name) {
+    document.getElementById('revokeUserId').value = id;
+    document.getElementById('revokeReason').value = '';
+    document.getElementById('revokeModalTitle').textContent = `권한 취소 - ${name}`;
+    document.getElementById('revokeModal').classList.add('active');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
 }
 
 async function confirmReject() {
-    const requestId = document.getElementById('rejectRequestId').value;
+    const id = document.getElementById('rejectRequestId').value;
     const reason = document.getElementById('rejectReason').value.trim();
 
     if (!reason) {
-        showToast('거절 사유를 입력해주세요', 'error');
+        showToast('사유를 입력하세요', 'error');
         return;
     }
 
     try {
-        const res = await fetch(`/api/v1/admin/access-requests/${requestId}/reject`, {
+        const res = await fetch(`/api/v1/admin/access-requests/${id}/reject`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reason })
         });
 
         if (res.ok) {
-            showToast('요청이 거절되었습니다', 'success');
-            closeRejectModal();
+            showToast('거절되었습니다', 'success');
+            closeModal('rejectModal');
             loadRequests();
         } else {
-            const data = await res.json();
-            showToast(data.detail || '거절에 실패했습니다', 'error');
+            showToast('거절 실패', 'error');
         }
     } catch (e) {
-        showToast('오류가 발생했습니다', 'error');
+        showToast('오류 발생', 'error');
     }
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function showToast(message, type = '') {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.className = 'toast show ' + type;
-    setTimeout(() => {
-        toast.className = 'toast';
-    }, 3000);
-}
-
-// Search functionality
-const searchInput = document.getElementById('userSearchInput');
-const clearSearchBtn = document.getElementById('clearSearchBtn');
-
-searchInput.addEventListener('input', (e) => {
-    searchQuery = e.target.value.trim();
-    clearSearchBtn.style.display = searchQuery ? 'block' : 'none';
-
-    // Debounce search
-    clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => {
-        loadApprovedUsers();
-    }, 300);
-});
-
-clearSearchBtn.addEventListener('click', () => {
-    searchInput.value = '';
-    searchQuery = '';
-    clearSearchBtn.style.display = 'none';
-    loadApprovedUsers();
-});
-
-// Approved users
-async function loadApprovedUsers() {
-    const container = document.getElementById('approvedUsersList');
-    container.innerHTML = '<div class="loading">불러오는 중...</div>';
-
-    try {
-        let url = '/api/v1/admin/approved-users';
-        if (searchQuery) {
-            url += `?search=${encodeURIComponent(searchQuery)}`;
-        }
-        const res = await fetch(url);
-        if (res.ok) {
-            approvedUsers = await res.json();
-            renderApprovedUsers();
-        }
-    } catch (e) {
-        container.innerHTML = '<div class="loading">불러오기 실패</div>';
-    }
-}
-
-function renderApprovedUsers() {
-    const container = document.getElementById('approvedUsersList');
-
-    if (approvedUsers.length === 0) {
-        const message = searchQuery
-            ? `"${searchQuery}"에 대한 검색 결과가 없습니다`
-            : '승인된 사용자가 없습니다';
-        container.innerHTML = `
-            <div class="empty-state">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-                <p>${message}</p>
-            </div>
-        `;
-        return;
-    }
-
-    container.innerHTML = approvedUsers.map(user => {
-        const initial = (user.name || user.email || '?')[0].toUpperCase();
-        const approvedAt = user.approved_at ? new Date(user.approved_at).toLocaleString('ko-KR') : '-';
-
-        return `
-            <div class="request-card">
-                <div class="request-header">
-                    <div class="user-info">
-                        <div class="user-avatar">${initial}</div>
-                        <div class="user-details">
-                            <span class="user-name">${escapeHtml(user.name || '이름 없음')}</span>
-                            <span class="user-email">${escapeHtml(user.email || '')}</span>
-                        </div>
-                    </div>
-                    <span class="request-status status-approved">승인됨</span>
-                </div>
-                <div class="request-body">
-                    ${user.platform_url ? `
-                    <div class="platform-url">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                        </svg>
-                        <a href="${escapeHtml(user.platform_url)}" target="_blank" rel="noopener">${escapeHtml(user.platform_url)}</a>
-                    </div>
-                    ` : ''}
-                    <div class="approved-date">승인일: ${approvedAt}</div>
-                </div>
-                <div class="request-actions">
-                    <button class="btn btn-revoke" onclick="openRevokeModal(${user.id}, '${escapeHtml(user.name || user.email)}')">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="15" y1="9" x2="9" y2="15"></line>
-                            <line x1="9" y1="9" x2="15" y2="15"></line>
-                        </svg>
-                        권한 취소
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-function openRevokeModal(userId, userName) {
-    document.getElementById('revokeUserId').value = userId;
-    document.getElementById('revokeReason').value = '';
-    document.querySelector('#revokeModal .modal-title').textContent = `권한 취소 - ${userName}`;
-    document.getElementById('revokeModal').classList.add('active');
-}
-
-function closeRevokeModal() {
-    document.getElementById('revokeModal').classList.remove('active');
 }
 
 async function confirmRevoke() {
-    const userId = document.getElementById('revokeUserId').value;
+    const id = document.getElementById('revokeUserId').value;
     const reason = document.getElementById('revokeReason').value.trim();
 
     if (!reason) {
-        showToast('권한 취소 사유를 입력해주세요', 'error');
+        showToast('사유를 입력하세요', 'error');
         return;
     }
 
     try {
-        const res = await fetch(`/api/v1/admin/users/${userId}/revoke-overlay`, {
+        const res = await fetch(`/api/v1/admin/users/${id}/revoke-overlay`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reason })
@@ -1015,34 +808,46 @@ async function confirmRevoke() {
 
         if (res.ok) {
             showToast('권한이 취소되었습니다', 'success');
-            closeRevokeModal();
-            loadApprovedUsers();
+            closeModal('revokeModal');
+            loadUsers();
         } else {
-            const data = await res.json();
-            showToast(data.detail || '권한 취소에 실패했습니다', 'error');
+            showToast('취소 실패', 'error');
         }
     } catch (e) {
-        showToast('오류가 발생했습니다', 'error');
+        showToast('오류 발생', 'error');
     }
 }
 
-// Close modal on ESC or overlay click
-document.addEventListener('keydown', (e) => {
+// Utils
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showToast(msg, type) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast show ' + type;
+    setTimeout(() => toast.className = 'toast', 3000);
+}
+
+// ESC to close modals
+document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-        closeRejectModal();
-        closeRevokeModal();
+        closeModal('rejectModal');
+        closeModal('revokeModal');
     }
 });
 
-document.getElementById('rejectModal').addEventListener('click', (e) => {
-    if (e.target.id === 'rejectModal') closeRejectModal();
+['rejectModal', 'revokeModal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => {
+        if (e.target.id === id) closeModal(id);
+    });
 });
 
-document.getElementById('revokeModal').addEventListener('click', (e) => {
-    if (e.target.id === 'revokeModal') closeRevokeModal();
-});
-
-// Initial load
+// Init
 loadRequests();
 </script>
 {% endblock %}

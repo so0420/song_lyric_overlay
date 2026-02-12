@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS `overlay_access_requests` (
     `platform_url` VARCHAR(500) NOT NULL COMMENT '방송 플랫폼 주소',
     `message` TEXT NULL COMMENT '추가 메시지 (최대 1500자)',
     `status` ENUM('pending', 'approved', 'rejected', 'revoked') DEFAULT 'pending' COMMENT '요청 상태',
-    `rejection_reason` TEXT NULL COMMENT '거절 사유',
+    `rejection_reason` TEXT NULL COMMENT '거절/회수 사유',
     `reviewed_by` BIGINT NULL COMMENT '검토한 관리자 ID',
     `reviewed_at` TIMESTAMP NULL COMMENT '검토 일시',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

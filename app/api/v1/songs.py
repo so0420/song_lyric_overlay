@@ -19,6 +19,10 @@ async def search_songs(request: Request, q: str, offset: int = 0, limit: int = 2
     if not q or len(q.strip()) < 1:
         return {"items": [], "total": 0, "offset": offset, "limit": limit, "has_more": False}
 
+    # 검색어 길이 제한 (DoS 방지)
+    if len(q) > 200:
+        raise HTTPException(status_code=400, detail="검색어는 200자를 초과할 수 없습니다.")
+
     try:
         # iTunes API는 offset을 지원하지 않으므로 최대 100개까지 한번에 가져옴
         # 첫 요청 시 100개 가져와서 캐싱하면 좋지만, 간단히 항상 100개 요청
@@ -100,6 +104,10 @@ async def search_custom_songs(request: Request, q: str, offset: int = 0, limit: 
     """Meilisearch를 사용하여 커스텀 노래 검색 (페이지네이션 지원, DB 폴백)"""
     if not q or len(q.strip()) < 1:
         return {"items": [], "total": 0, "offset": offset, "limit": limit, "has_more": False}
+
+    # 검색어 길이 제한 (DoS 방지)
+    if len(q) > 200:
+        raise HTTPException(status_code=400, detail="검색어는 200자를 초과할 수 없습니다.")
 
     formatted_results = []
     total = 0

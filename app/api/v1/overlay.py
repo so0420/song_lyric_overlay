@@ -9,6 +9,7 @@ from app.utils.ws_token import (
     generate_overlay_token_async,
     increment_overlay_token_version
 )
+from app.utils.csrf import verify_csrf
 from app.schemas.overlay import (
     OverlaySettingsSchema,
     LyricsSyncSchema,
@@ -38,7 +39,7 @@ async def get_overlay_settings(
     # 기본값 반환
     return OverlaySettingsSchema().model_dump()
 
-@router.post("/settings")
+@router.post("/settings", dependencies=[Depends(verify_csrf)])
 async def save_overlay_settings(
     settings: OverlaySettingsSchema,
     user=Depends(get_current_user_api),
@@ -55,7 +56,7 @@ async def save_overlay_settings(
 
     return {"success": True}
 
-@router.post("/sync")
+@router.post("/sync", dependencies=[Depends(verify_csrf)])
 async def sync_lyrics(
     data: LyricsSyncSchema,
     user=Depends(get_current_user_api)
@@ -67,7 +68,7 @@ async def sync_lyrics(
     })
     return {"success": True}
 
-@router.post("/sync-playlist")
+@router.post("/sync-playlist", dependencies=[Depends(verify_csrf)])
 async def sync_playlist(
     data: PlaylistSyncSchema,
     user=Depends(get_current_user_api)
@@ -93,7 +94,7 @@ async def get_overlay_token(user=Depends(get_current_user_api)):
     return TokenResponse(token=token)
 
 
-@router.post("/overlay-token/regenerate")
+@router.post("/overlay-token/regenerate", dependencies=[Depends(verify_csrf)])
 async def regenerate_overlay_token(user=Depends(get_current_user_api)):
     """오버레이 토큰 재발급 (기존 토큰 무효화)"""
     # 기존 연결 종료 알림
@@ -126,7 +127,7 @@ async def get_presets(
     return await overlay_repo.get_presets(user['id'])
 
 
-@router.post("/presets", response_model=OverlayPresetResponseSchema)
+@router.post("/presets", response_model=OverlayPresetResponseSchema, dependencies=[Depends(verify_csrf)])
 async def create_preset(
     data: OverlayPresetCreateSchema,
     user=Depends(get_current_user_api),
@@ -151,7 +152,7 @@ async def get_preset(
     return preset
 
 
-@router.put("/presets/{preset_id}", response_model=OverlayPresetResponseSchema)
+@router.put("/presets/{preset_id}", response_model=OverlayPresetResponseSchema, dependencies=[Depends(verify_csrf)])
 async def update_preset(
     preset_id: int,
     data: OverlayPresetUpdateSchema,
@@ -166,7 +167,7 @@ async def update_preset(
     return preset
 
 
-@router.delete("/presets/{preset_id}")
+@router.delete("/presets/{preset_id}", dependencies=[Depends(verify_csrf)])
 async def delete_preset(
     preset_id: int,
     user=Depends(get_current_user_api),
@@ -179,7 +180,7 @@ async def delete_preset(
     return {"success": True}
 
 
-@router.post("/presets/{preset_id}/activate")
+@router.post("/presets/{preset_id}/activate", dependencies=[Depends(verify_csrf)])
 async def activate_preset(
     preset_id: int,
     user=Depends(get_current_user_api),
@@ -202,7 +203,7 @@ async def activate_preset(
     return {"success": True, "message": f"'{preset['name']}' 프리셋이 적용되었습니다"}
 
 
-@router.post("/presets/save-current")
+@router.post("/presets/save-current", dependencies=[Depends(verify_csrf)])
 async def save_current_as_preset(
     name: str = Query(..., min_length=1, max_length=100),
     user=Depends(get_current_user_api),

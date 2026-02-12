@@ -4,7 +4,7 @@ from app.utils.mailer import send_email
 from app.utils.otp import otp_manager
 from app.utils.config import config
 from app.utils.rate_limit import limiter, RATE_LIMITS
-from app.utils.password import hash_password, verify_password
+from app.utils.password import hash_password, verify_password, validate_password
 from app.utils.email_templates import get_verification_email, get_password_reset_email
 from app.schemas.auth import (
     RegisterSchema,
@@ -23,9 +23,10 @@ router = APIRouter()
 async def register(request: Request, data: RegisterSchema):
     """회원가입 - 이메일 인증 코드 발송"""
 
-    # 비밀번호 길이 검증
-    if len(data.password) < 8:
-        raise HTTPException(status_code=400, detail="비밀번호는 8자 이상이어야 합니다.")
+    # 비밀번호 복잡성 검증
+    is_valid, error_msg = validate_password(data.password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
 
     # 이메일 중복 확인
     existing_user = await db_handler.fetch_one(
@@ -215,8 +216,9 @@ async def forgot_password(request: Request, data: ForgotPasswordSchema):
 async def reset_password(request: Request, data: ResetPasswordSchema):
     """비밀번호 재설정"""
 
-    if len(data.new_password) < 8:
-        raise HTTPException(status_code=400, detail="비밀번호는 8자 이상이어야 합니다.")
+    is_valid, error_msg = validate_password(data.new_password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
 
     # OTP 검증
     result = await otp_manager.verify_otp(f"reset:{data.email}", data.code)

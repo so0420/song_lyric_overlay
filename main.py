@@ -71,6 +71,24 @@ session_max_age = settings.jwt_access_token_ttl if settings.jwt_access_token_ttl
 app.add_middleware(SessionMiddleware, secret_key=settings.jwt_secret_key, max_age=session_max_age)
 
 @app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """보안 헤더 추가 미들웨어"""
+    response = await call_next(request)
+
+    # 보안 헤더 추가
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    # HTTPS 환경에서만 HSTS 적용
+    if settings.environment == "production":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
+    return response
+
+
+@app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = time.time()
     response = await call_next(request)

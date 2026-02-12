@@ -1065,6 +1065,14 @@
     let player;
     let segments = [];
 
+    // XSS 방지용 HTML 이스케이프 함수
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     // Global Error Handler for debugging
     window.onerror = function (msg, url, lineNo, columnNo, error) {
         console.error('JS Error:', msg, '@', lineNo + ':' + columnNo);
@@ -1431,7 +1439,7 @@
         const startSelect = document.getElementById('sync-range-start');
         const endSelect = document.getElementById('sync-range-end');
 
-        const options = segments.map((s, i) => `<option value="${i}">${i + 1}. ${s.text.substring(0, 30)}</option>`).join('');
+        const options = segments.map((s, i) => `<option value="${i}">${i + 1}. ${escapeHtml(s.text.substring(0, 30))}</option>`).join('');
         startSelect.innerHTML = options;
         endSelect.innerHTML = options;
 
@@ -1527,7 +1535,11 @@
     }
 
     function parseTags(text) {
-        return text.replace(/<color (#?[0-9a-fA-F]{6})>(.*?)<\/color>/g, '<span style="color:$1">$2</span>');
+        // 먼저 전체 텍스트를 이스케이프
+        let escaped = escapeHtml(text);
+        // 이스케이프된 color 태그를 다시 복원 (안전한 형식으로)
+        // &lt;color #RRGGBB&gt;...&lt;/color&gt; → <span style="color:#RRGGBB">...</span>
+        return escaped.replace(/&lt;color (#?[0-9a-fA-F]{6})&gt;(.*?)&lt;\/color&gt;/g, '<span style="color:$1">$2</span>');
     }
 
     // Modals & Search
@@ -1648,10 +1660,10 @@
             const loadingIndicator = songSearchHasMore ? '<div class="search-load-more"><div class="spinner-small"></div></div>' : '';
             resultsDiv.innerHTML = window.songSearchResults.map((s, idx) => `
                 <div class="video-result-item" style="cursor: pointer;" onclick="selectSongByIndex(${idx})">
-                    <img src="${s.cover_image_url || ''}" class="video-result-thumb" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);" onerror="this.style.visibility='hidden'">
+                    <img src="${escapeHtml(s.cover_image_url || '')}" class="video-result-thumb" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);" onerror="this.style.visibility='hidden'">
                     <div class="video-result-info">
-                        <div style="font-weight:700; color: #1e293b;">${s.title}</div>
-                        <div style="color:var(--text-sub);font-size:0.85rem">${s.artist_name || ''}</div>
+                        <div style="font-weight:700; color: #1e293b;">${escapeHtml(s.title)}</div>
+                        <div style="color:var(--text-sub);font-size:0.85rem">${escapeHtml(s.artist_name || '')}</div>
                     </div>
                 </div>
             `).join('') + loadingIndicator;
@@ -1715,10 +1727,10 @@
             const loadingIndicator = songSearchHasMore ? '<div class="search-load-more"><div class="spinner-small"></div></div>' : '';
             resultsDiv.innerHTML = window.songSearchResults.map((s, idx) => `
                 <div class="video-result-item" style="cursor: pointer;" onclick="selectSongByIndex(${idx})">
-                    <img src="${s.cover_image_url || ''}" class="video-result-thumb" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; background: linear-gradient(135deg,#10b981 0%,#059669 100%);" onerror="this.style.visibility='hidden'">
+                    <img src="${escapeHtml(s.cover_image_url || '')}" class="video-result-thumb" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; background: linear-gradient(135deg,#10b981 0%,#059669 100%);" onerror="this.style.visibility='hidden'">
                     <div class="video-result-info">
-                        <div style="font-weight:700; color: #1e293b;">${s.title}</div>
-                        <div style="color:var(--text-sub);font-size:0.85rem">${s.artist_name || ''}</div>
+                        <div style="font-weight:700; color: #1e293b;">${escapeHtml(s.title)}</div>
+                        <div style="color:var(--text-sub);font-size:0.85rem">${escapeHtml(s.artist_name || '')}</div>
                     </div>
                     <span style="font-size: 0.7rem; color: #059669; background: #d1fae5; padding: 4px 8px; border-radius: 12px; font-weight: 600;">커스텀</span>
                 </div>
@@ -1874,10 +1886,10 @@
 
             resultsDiv.innerHTML = data.map((v, idx) => `
                 <div class="video-result-item" style="cursor: pointer;" onclick="selectVideoByIndex(${idx})">
-                    <img src="${v.thumbnails?.medium?.url || v.thumbnails?.default?.url || ''}" class="video-result-thumb" style="width: 120px; aspect-ratio: 16/9; object-fit: cover; border-radius: 4px;">
+                    <img src="${escapeHtml(v.thumbnails?.medium?.url || v.thumbnails?.default?.url || '')}" class="video-result-thumb" style="width: 120px; aspect-ratio: 16/9; object-fit: cover; border-radius: 4px;">
                     <div class="video-result-info">
-                        <div style="font-weight:700">${v.title}</div>
-                        <div style="color:var(--text-sub);font-size:0.85rem">${v.channel_title}</div>
+                        <div style="font-weight:700">${escapeHtml(v.title)}</div>
+                        <div style="color:var(--text-sub);font-size:0.85rem">${escapeHtml(v.channel_title)}</div>
                     </div>
                 </div>
             `).join('');
@@ -1935,13 +1947,13 @@
         resultsDiv.innerHTML = data.map((s, idx) => `
             <div class="public-song-card" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: white; transition: all 0.2s;">
                 <div style="display: flex; align-items: center; gap: 12px; padding: 12px;">
-                    <img src="${s.artwork_url || s.cover_image_url || ''}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; background: linear-gradient(135deg,${isCustom ? '#10b981 0%,#059669' : '#667eea 0%,#764ba2'} 100%);" onerror="this.style.visibility='hidden'">
+                    <img src="${escapeHtml(s.artwork_url || s.cover_image_url || '')}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; background: linear-gradient(135deg,${isCustom ? '#10b981 0%,#059669' : '#667eea 0%,#764ba2'} 100%);" onerror="this.style.visibility='hidden'">
                     <div style="flex: 1; min-width: 0;">
                         <div style="font-weight:700; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1e293b;">
-                            ${s.track_name || s.title}
-                            <span style="color:var(--accent); font-size: 0.8rem; margin-left: 4px;">(${s.lyrics_count})</span>
+                            ${escapeHtml(s.track_name || s.title)}
+                            <span style="color:var(--accent); font-size: 0.8rem; margin-left: 4px;">(${parseInt(s.lyrics_count) || 0})</span>
                         </div>
-                        <div style="color:var(--text-sub); font-size: 0.85rem;">${s.artist_name || ''}</div>
+                        <div style="color:var(--text-sub); font-size: 0.85rem;">${escapeHtml(s.artist_name || '')}</div>
                     </div>
                     ${isCustom ? '<span style="font-size: 0.7rem; color: #059669; background: #d1fae5; padding: 4px 8px; border-radius: 12px; font-weight: 600; flex-shrink: 0;">커스텀</span>' : ''}
                     <div style="display: flex; gap: 6px;">
@@ -2027,18 +2039,18 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 8px;">
                         <div style="flex: 1; min-width: 0;">
                             <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main);">
-                                ${l.title || '제목 없음'}
-                                <span style="font-size: 0.75rem; color: var(--text-dim); font-weight: 400; margin-left: 4px;">by ${l.owner_name || '익명'}</span>
+                                ${escapeHtml(l.title || '제목 없음')}
+                                <span style="font-size: 0.75rem; color: var(--text-dim); font-weight: 400; margin-left: 4px;">by ${escapeHtml(l.owner_name || '익명')}</span>
                                 ${l.is_verified ? ' <span style="background: var(--accent-light); color: var(--accent); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; margin-left: 4px;">VERIFIED</span>' : ''}
                             </div>
                             <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 2px;">${new Date(l.created_at).toLocaleDateString()} 업데이트</div>
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            <a href="https://youtu.be/${l.mr_youtube_video_id}" target="_blank" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.75rem; color: #ef4444; border-color: #fee2e2; background: #fff1f2; display: flex; align-items: center; gap: 4px;">
+                            <a href="https://youtu.be/${escapeHtml(l.mr_youtube_video_id || '')}" target="_blank" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.75rem; color: #ef4444; border-color: #fee2e2; background: #fff1f2; display: flex; align-items: center; gap: 4px;">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
                                 영상 보기
                             </a>
-                            <button onclick="importPublicLyrics(${l.id}, '${songExtId}')" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.75rem; font-weight: 700;">
+                            <button onclick="importPublicLyrics(${parseInt(l.id)}, '${escapeHtml(songExtId)}')" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.75rem; font-weight: 700;">
                                 복사해오기
                             </button>
                         </div>
@@ -2126,14 +2138,14 @@
                     <div class="card" style="padding: 12px; display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <div style="font-weight:700">
-                                ${l.song_title}
-                                <span style="font-size: 0.75rem; color: var(--accent); margin-left:8px;">${l.title || '제목 없음'}</span>
+                                ${escapeHtml(l.song_title)}
+                                <span style="font-size: 0.75rem; color: var(--accent); margin-left:8px;">${escapeHtml(l.title || '제목 없음')}</span>
                             </div>
-                            <div style="font-size:0.8rem; color:var(--text-sub)">${l.artist_name} | ${new Date(l.updated_at).toLocaleString()}</div>
+                            <div style="font-size:0.8rem; color:var(--text-sub)">${escapeHtml(l.artist_name)} | ${new Date(l.updated_at).toLocaleString()}</div>
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            <button onclick="location.href='/lyrics/?lyrics_id=${l.id}'" class="btn btn-outline" style="padding:4px 8px;">수정</button>
-                            <button onclick="deleteLyrics(${l.id})" class="btn btn-outline" style="padding:4px 8px; color:#ef4444;">삭제</button>
+                            <button onclick="location.href='/lyrics/?lyrics_id=${parseInt(l.id)}'" class="btn btn-outline" style="padding:4px 8px;">수정</button>
+                            <button onclick="deleteLyrics(${parseInt(l.id)})" class="btn btn-outline" style="padding:4px 8px; color:#ef4444;">삭제</button>
                         </div>
                     </div>
                 `).join('');

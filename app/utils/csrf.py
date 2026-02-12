@@ -1,9 +1,23 @@
 import secrets
+from urllib.parse import urlparse
 from fastapi import Request, HTTPException, Header
 from typing import Optional
+from app.utils.config import config
 
 CSRF_TOKEN_KEY = "csrf_token"
 CSRF_HEADER_NAME = "X-CSRF-Token"
+
+# 허용된 Origin 목록 (config에서 app_url 기반)
+def get_allowed_origins() -> set:
+    """허용된 Origin 목록 반환"""
+    origins = set()
+    if config.app_url:
+        parsed = urlparse(config.app_url)
+        origins.add(f"{parsed.scheme}://{parsed.netloc}")
+    # 로컬 개발 환경 추가
+    origins.add("http://localhost:8080")
+    origins.add("http://127.0.0.1:8080")
+    return origins
 
 
 def get_csrf_token(request: Request) -> str:
@@ -23,6 +37,27 @@ def validate_csrf_token(request: Request, token: str) -> bool:
     return secrets.compare_digest(session_token, token)
 
 
+def validate_origin(request: Request) -> bool:
+    """Origin/Referer 헤더 검증 (JSON 요청용)"""
+    allowed_origins = get_allowed_origins()
+
+    # Origin 헤더 확인
+    origin = request.headers.get("origin")
+    if origin:
+        return origin in allowed_origins
+
+    # Referer 헤더 확인 (Origin이 없는 경우)
+    referer = request.headers.get("referer")
+    if referer:
+        parsed = urlparse(referer)
+        referer_origin = f"{parsed.scheme}://{parsed.netloc}"
+        return referer_origin in allowed_origins
+
+    # Same-origin 요청은 Origin/Referer가 없을 수 있음 (일부 브라우저)
+    # 이 경우 허용하되, 명시적 CSRF 토큰이 있으면 더 안전
+    return True
+
+
 async def verify_csrf(
     request: Request,
     x_csrf_token: Optional[str] = Header(None, alias="X-CSRF-Token")
@@ -30,14 +65,17 @@ async def verify_csrf(
     """Form/AJAX 요청의 CSRF 토큰을 검증하는 의존성
 
     토큰은 X-CSRF-Token 헤더로 전달해야 합니다.
-    JSON 요청은 SameSite 쿠키와 CORS로 보호되므로 검증을 건너뜁니다.
+    JSON 요청은 Origin 검증 + SameSite 쿠키로 보호됩니다.
     """
-    # JSON API 요청은 CSRF 검증 제외 (SameSite 쿠키 + CORS로 보호)
     content_type = request.headers.get("content-type", "")
+
+    # JSON API 요청: Origin/Referer 검증
     if "application/json" in content_type:
+        if not validate_origin(request):
+            raise HTTPException(status_code=403, detail="잘못된 요청 출처입니다.")
         return True
 
-    # 헤더에서 토큰 확인
+    # Form 요청: CSRF 토큰 검증
     if not validate_csrf_token(request, x_csrf_token):
         raise HTTPException(status_code=403, detail="CSRF 토큰이 유효하지 않습니다. X-CSRF-Token 헤더를 확인해주세요.")
 

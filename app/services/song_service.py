@@ -2,6 +2,7 @@ from typing import Optional
 from fastapi import UploadFile, Depends
 from app.database.song_repository import SongRepository, get_song_repository
 from app.database.meilisearch.meilisearch import meilisearch_handler
+from app.utils.log import logger
 
 class SongService:
     def __init__(self, repo: SongRepository):
@@ -33,7 +34,7 @@ class SongService:
             }])
         except Exception as e:
             # Meilisearch 실패해도 DB 저장은 성공으로 처리
-            print(f"Meilisearch add failed: {e}")
+            logger.warning(f"Meilisearch add failed for song {song_external_id}: {e}")
 
         return {
             "song_id": song_id,

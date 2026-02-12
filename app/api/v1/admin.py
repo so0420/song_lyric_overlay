@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from app.core.auth import require_admin
 from app.core.overlay_websocket import overlay_manager
 from app.database.mariadb import db_handler
 from app.database.access_request_repository import get_access_request_repository, AccessRequestRepository
 from app.schemas.access_request import AccessRequestRejectSchema, AccessRequestResponseSchema
+from app.utils.audit import log_audit, get_client_ip, AuditAction
 from typing import List, Optional
 
 router = APIRouter()
@@ -135,13 +136,30 @@ async def get_access_request(
 @router.post("/access-requests/{request_id}/approve")
 async def approve_access_request(
     request_id: int,
+    request: Request,
     user=Depends(require_admin),
     repo: AccessRequestRepository = Depends(get_access_request_repository)
 ):
     """요청 승인"""
+    # 요청 정보 먼저 조회 (로깅용)
+    access_request = await repo.get_request_by_id(request_id)
+    if not access_request:
+        raise HTTPException(status_code=404, detail="요청을 찾을 수 없습니다.")
+
     success = await repo.approve_request(request_id, user['id'])
     if not success:
         raise HTTPException(status_code=400, detail="요청을 승인할 수 없습니다. 이미 처리되었거나 존재하지 않는 요청입니다.")
+
+    # 감사 로그 기록
+    await log_audit(
+        actor_id=user['id'],
+        action=AuditAction.APPROVE_ACCESS,
+        target_type="user",
+        target_id=access_request['user_id'],
+        details={"request_id": request_id, "user_email": access_request.get('user_email')},
+        ip_address=get_client_ip(request)
+    )
+
     return {"success": True, "message": "요청이 승인되었습니다"}
 
 
@@ -149,13 +167,30 @@ async def approve_access_request(
 async def reject_access_request(
     request_id: int,
     data: AccessRequestRejectSchema,
+    request: Request,
     user=Depends(require_admin),
     repo: AccessRequestRepository = Depends(get_access_request_repository)
 ):
     """요청 거절"""
+    # 요청 정보 먼저 조회 (로깅용)
+    access_request = await repo.get_request_by_id(request_id)
+    if not access_request:
+        raise HTTPException(status_code=404, detail="요청을 찾을 수 없습니다.")
+
     success = await repo.reject_request(request_id, user['id'], data.reason)
     if not success:
         raise HTTPException(status_code=400, detail="요청을 거절할 수 없습니다. 이미 처리되었거나 존재하지 않는 요청입니다.")
+
+    # 감사 로그 기록
+    await log_audit(
+        actor_id=user['id'],
+        action=AuditAction.REJECT_ACCESS,
+        target_type="user",
+        target_id=access_request['user_id'],
+        details={"request_id": request_id, "reason": data.reason, "user_email": access_request.get('user_email')},
+        ip_address=get_client_ip(request)
+    )
+
     return {"success": True, "message": "요청이 거절되었습니다"}
 
 
@@ -176,9 +211,21 @@ async def get_approved_users(
 async def revoke_overlay_access(
     user_id: int,
     data: AccessRequestRejectSchema,
+    request: Request,
     user=Depends(require_admin),
     repo: AccessRequestRepository = Depends(get_access_request_repository)
 ):
     """사용자의 오버레이 접근 권한 취소"""
     await repo.revoke_approval(user_id, user['id'], data.reason)
+
+    # 감사 로그 기록
+    await log_audit(
+        actor_id=user['id'],
+        action=AuditAction.REVOKE_ACCESS,
+        target_type="user",
+        target_id=user_id,
+        details={"reason": data.reason},
+        ip_address=get_client_ip(request)
+    )
+
     return {"success": True, "message": "접근 권한이 취소되었습니다"}

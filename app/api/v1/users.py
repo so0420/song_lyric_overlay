@@ -3,7 +3,8 @@ from app.database.mariadb import db_handler
 from app.core.auth import get_current_user_api
 from app.utils.mailer import send_email
 from app.utils.otp import otp_manager
-from app.utils.password import hash_password, verify_password
+from app.utils.password import hash_password, verify_password, validate_password
+from app.utils.config import config
 from app.schemas.users import ProfileUpdateSchema, PasswordChangeSchema, EmailOtpSchema
 
 router = APIRouter()
@@ -27,7 +28,7 @@ async def send_email_otp(
     code = await otp_manager.create_otp(email)
 
     # Send Email
-    subject = "[Jamku Song] 이메일 변경 인증 번호"
+    subject = f"[{config.app_name}] 이메일 변경 인증 번호"
     html_content = f"""
     <div style="font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; max-width: 400px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
         <h2 style="color: #4A90E2; margin-bottom: 20px;">이메일 변경 인증</h2>
@@ -141,8 +142,9 @@ async def change_password(
     user=Depends(get_current_user_api)
 ):
     """비밀번호 변경 또는 설정"""
-    if len(data.new_password) < 8:
-        raise HTTPException(status_code=400, detail="비밀번호는 8자 이상이어야 합니다.")
+    is_valid, error_msg = validate_password(data.new_password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
 
     db_user = await db_handler.fetch_one(
         "SELECT password_hash FROM users WHERE id = %s",

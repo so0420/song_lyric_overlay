@@ -66,10 +66,11 @@ class Settings(BaseSettings):
     meilisearch_api_key: str
     meilisearch_index_name: str
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
-        extra = "ignore"
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": False,
+        "extra": "ignore"
+    }
 
 
 class CacheOptions(BaseModel):

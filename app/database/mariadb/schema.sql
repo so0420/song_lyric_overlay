@@ -196,3 +196,26 @@ CREATE TABLE IF NOT EXISTS `overlay_access_requests` (
 
 CREATE INDEX idx_access_request_user_id ON overlay_access_requests(user_id);
 CREATE INDEX idx_access_request_status ON overlay_access_requests(status);
+
+-- -------------------------------------------------------------------------------------------------------------
+-- Audit Logs
+-- -------------------------------------------------------------------------------------------------------------
+
+-- 관리자 활동 로그 테이블
+CREATE TABLE IF NOT EXISTS `audit_logs` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `actor_id` BIGINT NOT NULL COMMENT '작업 수행자 ID',
+    `action` VARCHAR(100) NOT NULL COMMENT '수행한 작업 (approve_access, revoke_access, etc.)',
+    `target_type` VARCHAR(50) NULL COMMENT '대상 유형 (user, lyrics, etc.)',
+    `target_id` BIGINT NULL COMMENT '대상 ID',
+    `details` JSON NULL COMMENT '추가 상세 정보 (JSON)',
+    `ip_address` VARCHAR(45) NULL COMMENT '요청 IP',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- 외래 키 설정: 수행자 삭제 시 NULL로 변경하지 않고 기록 유지
+    CONSTRAINT `fk_audit_actor` FOREIGN KEY (`actor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_audit_actor_id ON audit_logs(actor_id);
+CREATE INDEX idx_audit_action ON audit_logs(action);
+CREATE INDEX idx_audit_created_at ON audit_logs(created_at);

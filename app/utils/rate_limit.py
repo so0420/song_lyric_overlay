@@ -5,8 +5,25 @@ from slowapi.middleware import SlowAPIMiddleware
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-# Rate Limiter 인스턴스 생성 (IP 기반)
-limiter = Limiter(key_func=get_remote_address)
+
+def get_rate_limit_key(request: Request) -> str:
+    """
+    Rate limit 키 생성 함수
+    - 로그인한 사용자: user:{user_id}
+    - 비로그인: IP 주소
+    """
+    # 세션에서 사용자 정보 확인
+    if hasattr(request, 'session') and request.session:
+        user = request.session.get('user')
+        if user and user.get('id'):
+            return f"user:{user['id']}"
+
+    # 비로그인 시 IP 기반
+    return get_remote_address(request)
+
+
+# Rate Limiter 인스턴스 생성 (사용자/IP 기반)
+limiter = Limiter(key_func=get_rate_limit_key)
 
 
 async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):

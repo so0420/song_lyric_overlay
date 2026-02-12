@@ -3,6 +3,7 @@ from app.core.auth import get_current_user_api, get_current_user
 from app.database.lyrics_repository import get_lyrics_repository, LyricsRepository
 from app.schemas.lyrics import LyricsCreateSchema, LyricsUpdateSchema
 from app.schemas.common import IdResponse
+from app.utils.csrf import verify_csrf
 
 router = APIRouter()
 
@@ -66,7 +67,7 @@ async def get_lyrics_detail(
         raise HTTPException(status_code=404, detail="Lyrics not found")
     return lyrics
 
-@router.post("/")
+@router.post("/", dependencies=[Depends(verify_csrf)])
 async def create_lyrics(
     data: LyricsCreateSchema,
     user=Depends(get_current_user_api),
@@ -88,7 +89,7 @@ async def create_lyrics(
     )
     return IdResponse(id=lyrics_id)
 
-@router.patch("/{lyrics_id}")
+@router.patch("/{lyrics_id}", dependencies=[Depends(verify_csrf)])
 async def update_lyrics(
     lyrics_id: int,
     data: LyricsUpdateSchema,
@@ -111,7 +112,7 @@ async def update_lyrics(
     )
     return {"success": True}
 
-@router.delete("/{lyrics_id}")
+@router.delete("/{lyrics_id}", dependencies=[Depends(verify_csrf)])
 async def delete_lyrics(
     lyrics_id: int,
     user=Depends(get_current_user_api),
@@ -122,7 +123,7 @@ async def delete_lyrics(
     return {"success": True}
 
 # 즐겨찾기 API
-@router.post("/favorites/{lyrics_id}")
+@router.post("/favorites/{lyrics_id}", dependencies=[Depends(verify_csrf)])
 async def add_favorite(
     lyrics_id: int,
     user=Depends(get_current_user_api),
@@ -134,7 +135,7 @@ async def add_favorite(
         raise HTTPException(status_code=400, detail="이미 즐겨찾기에 추가되었습니다.")
     return {"success": True}
 
-@router.delete("/favorites/{lyrics_id}")
+@router.delete("/favorites/{lyrics_id}", dependencies=[Depends(verify_csrf)])
 async def remove_favorite(
     lyrics_id: int,
     user=Depends(get_current_user_api),

@@ -47,28 +47,6 @@
         {% endif %}
     </nav>
 
-    <!-- 내 가사 섹션 -->
-    {% if user %}
-    <div class="sidebar-section" style="flex: 1;">
-        <div class="section-header">
-            <span class="section-title">내 가사</span>
-            <a href="/mypage" class="section-link">더보기</a>
-        </div>
-        <div id="sidebarLyricsList" class="lyrics-list">
-            <div class="sidebar-loading">로딩 중...</div>
-        </div>
-    </div>
-    {% else %}
-    <div class="sidebar-section" style="flex: 1;">
-        <div class="section-header">
-            <span class="section-title">내 가사</span>
-        </div>
-        <div class="sidebar-login-prompt">
-            <p>로그인하여 가사를 만들어보세요</p>
-        </div>
-    </div>
-    {% endif %}
-
     <!-- 사용자 프로필 (하단 고정) -->
     <div class="sidebar-footer">
         {% if user %}
@@ -143,6 +121,7 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    flex: 1;
 }
 
 .nav-item {
@@ -165,30 +144,6 @@
 
 .nav-item svg {
     opacity: 0.8;
-}
-
-.sidebar-section {
-    padding: 16px 24px;
-}
-
-.section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-}
-
-.section-title {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.section-link {
-    font-size: 0.75rem;
-    color: var(--accent);
 }
 
 /* User Profile Footer */
@@ -236,75 +191,6 @@
     color: var(--text-main);
 }
 
-/* Lyrics List */
-.lyrics-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-.lyrics-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    background: white;
-    border-radius: 8px;
-    color: var(--text-main);
-    font-weight: 500;
-    font-size: 0.85rem;
-    text-decoration: none;
-    transition: all 0.2s;
-    border: 1px solid var(--border-color);
-}
-
-.lyrics-item:hover {
-    border-color: var(--accent);
-    background: var(--accent-light);
-}
-
-.lyrics-item-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.lyrics-item-title {
-    font-weight: 600;
-    color: var(--text-main);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.lyrics-item-song {
-    font-size: 0.8rem;
-    color: var(--text-sub);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Sidebar Empty States */
-.sidebar-empty, .sidebar-loading {
-    padding: 24px 0;
-    text-align: center;
-    color: var(--text-dim);
-    font-size: 0.9rem;
-}
-
-.sidebar-login-prompt {
-    text-align: center;
-    padding: 16px 0;
-}
-
-.sidebar-login-prompt p {
-    font-size: 0.85rem;
-    color: var(--text-dim);
-    margin-bottom: 0;
-}
-
 /* Mobile */
 @media (max-width: 1024px) {
     .sidebar {
@@ -340,52 +226,4 @@ function toggleSidebar() {
 
 document.getElementById('sidebarClose')?.addEventListener('click', toggleSidebar);
 document.getElementById('sidebarOverlay')?.addEventListener('click', toggleSidebar);
-
-// 사이드바 내 가사 목록 로드
-async function loadSidebarLyrics() {
-    const container = document.getElementById('sidebarLyricsList');
-    if (!container) return;
-
-    try {
-        const res = await fetch('/api/v1/lyrics/my');
-        if (!res.ok) {
-            container.innerHTML = '<div class="sidebar-empty">로드 실패</div>';
-            return;
-        }
-
-        const lyrics = await res.json();
-
-        if (lyrics.length === 0) {
-            container.innerHTML = '<div class="sidebar-empty">등록된 가사가 없습니다</div>';
-            return;
-        }
-
-        // 최대 5개만 표시
-        const displayLyrics = lyrics.slice(0, 5);
-        container.innerHTML = displayLyrics.map(l => `
-            <a href="/lyrics?lyrics_id=${l.id}" class="lyrics-item">
-                <div class="lyrics-item-info">
-                    <div class="lyrics-item-title">${sidebarEscapeHtml(l.title || '제목 없음')}</div>
-                    <div class="lyrics-item-song">${sidebarEscapeHtml(l.song_title)} - ${sidebarEscapeHtml(l.artist_name || '')}</div>
-                </div>
-            </a>
-        `).join('');
-    } catch (e) {
-        container.innerHTML = '<div class="sidebar-empty">로드 실패</div>';
-    }
-}
-
-function sidebarEscapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// 초기화
-document.addEventListener('DOMContentLoaded', () => {
-    {% if user %}
-    loadSidebarLyrics();
-    {% endif %}
-});
 </script>

@@ -286,7 +286,7 @@
 
     .timeline-item {
         display: grid;
-        grid-template-columns: 20px 75px 75px 1fr 38px;
+        grid-template-columns: 28px 20px 75px 75px 1fr 38px;
         gap: 8px;
         align-items: center;
         padding: 8px 12px;
@@ -309,9 +309,32 @@
         box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
     }
 
+    .timeline-item.playing {
+        border-color: #10b981;
+        background: #ecfdf5;
+    }
+
+    .timeline-item.playing .segment-index {
+        background: #10b981;
+        color: white;
+    }
+
     .timeline-item.dragging {
         opacity: 0.5;
         transform: scale(0.98);
+    }
+
+    .segment-index {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f1f5f9;
+        color: #64748b;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
     }
 
     .drag-handle {
@@ -1307,13 +1330,14 @@
 
             div.onclick = () => setActive(idx);
             div.innerHTML = `
+                <div class="segment-index">${idx + 1}</div>
                 <div class="drag-handle">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
                 </div>
                 <input type="text" class="time-input" value="${formatMs(seg.start)}" onchange="updateSegTime(${idx}, 'start', this.value)">
                 <input type="text" class="time-input" value="${formatMs(seg.end)}" onchange="updateSegTime(${idx}, 'end', this.value)">
-                <input type="text" class="text-input" value="${seg.text.replace(/"/g, '&quot;')}" 
-                    oninput="updateSegText(${idx}, this.value)" 
+                <input type="text" class="text-input" value="${seg.text.replace(/"/g, '&quot;')}"
+                    oninput="updateSegText(${idx}, this.value)"
                     placeholder="가사 입력 (예: <color #FF0000>중요</color>)"
                     onfocus="setActive(${idx})">
                 <button class="btn-icon" onclick="deleteSegment(${idx}, event)">&times;</button>
@@ -1424,6 +1448,8 @@
     }
 
     // Preview
+    let currentPlayingIndex = -1;
+
     function startPreviewLoop() {
         if (window.previewInterval) clearInterval(window.previewInterval);
         window.previewInterval = setInterval(() => {
@@ -1433,17 +1459,26 @@
             if (!player || typeof player.getCurrentTime !== 'function') {
                 if (previewEl) previewEl.style.display = 'none';
                 if (placeholderEl) placeholderEl.style.display = 'inline';
+                updatePlayingHighlight(-1);
                 return;
             }
             const now = Math.floor(player.getCurrentTime() * 1000);
 
             // 더 엄격한 가사 존재 여부 확인 (태그 제외하고 텍스트가 있어야 함)
-            const activeSeg = segments.find(s => {
+            let activeSegIndex = -1;
+            const activeSeg = segments.find((s, idx) => {
                 if (now < s.start || now > s.end) return false;
                 if (!s.text) return false;
                 const plainText = s.text.replace(/<[^>]+>/g, '').trim();
-                return plainText.length > 0;
+                if (plainText.length > 0) {
+                    activeSegIndex = idx;
+                    return true;
+                }
+                return false;
             });
+
+            // 타임라인에서 현재 재생 중인 가사 표시
+            updatePlayingHighlight(activeSegIndex);
 
             if (activeSeg) {
                 previewEl.innerText = ''; // Reset
@@ -1456,6 +1491,24 @@
                 placeholderEl.style.display = 'inline';
             }
         }, 100);
+    }
+
+    function updatePlayingHighlight(newIndex) {
+        if (currentPlayingIndex === newIndex) return;
+
+        // 이전 playing 표시 제거
+        if (currentPlayingIndex !== -1) {
+            const prevItem = document.querySelector(`.timeline-item[data-index="${currentPlayingIndex}"]`);
+            if (prevItem) prevItem.classList.remove('playing');
+        }
+
+        // 새 playing 표시 추가
+        if (newIndex !== -1) {
+            const newItem = document.querySelector(`.timeline-item[data-index="${newIndex}"]`);
+            if (newItem) newItem.classList.add('playing');
+        }
+
+        currentPlayingIndex = newIndex;
     }
 
     // New Features: Bulk Import
@@ -2059,17 +2112,17 @@
             const res = await fetch(`/api/v1/lyrics/search?q=${encodeURIComponent(q)}`);
             const data = await res.json();
 
-            // 음원과 커스텀 결과 저장
+            // 음원과 커스텀 결과 저장 (items 배열 사용)
             publicSearchResultsData = {
-                itunes: data.itunes || [],
-                custom: data.custom || []
+                itunes: data.itunes?.items || [],
+                custom: data.custom?.items || []
             };
 
-            // 탭 카운트 업데이트
+            // 탭 카운트 업데이트 (total 사용)
             const itunesTab = document.querySelector('[data-public-search-tab="itunes"]');
             const customTab = document.querySelector('[data-public-search-tab="custom"]');
-            itunesTab.textContent = `음원 (${publicSearchResultsData.itunes.length})`;
-            customTab.textContent = `커스텀 (${publicSearchResultsData.custom.length})`;
+            itunesTab.textContent = `음원 (${data.itunes?.total || 0})`;
+            customTab.textContent = `커스텀 (${data.custom?.total || 0})`;
 
             // 현재 탭 결과 표시
             renderPublicSearchResults();

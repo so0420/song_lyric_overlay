@@ -1,6 +1,6 @@
 {% extends "base/base.html" %}
 
-{% block title %}로그인 - Jamku Songbook{% endblock %}
+{% block title %}로그인 - Jamku Song{% endblock %}
 
 {% block extra_styles %}
 <style>
@@ -15,7 +15,7 @@
 
 /* Left: Brand Area */
 .brand-side {
-    background: var(--accent);
+    background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
     color: white;
     display: flex;
     flex-direction: column;
@@ -35,27 +35,67 @@
 .brand-logo {
     font-size: 2.5rem;
     font-weight: 900;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.brand-tagline {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    line-height: 1.4;
+}
+
+.brand-description {
+    font-size: 1rem;
+    line-height: 1.7;
+    opacity: 0.9;
+}
+
+.brand-features {
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.brand-feature {
     display: flex;
     align-items: center;
     gap: 12px;
+    font-size: 0.95rem;
+    opacity: 0.95;
 }
 
-.brand-slogan {
-    font-size: 1.25rem;
-    line-height: 1.5;
+.brand-feature svg {
+    flex-shrink: 0;
     opacity: 0.9;
-    font-weight: 500;
 }
 
-/* Decorative Pattern (SVG) */
+/* Decorative Elements */
 .brand-pattern {
     position: absolute;
     top: 0; right: 0; bottom: 0; left: 0;
-    opacity: 0.1;
+    opacity: 0.08;
     pointer-events: none;
-    background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0);
-    background-size: 40px 40px;
+    background-image:
+        radial-gradient(circle at 20% 80%, white 1px, transparent 1px),
+        radial-gradient(circle at 80% 20%, white 1px, transparent 1px),
+        radial-gradient(circle at 40% 40%, white 1px, transparent 1px);
+    background-size: 60px 60px, 80px 80px, 100px 100px;
+}
+
+.brand-glow {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    filter: blur(80px);
+    top: -100px;
+    right: -100px;
 }
 
 /* Right: Form Area */
@@ -65,34 +105,39 @@
     justify-content: center;
     align-items: center;
     padding: 40px;
-    background: white;
+    background: #fafbfc;
 }
 
 .login-box {
     width: 100%;
     max-width: 400px;
+    background: white;
+    padding: 40px;
+    border-radius: 24px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    border: 1px solid #e5e7eb;
 }
 
 .login-header {
-    margin-bottom: 32px;
+    margin-bottom: 28px;
     text-align: center;
 }
 
 .login-header h1 {
-    font-size: 2rem;
+    font-size: 1.75rem;
     font-weight: 800;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     color: var(--text-main);
 }
 
 .login-header p {
     color: var(--text-sub);
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
 /* Form Styles */
 .form-group {
-    margin-bottom: 16px;
+    margin-bottom: 18px;
 }
 
 .form-group label {
@@ -106,45 +151,47 @@
 .form-group input {
     width: 100%;
     padding: 14px 16px;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 12px;
     font-size: 1rem;
     transition: all 0.2s;
-    background: white;
+    background: #fafbfc;
 }
 
 .form-group input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    background: white;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
 }
 
 .form-group input::placeholder {
-    color: var(--text-dim);
+    color: #9ca3af;
 }
 
 .btn-login {
     width: 100%;
-    padding: 16px;
-    background: var(--accent);
+    padding: 15px;
+    background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
     color: white;
     border: none;
     border-radius: 12px;
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
-    margin-top: 8px;
+    margin-top: 4px;
 }
 
 .btn-login:hover:not(:disabled) {
-    background: var(--accent-hover);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(124, 58, 237, 0.3);
 }
 
 .btn-login:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    transform: none;
 }
 
 /* Divider */
@@ -152,8 +199,8 @@
     display: flex;
     align-items: center;
     margin: 24px 0;
-    color: var(--text-dim);
-    font-size: 0.875rem;
+    color: #9ca3af;
+    font-size: 0.85rem;
 }
 
 .divider::before,
@@ -161,32 +208,32 @@
     content: '';
     flex: 1;
     height: 1px;
-    background: var(--border-color);
+    background: #e5e7eb;
 }
 
 .divider span {
     padding: 0 16px;
 }
 
-/* Auth Buttons */
+/* Social Auth Buttons */
 .auth-buttons {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 .btn-auth {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    padding: 14px;
+    gap: 10px;
+    padding: 13px;
     border-radius: 12px;
     font-weight: 600;
     font-size: 0.95rem;
     text-decoration: none;
     transition: all 0.2s;
-    border: 1px solid transparent;
+    border: 1.5px solid transparent;
 }
 
 .btn-naver {
@@ -195,17 +242,19 @@
 }
 .btn-naver:hover {
     background-color: #02b351;
-    box-shadow: 0 4px 12px rgba(3, 199, 90, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(3, 199, 90, 0.25);
 }
 
 .btn-google {
     background-color: white;
     color: #374151;
-    border: 1px solid var(--border-color);
+    border-color: #e5e7eb;
 }
 .btn-google:hover {
     background-color: #f9fafb;
-    border-color: var(--text-dim);
+    border-color: #d1d5db;
+    transform: translateY(-1px);
 }
 
 .brand-icon-img {
@@ -213,10 +262,13 @@
     height: 20px;
 }
 
-/* Register Link */
-.register-link {
-    text-align: center;
+/* Register & Forgot Links */
+.form-links {
     margin-top: 24px;
+    text-align: center;
+}
+
+.register-link {
     color: var(--text-sub);
     font-size: 0.9rem;
 }
@@ -224,16 +276,29 @@
 .register-link a {
     color: var(--accent);
     font-weight: 600;
+    text-decoration: none;
 }
 
 .register-link a:hover {
     text-decoration: underline;
 }
 
-/* Error Message */
+.forgot-link {
+    display: inline-block;
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: #9ca3af;
+    text-decoration: none;
+}
+
+.forgot-link:hover {
+    color: var(--accent);
+}
+
+/* Messages */
 .message {
     padding: 14px 16px;
-    border-radius: 10px;
+    border-radius: 12px;
     margin-bottom: 20px;
     font-size: 0.9rem;
     display: none;
@@ -256,7 +321,7 @@
 .verification-required {
     display: none;
     text-align: center;
-    padding: 20px;
+    padding: 18px;
     background: #fffbeb;
     border: 1px solid #fde68a;
     border-radius: 12px;
@@ -267,6 +332,7 @@
     color: #92400e;
     margin-bottom: 12px;
     font-size: 0.9rem;
+    line-height: 1.5;
 }
 
 .btn-resend-verify {
@@ -293,8 +359,8 @@
 /* Loading Spinner */
 .spinner {
     display: inline-block;
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     border: 2px solid rgba(255,255,255,0.3);
     border-radius: 50%;
     border-top-color: white;
@@ -313,8 +379,8 @@
     }
 
     .brand-side {
-        padding: 40px 24px;
-        min-height: 180px;
+        padding: 48px 24px;
+        min-height: auto;
     }
 
     .brand-content {
@@ -326,8 +392,37 @@
         font-size: 2rem;
     }
 
+    .brand-tagline {
+        font-size: 1.25rem;
+    }
+
+    .brand-features {
+        display: none;
+    }
+
     .form-side {
-        padding: 32px 24px 48px;
+        padding: 32px 20px 48px;
+        background: white;
+    }
+
+    .login-box {
+        padding: 24px;
+        box-shadow: none;
+        border: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .brand-side {
+        padding: 36px 20px;
+    }
+
+    .brand-logo {
+        font-size: 1.75rem;
+    }
+
+    .brand-description {
+        display: none;
     }
 }
 </style>
@@ -335,27 +430,54 @@
 
 {% block content %}
 <div class="split-layout">
-    <!-- Left Side -->
+    <!-- Left Side: Brand -->
     <div class="brand-side">
         <div class="brand-pattern"></div>
+        <div class="brand-glow"></div>
         <div class="brand-content">
             <div class="brand-logo">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-                PlayList
+                <svg width="42" height="42" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                </svg>
+                Jamku Song
             </div>
-            <p class="brand-slogan">
-                시청자와 함께 만드는<br>
-                실시간 신청곡 & 노래책 플랫폼
+            <p class="brand-tagline">
+                방송을 더 풍성하게,<br>
+                가사 자막 오버레이
             </p>
+            <p class="brand-description">
+                노래방 자막처럼 실시간으로 가사를 표시하세요.<br>
+                OBS와 완벽하게 연동됩니다.
+            </p>
+            <div class="brand-features">
+                <div class="brand-feature">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    YouTube 영상과 자동 싱크
+                </div>
+                <div class="brand-feature">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    직관적인 가사 편집기
+                </div>
+                <div class="brand-feature">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    OBS 브라우저 소스 지원
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Right Side -->
+    <!-- Right Side: Login Form -->
     <div class="form-side">
         <div class="login-box">
             <div class="login-header">
-                <h1>반가워요!</h1>
-                <p>이메일 또는 소셜 계정으로 로그인하세요</p>
+                <h1>로그인</h1>
+                <p>계정에 로그인하세요</p>
             </div>
 
             <div id="errorMessage" class="message error"></div>
@@ -365,6 +487,28 @@
                 <p>이메일 인증이 필요합니다.<br>인증 메일을 다시 받으시겠습니까?</p>
                 <button type="button" class="btn-resend-verify" id="resendVerifyBtn">인증 메일 재발송</button>
             </div>
+
+            <!-- Social Login First -->
+            <div class="auth-buttons">
+                <a href="/api/v1/oauth/naver/login" class="btn-auth btn-naver">
+                    <svg class="brand-icon-img" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M16.273 12.845L7.376 0H0v24h7.726V11.155L16.624 24H24V0h-7.727v12.845z"/>
+                    </svg>
+                    네이버로 계속하기
+                </a>
+
+                <a href="/api/v1/oauth/google/login" class="btn-auth btn-google">
+                    <svg class="brand-icon-img" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Google로 계속하기
+                </a>
+            </div>
+
+            <div class="divider"><span>또는 이메일로 로그인</span></div>
 
             <!-- Email Login Form -->
             <form id="loginForm">
@@ -378,39 +522,17 @@
                     <input type="password" id="password" name="password" placeholder="비밀번호 입력" required>
                 </div>
 
-                <div style="text-align: right; margin-bottom: 16px;">
-                    <a href="/forgot-password" style="font-size: 0.85rem; color: var(--text-sub);">비밀번호를 잊으셨나요?</a>
-                </div>
-
                 <button type="submit" class="btn-login" id="loginBtn">
                     로그인
                 </button>
             </form>
 
-            <div class="divider"><span>또는</span></div>
-
-            <div class="auth-buttons">
-                <a href="/api/v1/oauth/naver/login" class="btn-auth btn-naver">
-                    <svg class="brand-icon-img" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M16.273 12.845L7.376 0H0v24h7.726V11.155L16.624 24H24V0h-7.727v12.845z"/>
-                    </svg>
-                    네이버로 시작하기
-                </a>
-
-                <a href="/api/v1/oauth/google/login" class="btn-auth btn-google">
-                    <svg class="brand-icon-img" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                    Google로 시작하기
-                </a>
+            <div class="form-links">
+                <p class="register-link">
+                    계정이 없으신가요? <a href="/register">회원가입</a>
+                </p>
+                <a href="/forgot-password" class="forgot-link">비밀번호를 잊으셨나요?</a>
             </div>
-
-            <p class="register-link">
-                계정이 없으신가요? <a href="/register">회원가입</a>
-            </p>
         </div>
     </div>
 </div>
@@ -497,7 +619,6 @@ loginForm.addEventListener('submit', async (e) => {
         const data = await response.json();
 
         if (!response.ok) {
-            // Check if email verification is required
             if (response.status === 403 && data.detail.includes('이메일 인증')) {
                 pendingEmail = email;
                 verificationRequired.style.display = 'block';

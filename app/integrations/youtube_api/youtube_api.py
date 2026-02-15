@@ -68,15 +68,17 @@ class YouTubeAPI:
             await self._client.aclose()
             self._client = None
 
-    async def search_videos(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
+    async def search_videos(self, query: str, max_results: int = 10, page_token: str = None) -> Dict[str, Any]:
         """
         유튜브 영상을 검색하고 상세 정보(길이, 재생가능여부 등)를 포함하여 반환합니다.
+        페이지네이션을 위해 nextPageToken도 반환합니다.
         """
-        # 캐시 확인
+        # 캐시 확인 (첫 페이지만 캐시)
         cache_key = self._get_cache_key(query, max_results)
-        cached_result = self._get_from_cache(cache_key)
-        if cached_result is not None:
-            return cached_result
+        if page_token is None:
+            cached_result = self._get_from_cache(cache_key)
+            if cached_result is not None:
+                return cached_result
 
         if self._client is None or self._client.is_closed:
             await self.initialize()
@@ -89,21 +91,24 @@ class YouTubeAPI:
             "type": "video",
             "key": self.api_key
         }
+        if page_token:
+            search_params["pageToken"] = page_token
 
         search_response = await self._client.get(f"{self.base_url}/search", params=search_params)
-        
+
         if search_response.status_code != 200:
             raise Exception(f"YouTube Search Error: {search_response.status_code} - {search_response.text}")
 
         search_data = search_response.json()
         video_ids = [item["id"]["videoId"] for item in search_data.get("items", [])]
+        next_page_token = search_data.get("nextPageToken")
 
         if not video_ids:
-            return []
+            return {"items": [], "nextPageToken": None}
 
         # 2. 가져온 ID들로 상세 정보(contentDetails, status)를 조회합니다.
         details_list = await self.get_video_details(video_ids)
-        
+
         # 3. 데이터 결합
         results = []
         for item in details_list:
@@ -121,10 +126,16 @@ class YouTubeAPI:
                 "embeddable": status.get("embeddable", False) # 외부 재생 가능 여부
             })
 
-        # 캐시에 저장
-        self._save_to_cache(cache_key, results)
+        response_data = {
+            "items": results,
+            "nextPageToken": next_page_token
+        }
 
-        return results
+        # 캐시에 저장 (첫 페이지만)
+        if page_token is None:
+            self._save_to_cache(cache_key, response_data)
+
+        return response_data
 
     async def get_video_details(self, video_ids: List[str]) -> List[Dict[str, Any]]:
         """

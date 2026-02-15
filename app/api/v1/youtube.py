@@ -7,9 +7,10 @@ router = APIRouter()
 @router.get("/search")
 async def search_youtube(
     q: str = Query(...),
+    page_token: str = Query(None),
     user=Depends(get_current_user_api)
 ):
-    return await youtube_api.search_videos(q)
+    return await youtube_api.search_videos(q, page_token=page_token)
 
 @router.get("/info")
 async def get_video_info(

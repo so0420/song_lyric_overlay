@@ -237,28 +237,30 @@
         font-weight: 500;
     }
 
-    .lyrics-preview-overlay {
-        position: absolute;
-        bottom: 10%;
-        left: 0;
-        right: 0;
+    .lyrics-preview-container {
         text-align: center;
-        pointer-events: none;
-        z-index: 10;
-        padding: 0 20px;
+        padding: 16px 20px;
+        min-height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+        border-radius: 16px;
+        margin-bottom: 20px;
+        position: relative;
+    }
+
+    .lyrics-preview-placeholder {
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 0.9rem;
     }
 
     .lyrics-preview-text {
-        display: inline-block;
-        background: rgba(0, 0, 0, 0.75);
-        color: white;
-        padding: 10px 24px;
-        border-radius: 12px;
-        font-size: 1.8rem;
+        color: #fef08a;
+        padding: 8px 20px;
+        font-size: 1.6rem;
         font-weight: 800;
-        min-height: 2.5rem;
-        backdrop-filter: blur(8px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
     }
 
     /* Timeline Section Styles */
@@ -477,35 +479,30 @@
     /* Sync Mode */
     .sync-overlay {
         display: none;
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(15, 23, 42, 0.9);
-        backdrop-filter: blur(12px);
-        z-index: 100;
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 16px;
         color: white;
+        position: relative;
     }
 
     .sync-current-text {
-        font-size: 2.8rem;
-        line-height: 1.3;
-        font-weight: 800;
+        font-size: 1.8rem;
+        line-height: 1.4;
+        font-weight: 700;
         color: white;
-        margin-bottom: 24px;
+        margin-bottom: 12px;
         text-align: center;
-        width: 85%;
-        height: 7.3rem;
-        /* Exactly 2 lines high */
+        width: 100%;
+        min-height: 2.6rem;
         display: flex;
         align-items: center;
         justify-content: center;
         word-break: keep-all;
-        /* Preserve Korean words, break at spaces */
     }
 
     .sync-progress {
@@ -514,6 +511,21 @@
         left: 0;
         height: 4px;
         background: #a855f7;
+        border-radius: 16px 16px 0 0;
+    }
+
+    .sync-next-text {
+        font-size: 1rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 16px;
+    }
+
+    .sync-hint {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
     }
 
     /* Utils */
@@ -777,23 +789,27 @@
                     영상 검색하기
                 </button>
             </div>
-            <div id="sync-overlay" class="sync-overlay">
-                <div class="sync-progress" id="sync-progress"></div>
-                <div
-                    style="font-size: 0.8rem; margin-bottom: 8px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">
-                    Rec. Sync Mode</div>
-                <div id="sync-current" class="sync-current-text">가사를 준비해주세요</div>
-                <div id="sync-next" class="sync-next-text" style="font-weight: 500;">다음: -</div>
-                <div class="sync-hint"
-                    style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15);">
-                    <span class="tip-key" style="background: white; color: #1e293b; border: none;">Enter</span> 가사 시작
-                    &nbsp; <span class="tip-key"
-                        style="background: rgba(255,255,255,0.2); color: white; border: none;">ESC</span> 종료
-                </div>
+        </div>
+
+        <!-- 실시간 싱크 모드 (영상 아래) -->
+        <div id="sync-overlay" class="sync-overlay">
+            <div class="sync-progress" id="sync-progress"></div>
+            <div
+                style="font-size: 0.8rem; margin-bottom: 8px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">
+                Rec. Sync Mode</div>
+            <div id="sync-current" class="sync-current-text">가사를 준비해주세요</div>
+            <div id="sync-next" class="sync-next-text" style="font-weight: 500;">다음: -</div>
+            <div class="sync-hint">
+                <span class="tip-key" style="background: white; color: #1e293b; border: none;">Enter</span> 가사 시작
+                &nbsp; <span class="tip-key"
+                    style="background: rgba(255,255,255,0.2); color: white; border: none;">ESC</span> 종료
             </div>
-            <div class="lyrics-preview-overlay">
-                <div id="preview-text" class="lyrics-preview-text" style="display: none;"></div>
-            </div>
+        </div>
+
+        <!-- 가사 미리보기 (영상 아래) -->
+        <div class="lyrics-preview-container">
+            <span id="preview-placeholder" class="lyrics-preview-placeholder">현재 가사가 여기에 표시됩니다</span>
+            <span id="preview-text" class="lyrics-preview-text" style="display: none;"></span>
         </div>
 
         <div class="card" style="padding: 24px; background: white; border-radius: 20px;">
@@ -1411,9 +1427,12 @@
     function startPreviewLoop() {
         if (window.previewInterval) clearInterval(window.previewInterval);
         window.previewInterval = setInterval(() => {
+            const previewEl = document.getElementById('preview-text');
+            const placeholderEl = document.getElementById('preview-placeholder');
+
             if (!player || typeof player.getCurrentTime !== 'function') {
-                const previewEl = document.getElementById('preview-text');
                 if (previewEl) previewEl.style.display = 'none';
+                if (placeholderEl) placeholderEl.style.display = 'inline';
                 return;
             }
             const now = Math.floor(player.getCurrentTime() * 1000);
@@ -1426,14 +1445,15 @@
                 return plainText.length > 0;
             });
 
-            const previewEl = document.getElementById('preview-text');
             if (activeSeg) {
                 previewEl.innerText = ''; // Reset
                 previewEl.innerHTML = parseTags(activeSeg.text);
                 previewEl.style.display = 'inline-block';
+                placeholderEl.style.display = 'none';
             } else {
                 previewEl.innerHTML = '';
                 previewEl.style.display = 'none';
+                placeholderEl.style.display = 'inline';
             }
         }, 100);
     }

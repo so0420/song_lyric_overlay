@@ -4,7 +4,7 @@ from app.utils.templates import templates
 from app.core.auth import get_current_user
 from app.database.overlay_repository import get_overlay_repository
 from app.database.access_request_repository import get_access_request_repository
-from app.utils.ws_token import generate_overlay_token_async, verify_overlay_token_async
+from app.utils.ws_token import get_or_create_overlay_token, verify_overlay_token_async
 
 router = APIRouter()
 
@@ -51,8 +51,8 @@ async def overlay_settings_page(
     if access_check:
         return access_check
 
-    # OBS용 오버레이 토큰 생성
-    overlay_token = await generate_overlay_token_async(user['id'])
+    # OBS용 오버레이 토큰 조회 또는 생성
+    overlay_token = await get_or_create_overlay_token(user['id'])
 
     return templates.TemplateResponse("pages/overlay/settings.html", {
         "request": request,

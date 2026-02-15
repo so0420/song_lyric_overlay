@@ -77,9 +77,35 @@ async def add_security_headers(request: Request, call_next):
 
     # 보안 헤더 추가
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"  # YouTube iframe 허용을 위해 SAMEORIGIN
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    # Content Security Policy (CSP)
+    # - default-src 'self': 기본적으로 같은 출처만 허용
+    # - script-src: 인라인 스크립트와 YouTube API 허용
+    # - style-src: 인라인 스타일과 Google Fonts 허용
+    # - font-src: Google Fonts 허용
+    # - img-src: iTunes, YouTube 썸네일 등 허용
+    # - frame-src: YouTube 임베드 허용
+    # - connect-src: API 호출, WebSocket 허용
+    csp_directives = [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data: https: blob:",
+        "frame-src 'self' https://www.youtube.com",
+        "connect-src 'self' ws: wss: https://itunes.apple.com https://www.googleapis.com",
+        "media-src 'self' https:",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+    ]
+    response.headers["Content-Security-Policy"] = "; ".join(csp_directives)
+
+    # Permissions-Policy: 불필요한 브라우저 기능 비활성화
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
 
     # HTTPS 환경에서만 HSTS 적용
     if settings.environment == "production":

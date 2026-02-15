@@ -6,8 +6,8 @@ from app.utils.ws_token import (
     generate_ws_token,
     verify_ws_token,
     verify_overlay_token_async,
-    generate_overlay_token_async,
-    increment_overlay_token_version
+    get_or_create_overlay_token,
+    generate_overlay_token
 )
 from app.utils.csrf import verify_csrf
 from app.schemas.overlay import (
@@ -88,9 +88,9 @@ async def get_ws_token(user=Depends(get_current_user_api)):
 
 
 @router.get("/overlay-token")
-async def get_overlay_token(user=Depends(get_current_user_api)):
+async def get_current_overlay_token(user=Depends(get_current_user_api)):
     """오버레이 영구 토큰 조회"""
-    token = await generate_overlay_token_async(user['id'])
+    token = await get_or_create_overlay_token(user['id'])
     return TokenResponse(token=token)
 
 
@@ -103,11 +103,8 @@ async def regenerate_overlay_token(user=Depends(get_current_user_api)):
         "message": "토큰이 재발급되어 연결이 종료됩니다."
     })
 
-    # 버전 증가 (기존 토큰 무효화)
-    new_version = await increment_overlay_token_version(user['id'])
-
-    # 새 토큰 생성
-    new_token = await generate_overlay_token_async(user['id'])
+    # 새 토큰 생성 (기존 토큰 자동 삭제)
+    new_token = await generate_overlay_token(user['id'])
 
     return {
         "success": True,
@@ -229,14 +226,17 @@ PING_INTERVAL = 30  # 30초마다 ping 전송
 PONG_TIMEOUT = 60   # 60초 내 pong 미응답 시 연결 종료
 
 
-@router.websocket("/ws/{user_id}")
+@router.websocket("/ws")
 async def overlay_websocket(
     websocket: WebSocket,
-    user_id: int,
     token: str = Query(None),
     overlay_token: str = Query(None)
 ):
-    """OBS 오버레이용 WebSocket 연결 (토큰 인증 필수, Heartbeat 지원)"""
+    """OBS 오버레이용 WebSocket 연결 (토큰 인증 필수, Heartbeat 지원)
+
+    보안: user_id는 URL에 포함하지 않고 토큰에서만 추출합니다.
+    이는 클라이언트가 URL을 조작해도 다른 사용자의 연결을 가로챌 수 없게 합니다.
+    """
     verified_user_id = None
 
     # 1. 일회용 토큰 검증 (노래하기 페이지에서 사용)
@@ -246,12 +246,13 @@ async def overlay_websocket(
     elif overlay_token:
         verified_user_id = await verify_overlay_token_async(overlay_token)
 
-    # 검증 실패
-    if verified_user_id is None or verified_user_id != user_id:
+    # 검증 실패 - 토큰이 없거나 유효하지 않음
+    if verified_user_id is None:
         await websocket.close(code=4001, reason="Invalid or expired token")
         return
 
-    await overlay_manager.connect(websocket, user_id)
+    # 토큰에서 추출한 user_id만 사용 (URL의 user_id는 무시)
+    await overlay_manager.connect(websocket, verified_user_id)
 
     last_pong_time = time.time()
     ping_task = None
@@ -294,4 +295,4 @@ async def overlay_websocket(
     finally:
         if ping_task:
             ping_task.cancel()
-        await overlay_manager.disconnect(websocket, user_id)
+        await overlay_manager.disconnect(websocket, verified_user_id)

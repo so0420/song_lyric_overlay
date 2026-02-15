@@ -677,7 +677,8 @@
 
         function connect() {
             const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            let wsUrl = `${wsProtocol}//${window.location.host}/api/v1/overlay/ws/${userId}`;
+            // user_id는 토큰에 포함되어 있으므로 URL에 포함하지 않음
+            let wsUrl = `${wsProtocol}//${window.location.host}/api/v1/overlay/ws`;
 
             // 오버레이 토큰 추가
             if (overlayToken) {
@@ -699,6 +700,11 @@
                     const message = JSON.parse(event.data);
 
                     switch (message.type) {
+                        case 'ping':
+                            // 서버 ping에 pong으로 응답
+                            ws.send(JSON.stringify({ type: 'pong' }));
+                            break;
+
                         case 'lyrics_update':
                             updateLyrics(message.data);
                             break;
@@ -719,6 +725,12 @@
                                 renderPlaylist();
                             }
                             break;
+
+                        case 'token_invalidated':
+                            // 토큰 무효화 시 연결 종료 (재연결 하지 않음)
+                            console.log('Token invalidated:', message.message);
+                            ws.close();
+                            break;
                     }
                 } catch (e) {
                     console.error('Failed to parse message:', e);
@@ -736,13 +748,6 @@
                 ws.close();
             };
         }
-
-        // Ping to keep connection alive
-        setInterval(() => {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'ping' }));
-            }
-        }, 30000);
 
         // Initialize
         applySettings(settings);

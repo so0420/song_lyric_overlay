@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `is_active` TINYINT(1) DEFAULT 1 COMMENT '활성 상태 (1: 활성, 0: 비활성)',
     `is_admin` TINYINT(1) DEFAULT 0 COMMENT '관리자 여부 (1: 관리자, 0: 일반 사용자)',
     `overlay_approved` TINYINT(1) DEFAULT 0 COMMENT '오버레이 기능 사용 승인 (1: 승인, 0: 미승인)',
+    `overlay_token` VARCHAR(64) NULL UNIQUE COMMENT 'OBS 오버레이용 영구 토큰',
     `last_login` TIMESTAMP NULL COMMENT '최근 로그인 일시',
     `ip` VARCHAR(45) COMMENT '최근 로그인 IP',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '가입 일시',

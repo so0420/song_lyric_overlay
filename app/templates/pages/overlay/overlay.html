@@ -1707,6 +1707,10 @@
     (function () {
         'use strict';
 
+        // CSRF Token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        const csrfHeaders = csrfToken ? { 'X-CSRF-Token': csrfToken } : {};
+
         // State
         const state = {
             ytPlayer: null,
@@ -2718,7 +2722,7 @@
             syncTimeout = setTimeout(() => {
                 fetch('/api/v1/overlay/sync', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', ...csrfHeaders },
                     body: JSON.stringify(data)
                 }).catch(err => console.log('Sync error:', err));
             }, 50);
@@ -2729,7 +2733,7 @@
             const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
             fetch('/api/v1/overlay/sync-playlist', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...csrfHeaders },
                 body: JSON.stringify({
                     playlist: items,
                     currentIndex: state.currentPlayingIndex
@@ -2756,12 +2760,12 @@
 
             try {
                 if (isFavorited) {
-                    await fetch(`/api/v1/lyrics/favorites/${lyricsId}`, { method: 'DELETE' });
+                    await fetch(`/api/v1/lyrics/favorites/${lyricsId}`, { method: 'DELETE', headers: csrfHeaders });
                     button.classList.remove('favorited');
                     button.querySelector('svg').setAttribute('fill', 'none');
                     showToast('즐겨찾기에서 제거됨');
                 } else {
-                    await fetch(`/api/v1/lyrics/favorites/${lyricsId}`, { method: 'POST' });
+                    await fetch(`/api/v1/lyrics/favorites/${lyricsId}`, { method: 'POST', headers: csrfHeaders });
                     button.classList.add('favorited');
                     button.querySelector('svg').setAttribute('fill', 'currentColor');
                     showToast('즐겨찾기에 추가됨', 'success');
@@ -2872,10 +2876,9 @@
                 formData.append('title', title);
                 formData.append('artist', artist);
 
-                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
                 const response = await fetch('/api/v1/songs/custom', {
                     method: 'POST',
-                    headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
+                    headers: csrfHeaders,
                     body: formData
                 });
 

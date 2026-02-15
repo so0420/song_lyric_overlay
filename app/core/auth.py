@@ -6,6 +6,7 @@ from app.database.mariadb.mariadb import db_handler
 
 def get_current_user(request: Request) -> Optional[Dict[str, Any]]:
     """세션에서 현재 사용자 정보를 반환합니다."""
+    print(request.session.get('user'))
     return request.session.get('user')
 
 

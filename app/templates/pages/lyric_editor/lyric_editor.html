@@ -2206,20 +2206,22 @@
             .then(res => res.json())
             .then(data => {
                 const container = document.getElementById('history-results');
-                if (data.length === 0) {
+                const items = data.items || [];
+                if (items.length === 0) {
                     container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-dim);">작성한 가사가 없습니다.</div>';
                     return;
                 }
-                container.innerHTML = data.map(l => `
-                    <div class="card" style="padding: 12px; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-weight:700">
+                container.innerHTML = items.map(l => `
+                    <div class="card" style="padding: 12px; display: flex; align-items: center; gap: 12px;">
+                        <img src="${escapeHtml(l.cover_image_url || '')}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); flex-shrink: 0;" onerror="this.style.visibility='hidden'">
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight:700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${escapeHtml(l.song_title)}
                                 <span style="font-size: 0.75rem; color: var(--accent); margin-left:8px;">${escapeHtml(l.title || '제목 없음')}</span>
                             </div>
-                            <div style="font-size:0.8rem; color:var(--text-sub)">${escapeHtml(l.artist_name)} | ${new Date(l.updated_at).toLocaleString()}</div>
+                            <div style="font-size:0.8rem; color:var(--text-sub)">${escapeHtml(l.artist_name || '')} | ${new Date(l.updated_at).toLocaleString()}</div>
                         </div>
-                        <div style="display: flex; gap: 8px;">
+                        <div style="display: flex; gap: 8px; flex-shrink: 0;">
                             <button onclick="location.href='/lyrics/?lyrics_id=${parseInt(l.id)}'" class="btn btn-outline" style="padding:4px 8px;">수정</button>
                             <button onclick="deleteLyrics(${parseInt(l.id)})" class="btn btn-outline" style="padding:4px 8px; color:#ef4444;">삭제</button>
                         </div>

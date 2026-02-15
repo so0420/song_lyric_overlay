@@ -1073,7 +1073,7 @@ input:checked + .toggle-slider:before {
                     <div class="setting-row">
                         <span class="setting-label">애니메이션</span>
                         <label class="toggle-switch">
-                            <input type="checkbox" id="animationEnabled" checked onchange="updatePreview()">
+                            <input type="checkbox" id="animationEnabled" onchange="updatePreview()">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -1374,7 +1374,7 @@ const defaultSettings = {
     song_title_stroke: 3,
     artist_stroke: 2,
     text_shadow: true,
-    animation_enabled: true,
+    animation_enabled: false,
     show_prev_line: true,
     show_next_line: true,
     show_song_title: true,
@@ -1447,7 +1447,7 @@ function applySettingsToForm(settings) {
     document.getElementById('prevLineStroke').value = settings.prev_line_stroke ?? defaultSettings.prev_line_stroke;
     document.getElementById('nextLineStroke').value = settings.next_line_stroke ?? defaultSettings.next_line_stroke;
     document.getElementById('textShadow').checked = settings.text_shadow !== false;
-    document.getElementById('animationEnabled').checked = settings.animation_enabled !== false;
+    document.getElementById('animationEnabled').checked = settings.animation_enabled === true;
     document.getElementById('showPrevLine').checked = settings.show_prev_line !== false;
     document.getElementById('showNextLine').checked = settings.show_next_line !== false;
     document.getElementById('showSongTitle').checked = settings.show_song_title !== false;

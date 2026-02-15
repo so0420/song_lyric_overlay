@@ -71,7 +71,7 @@ class LyricsRepository:
     async def get_my_lyrics(self, owner_id: int, offset: int = 0, limit: int = 50) -> Tuple[List[Dict[str, Any]], int]:
         """자신이 작성한 가사 목록 조회 (페이지네이션 지원)"""
         query = """
-            SELECT l.*, s.title as song_title, s.song_external_id, a.name as artist_name
+            SELECT l.*, s.title as song_title, s.song_external_id, s.cover_image_url, a.name as artist_name
             FROM song_lyrics l
             JOIN songs s ON l.song_id = s.id
             LEFT JOIN artists a ON s.artist_id = a.id

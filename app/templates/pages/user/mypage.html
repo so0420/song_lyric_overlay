@@ -348,7 +348,8 @@
             const res = await fetch('/api/v1/lyrics/my');
             if (!res.ok) throw new Error();
 
-            const lyrics = await res.json();
+            const data = await res.json();
+            const lyrics = data.items || [];
 
             if (lyrics.length === 0) {
                 container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 40px 0;">등록된 가사가 없습니다.</p>';
@@ -357,6 +358,7 @@
 
             container.innerHTML = lyrics.map(l => `
                 <div class="lyrics-item">
+                    <img src="${escapeHtml(l.cover_image_url || '')}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); flex-shrink: 0; margin-right: 12px;" onerror="this.style.visibility='hidden'">
                     <div class="lyrics-info">
                         <div class="lyrics-title">${escapeHtml(l.title || '제목 없음')}</div>
                         <div class="lyrics-meta">${escapeHtml(l.song_title)} - ${escapeHtml(l.artist_name || '')}</div>

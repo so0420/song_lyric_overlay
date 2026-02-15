@@ -3158,6 +3158,41 @@
             updateVolumeIcon();
             // 초기 재생목록 동기화
             setTimeout(syncPlaylistToOBS, 1000);
+
+            // URL 파라미터로 곡 추가
+            handleUrlParams();
+        }
+
+        async function handleUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            const lyricsId = params.get('lyrics_id');
+
+            if (lyricsId) {
+                // URL에서 파라미터 제거 (뒤로가기 시 중복 추가 방지)
+                window.history.replaceState({}, '', '/overlay');
+
+                try {
+                    const res = await fetch(`/api/v1/lyrics/${lyricsId}`);
+                    if (!res.ok) {
+                        showToast('가사 정보를 불러올 수 없습니다', 'error');
+                        return;
+                    }
+                    const lyrics = await res.json();
+
+                    // 재생목록에 추가
+                    addToPlaylist(
+                        lyrics.id,
+                        lyrics.song_external_id,
+                        lyrics.song_title,
+                        lyrics.artist_name,
+                        lyrics.mr_youtube_video_id,
+                        lyrics.title
+                    );
+                } catch (e) {
+                    console.error('Failed to add lyrics from URL:', e);
+                    showToast('가사 추가에 실패했습니다', 'error');
+                }
+            }
         }
 
         // Run on DOM ready

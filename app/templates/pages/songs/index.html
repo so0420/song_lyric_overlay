@@ -1,0 +1,575 @@
+{% extends "base/base.html" %}
+
+{% block title %}가사 목록 - Jamku Song{% endblock %}
+
+{% block extra_styles %}
+<style>
+.songs-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding-top: 40px;
+}
+
+.songs-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.songs-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 8px;
+}
+
+.songs-subtitle {
+    color: var(--text-sub);
+    font-size: 1rem;
+}
+
+/* Filter Tabs */
+.filter-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 32px;
+}
+
+.filter-tab {
+    padding: 10px 24px;
+    border: 1px solid var(--border-color);
+    border-radius: 100px;
+    background: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-sub);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-tab:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.filter-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+
+/* Stats */
+.songs-stats {
+    text-align: center;
+    margin-bottom: 24px;
+    color: var(--text-sub);
+    font-size: 0.9rem;
+}
+
+/* Songs Grid */
+.songs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin-bottom: 40px;
+}
+
+.song-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.song-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -8px rgba(37, 99, 235, 0.15);
+}
+
+.song-cover {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    flex-shrink: 0;
+}
+
+.song-cover.custom {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.song-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.song-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+}
+
+.song-artist {
+    font-size: 0.85rem;
+    color: var(--text-sub);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.song-lyrics-count {
+    background: var(--accent-light);
+    color: var(--accent);
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+/* Loading & Empty */
+.songs-loading,
+.songs-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+}
+
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Load More */
+.load-more-container {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.btn-load-more {
+    padding: 12px 32px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 100px;
+    font-weight: 600;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-load-more:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.btn-load-more:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Modal */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 20px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-song-cover {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    flex-shrink: 0;
+}
+
+.modal-song-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.modal-song-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text-main);
+    margin-bottom: 4px;
+}
+
+.modal-song-artist {
+    font-size: 0.9rem;
+    color: var(--text-sub);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: var(--text-dim);
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+.modal-body {
+    padding: 16px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-body-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+}
+
+.lyrics-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.lyrics-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #f8fafc;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.lyrics-item:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+}
+
+.lyrics-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.lyrics-item-title {
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 2px;
+}
+
+.lyrics-item-meta {
+    font-size: 0.8rem;
+    color: var(--text-sub);
+}
+
+.lyrics-item-badge {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 100px;
+    font-weight: 600;
+}
+
+.lyrics-item-badge.verified {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.lyrics-loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-dim);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .songs-grid {
+        grid-template-columns: 1fr;
+    }
+    .filter-tabs {
+        flex-wrap: wrap;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="songs-container">
+    <div class="songs-header">
+        <h1 class="songs-title">가사 목록</h1>
+        <p class="songs-subtitle">공개된 가사가 있는 노래들을 둘러보세요</p>
+    </div>
+
+    <div class="filter-tabs">
+        <button class="filter-tab active" data-type="all">전체</button>
+        <button class="filter-tab" data-type="itunes">음원</button>
+        <button class="filter-tab" data-type="custom">커스텀</button>
+    </div>
+
+    <div class="songs-stats" id="songs-stats"></div>
+
+    <div class="songs-grid" id="songs-grid">
+        <div class="songs-loading">
+            <div class="spinner"></div>
+            <p>불러오는 중...</p>
+        </div>
+    </div>
+
+    <div class="load-more-container" id="load-more-container" style="display: none;">
+        <button class="btn-load-more" id="btn-load-more">더 보기</button>
+    </div>
+</div>
+
+<!-- 가사 선택 모달 -->
+<div class="modal-overlay" id="lyrics-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <img id="modal-cover" class="modal-song-cover" src="" onerror="this.style.visibility='hidden'">
+            <div class="modal-song-info">
+                <div class="modal-song-title" id="modal-title"></div>
+                <div class="modal-song-artist" id="modal-artist"></div>
+            </div>
+            <button class="modal-close" onclick="closeModal()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-body-title">가사 선택</div>
+            <div class="lyrics-list" id="lyrics-list">
+                <div class="lyrics-loading">
+                    <div class="spinner"></div>
+                    <p>가사 불러오는 중...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const LIMIT = 20;
+let currentType = 'all';
+let currentOffset = 0;
+let totalCount = 0;
+let isLoading = false;
+let currentSong = null;
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+async function loadSongs(append = false) {
+    if (isLoading) return;
+    isLoading = true;
+
+    const grid = document.getElementById('songs-grid');
+    const loadMoreBtn = document.getElementById('btn-load-more');
+
+    if (!append) {
+        grid.innerHTML = `<div class="songs-loading"><div class="spinner"></div><p>불러오는 중...</p></div>`;
+        currentOffset = 0;
+    } else {
+        loadMoreBtn.disabled = true;
+        loadMoreBtn.textContent = '불러오는 중...';
+    }
+
+    try {
+        const res = await fetch(`/api/v1/lyrics/songs?type=${currentType}&offset=${currentOffset}&limit=${LIMIT}`);
+        const data = await res.json();
+
+        totalCount = data.total;
+        document.getElementById('songs-stats').textContent = `총 ${totalCount}곡`;
+
+        if (data.items.length === 0 && !append) {
+            grid.innerHTML = `<div class="songs-empty" style="grid-column: 1/-1;">등록된 가사가 없습니다.</div>`;
+            document.getElementById('load-more-container').style.display = 'none';
+            return;
+        }
+
+        const html = data.items.map(song => {
+            const isCustom = song.song_external_id?.startsWith('custom_');
+            const songData = encodeURIComponent(JSON.stringify(song));
+            return `
+                <div class="song-card" onclick="openLyricsModal('${songData}')">
+                    <img src="${escapeHtml(song.artwork_url || '')}"
+                         class="song-cover ${isCustom ? 'custom' : ''}"
+                         onerror="this.style.visibility='hidden'">
+                    <div class="song-info">
+                        <div class="song-name">${escapeHtml(song.track_name)}</div>
+                        <div class="song-artist">${escapeHtml(song.artist_name || '알 수 없음')}</div>
+                    </div>
+                    <span class="song-lyrics-count">가사 ${song.lyrics_count}개</span>
+                </div>
+            `;
+        }).join('');
+
+        if (append) {
+            grid.insertAdjacentHTML('beforeend', html);
+        } else {
+            grid.innerHTML = html;
+        }
+
+        currentOffset += data.items.length;
+
+        if (data.has_more) {
+            document.getElementById('load-more-container').style.display = 'block';
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.textContent = '더 보기';
+        } else {
+            document.getElementById('load-more-container').style.display = 'none';
+        }
+    } catch (e) {
+        console.error(e);
+        if (!append) {
+            grid.innerHTML = `<div class="songs-empty" style="grid-column: 1/-1;">불러오기 실패</div>`;
+        }
+    } finally {
+        isLoading = false;
+    }
+}
+
+async function openLyricsModal(songDataEncoded) {
+    const song = JSON.parse(decodeURIComponent(songDataEncoded.toString()));
+    currentSong = song;
+
+    // 모달 헤더 업데이트
+    document.getElementById('modal-cover').src = song.artwork_url || '';
+    document.getElementById('modal-title').textContent = song.track_name;
+    document.getElementById('modal-artist').textContent = song.artist_name || '알 수 없음';
+
+    // 모달 열기
+    document.getElementById('lyrics-modal').classList.add('active');
+
+    // 가사 목록 로딩
+    const lyricsList = document.getElementById('lyrics-list');
+    lyricsList.innerHTML = `<div class="lyrics-loading"><div class="spinner"></div><p>가사 불러오는 중...</p></div>`;
+
+    try {
+        const res = await fetch(`/api/v1/lyrics/?song_external_id=${encodeURIComponent(song.song_external_id)}`);
+        const lyrics = await res.json();
+
+        if (lyrics.length === 0) {
+            lyricsList.innerHTML = `<div class="lyrics-loading">등록된 가사가 없습니다.</div>`;
+            return;
+        }
+
+        lyricsList.innerHTML = lyrics.map(l => `
+            <div class="lyrics-item" onclick="selectLyrics(${l.id})">
+                <div class="lyrics-item-info">
+                    <div class="lyrics-item-title">${escapeHtml(l.title || '제목 없음')}</div>
+                    <div class="lyrics-item-meta">by ${escapeHtml(l.owner_name || '익명')} · ${new Date(l.created_at).toLocaleDateString()}</div>
+                </div>
+                ${l.is_verified ? '<span class="lyrics-item-badge verified">검증됨</span>' : ''}
+            </div>
+        `).join('');
+    } catch (e) {
+        console.error(e);
+        lyricsList.innerHTML = `<div class="lyrics-loading">가사를 불러오지 못했습니다.</div>`;
+    }
+}
+
+function closeModal() {
+    document.getElementById('lyrics-modal').classList.remove('active');
+    currentSong = null;
+}
+
+function selectLyrics(lyricsId) {
+    // 노래하기 페이지로 이동하면서 가사 ID 전달
+    window.location.href = `/overlay?lyrics_id=${lyricsId}`;
+}
+
+// 모달 외부 클릭 시 닫기
+document.getElementById('lyrics-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'lyrics-modal') {
+        closeModal();
+    }
+});
+
+// ESC 키로 모달 닫기
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+});
+
+// Filter tab click
+document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentType = tab.dataset.type;
+        loadSongs();
+    });
+});
+
+// Load more button
+document.getElementById('btn-load-more').addEventListener('click', () => {
+    loadSongs(true);
+});
+
+// Initial load
+loadSongs();
+</script>
+{% endblock %}

@@ -31,3 +31,8 @@ async def forgot_password_page(request: Request, user=Depends(get_current_user))
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url='/')
+
+@router.get("/songs", response_class=HTMLResponse)
+async def songs_page(request: Request, user=Depends(get_current_user)):
+    """가사가 등록된 노래 목록 페이지"""
+    return templates.TemplateResponse("pages/songs/index.html", {"request": request, "user": user})

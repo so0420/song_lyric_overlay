@@ -67,15 +67,18 @@ async def verify_csrf(
     토큰은 X-CSRF-Token 헤더로 전달해야 합니다.
     JSON/AJAX 요청은 Origin 검증 + SameSite 쿠키로 보호됩니다.
     """
+    # sec-fetch-site: same-origin 은 브라우저가 보장하는 same-origin 요청
+    # 이 헤더는 위조 불가능하므로 신뢰함
+    if request.headers.get("sec-fetch-site") == "same-origin":
+        return True
+
     content_type = request.headers.get("content-type", "")
 
     # JSON API 요청 또는 AJAX 요청 (body 없는 POST 등): Origin/Referer 검증
-    # X-Requested-With 헤더가 있거나, JSON content-type이거나, Fetch API 요청인 경우
     is_ajax = (
         "application/json" in content_type or
         request.headers.get("x-requested-with") == "XMLHttpRequest" or
-        request.headers.get("sec-fetch-mode") == "cors" or
-        request.headers.get("sec-fetch-site") == "same-origin"
+        request.headers.get("sec-fetch-mode") == "cors"
     )
 
     if is_ajax:

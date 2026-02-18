@@ -112,6 +112,10 @@
             transition: all 0.3s ease;
         }
 
+        .lyrics-line.no-animation {
+            transition: none;
+        }
+
         .lyrics-line.visible {
             opacity: 1;
             transform: translateY(0);
@@ -452,6 +456,11 @@
                 el.style.textShadow = shadowStyle;
             });
 
+            // 애니메이션 비활성화 시 CSS transition 제거
+            [prevLine, currentLine, nextLine].forEach(el => {
+                el.classList.toggle('no-animation', !settings.animation_enabled);
+            });
+
             // Show/hide elements
             prevLine.style.display = settings.show_prev_line ? 'block' : 'none';
             nextLine.style.display = settings.show_next_line ? 'block' : 'none';
@@ -551,6 +560,11 @@
             return div.innerHTML;
         }
 
+        function formatLyrics(text) {
+            if (!text) return '';
+            return escapeHtml(text).replace(/\\n/g, '<br>').replace(/&lt;br&gt;/g, '<br>');
+        }
+
         function applySongInfoPosition(position) {
             songInfoBox.style.top = '';
             songInfoBox.style.bottom = '';
@@ -626,9 +640,9 @@
 
             // 모든 가사가 비어있으면 대기 메시지 표시
             if (!prev && !current && !next) {
-                prevLine.textContent = '';
-                currentLine.textContent = '';
-                nextLine.textContent = '';
+                prevLine.innerHTML = '';
+                currentLine.innerHTML = '';
+                nextLine.innerHTML = '';
                 prevLine.classList.remove('visible');
                 currentLine.classList.remove('visible');
                 nextLine.classList.remove('visible');
@@ -639,21 +653,22 @@
             idleMessage.classList.remove('visible');
 
             // Update lyrics with animation
-            if (settings.animation_enabled && currentLine.textContent !== current) {
+            const formattedCurrent = formatLyrics(current);
+            if (settings.animation_enabled && currentLine.innerHTML !== formattedCurrent) {
                 currentLine.classList.remove('visible');
 
                 setTimeout(() => {
-                    currentLine.textContent = current;
+                    currentLine.innerHTML = formattedCurrent;
                     if (current) currentLine.classList.add('visible');
                 }, 150);
             } else {
-                currentLine.textContent = current;
+                currentLine.innerHTML = formattedCurrent;
                 if (current) currentLine.classList.add('visible');
                 else currentLine.classList.remove('visible');
             }
 
-            prevLine.textContent = prev;
-            nextLine.textContent = next;
+            prevLine.innerHTML = formatLyrics(prev);
+            nextLine.innerHTML = formatLyrics(next);
 
             if (prev) prevLine.classList.add('visible');
             else prevLine.classList.remove('visible');
@@ -663,9 +678,9 @@
         }
 
         function clearLyrics() {
-            prevLine.textContent = '';
-            currentLine.textContent = '';
-            nextLine.textContent = '';
+            prevLine.innerHTML = '';
+            currentLine.innerHTML = '';
+            nextLine.innerHTML = '';
             prevLine.classList.remove('visible');
             currentLine.classList.remove('visible');
             nextLine.classList.remove('visible');

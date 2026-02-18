@@ -8,6 +8,7 @@ from app.core.auth import get_current_user_api, get_current_user
 router = APIRouter()
 
 @router.get("", response_class=HTMLResponse)
+@router.get("/", response_class=HTMLResponse)
 async def lyric_editor_page(
     request: Request,
     song_id: int = None,
@@ -17,7 +18,6 @@ async def lyric_editor_page(
     song_repo=Depends(get_song_repository),
     lyrics_repo=Depends(get_lyrics_repository)
 ):
-
     if not user:
         return HTMLResponse(content="<script>alert('로그인이 필요합니다.'); window.location.href='/login';</script>")
 

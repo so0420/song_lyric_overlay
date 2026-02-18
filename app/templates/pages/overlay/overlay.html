@@ -1715,6 +1715,7 @@
         const state = {
             ytPlayer: null,
             isPlayerReady: false,
+            pendingVideoId: null,
             playlist: JSON.parse(localStorage.getItem('overlay_playlist') || '[]'),
             favorites: [],
             currentTab: 'playlist',
@@ -1807,7 +1808,8 @@
         }
 
         // YouTube Player
-        window.onYouTubeIframeAPIReady = function () {
+        function initYouTubePlayer() {
+            if (state.ytPlayer) return; // 이미 초기화됨
             state.ytPlayer = new YT.Player('player', {
                 height: '100%',
                 width: '100%',
@@ -1822,12 +1824,28 @@
                     'onStateChange': onPlayerStateChange
                 }
             });
-        };
+        }
+
+        window.onYouTubeIframeAPIReady = initYouTubePlayer;
+
+        // YouTube API가 이미 로드된 경우 (캐시에서 빠르게 로드됨)
+        if (window.YT && window.YT.Player) {
+            initYouTubePlayer();
+        }
 
         function onPlayerReady(event) {
+            console.log('onPlayerReady called, pendingVideoId:', state.pendingVideoId);
             state.isPlayerReady = true;
             state.ytPlayer.setVolume(state.volume);
             elements.volumeSlider.value = state.volume;
+
+            // 대기 중인 영상이 있으면 로드
+            if (state.pendingVideoId) {
+                console.log('Loading pending video:', state.pendingVideoId);
+                state.ytPlayer.cueVideoById(state.pendingVideoId);
+                showPlayer();
+                state.pendingVideoId = null;
+            }
         }
 
         function onPlayerStateChange(event) {
@@ -2160,9 +2178,10 @@
 
             try {
                 const response = await fetch(`/api/v1/youtube/search?q=${encodeURIComponent(query)}`);
-                const videos = await response.json();
+                const data = await response.json();
+                const videos = data.items || [];
 
-                if (!videos || videos.length === 0) {
+                if (videos.length === 0) {
                     resultsDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-dim);">검색 결과가 없습니다</div>';
                     return;
                 }
@@ -2528,9 +2547,19 @@
             elements.nowPlayingTitle.textContent = songTitle + (artistName ? ` - ${artistName}` : '');
 
             // Load video (cue only, don't auto-play)
-            if (state.isPlayerReady && state.ytPlayer.cueVideoById) {
+            console.log('playItem videoId:', videoId, 'isPlayerReady:', state.isPlayerReady);
+            if (!videoId) {
+                console.warn('No videoId for item:', item);
+                showToast('영상 ID가 없습니다', 'error');
+            } else if (state.isPlayerReady && state.ytPlayer.cueVideoById) {
+                console.log('Cueing video immediately:', videoId);
                 state.ytPlayer.cueVideoById(videoId);
                 showPlayer();
+            } else {
+                // YouTube 플레이어가 아직 준비되지 않음 - 대기열에 저장
+                console.log('Player not ready, storing pendingVideoId:', videoId);
+                state.pendingVideoId = videoId;
+                showPlayer(); // 플레이어 영역 표시
             }
 
             // Load lyrics (if available)
@@ -2538,12 +2567,23 @@
             if (lyricsId) {
                 try {
                     const response = await fetch(`/api/v1/lyrics/${lyricsId}`);
-                    state.currentLyrics = await response.json();
-                    if (state.currentLyrics.lyrics_data) {
-                        state.currentLyrics.parsedLyrics = JSON.parse(state.currentLyrics.lyrics_data);
+                    if (!response.ok) {
+                        // 가사가 삭제되었거나 존재하지 않음
+                        state.currentLyrics = null;
+                        elements.lyricsDisplay.innerHTML = `
+                            <div class="current-lyrics" style="opacity: 0.5;">
+                                <p class="lyrics-line current" style="font-size: 1.2rem;">가사를 찾을 수 없습니다</p>
+                            </div>
+                        `;
+                        showToast('가사가 삭제되었거나 존재하지 않습니다', 'error');
+                    } else {
+                        state.currentLyrics = await response.json();
+                        if (state.currentLyrics.lyrics_data) {
+                            state.currentLyrics.parsedLyrics = JSON.parse(state.currentLyrics.lyrics_data);
+                        }
+                        // 가사 로드 완료, 재생 대기
+                        elements.lyricsDisplay.innerHTML = '<p class="lyrics-display-empty">영상을 재생하면 가사가 표시됩니다</p>';
                     }
-                    // 가사 로드 완료, 재생 대기
-                    elements.lyricsDisplay.innerHTML = '<p class="lyrics-display-empty">영상을 재생하면 가사가 표시됩니다</p>';
                 } catch (error) {
                     console.error('Failed to load lyrics:', error);
                     state.currentLyrics = null;
@@ -2678,9 +2718,9 @@
 
             elements.lyricsDisplay.innerHTML = `
             <div class="current-lyrics">
-                ${prevLine ? `<p class="lyrics-line prev">${escapeHtml(prevLine.text)}</p>` : ''}
-                <p class="lyrics-line current">${escapeHtml(currentLine.text)}</p>
-                ${nextLine ? `<p class="lyrics-line next">${escapeHtml(nextLine.text)}</p>` : ''}
+                ${prevLine ? `<p class="lyrics-line prev">${formatLyrics(prevLine.text)}</p>` : ''}
+                <p class="lyrics-line current">${formatLyrics(currentLine.text)}</p>
+                ${nextLine ? `<p class="lyrics-line next">${formatLyrics(nextLine.text)}</p>` : ''}
             </div>
         `;
         }
@@ -2745,7 +2785,12 @@
         async function loadFavorites() {
             try {
                 const response = await fetch('/api/v1/lyrics/favorites/my');
-                state.favorites = await response.json();
+                if (!response.ok) {
+                    console.error('Failed to load favorites:', response.status);
+                    return;
+                }
+                const data = await response.json();
+                state.favorites = data.items || [];
                 if (state.currentTab === 'favorites') {
                     renderPlaylist();
                     syncPlaylistToOBS();
@@ -2920,6 +2965,11 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function formatLyrics(text) {
+            if (!text) return '';
+            return escapeHtml(text).replace(/\\n/g, '<br>').replace(/&lt;br&gt;/g, '<br>');
         }
 
         function formatTime(seconds) {

@@ -1197,13 +1197,9 @@
     // Load initial data
     {% if lyrics and lyrics.lyrics_data %}
     try {
-        // Use tojson to safely pass string data into JavaScript
-        const rawData = {{ lyrics.lyrics_data | tojson | safe
-    }};
-    segments = JSON.parse(rawData);
-    console.log("Loaded segments:", segments.length);
-    // Ensure every segment has a unique ID
-    segments.forEach((s, i) => { if (!s.id) s.id = Date.now() + i; });
+        const rawData = {{ lyrics.lyrics_data | tojson | safe }};
+        segments = JSON.parse(rawData);
+        segments.forEach((s, i) => { if (!s.id) s.id = Date.now() + i; });
     } catch (e) {
         console.error("Error parsing lyrics_data:", e);
     }
@@ -1211,6 +1207,10 @@
 
     // YouTube API
     function onYouTubeIframeAPIReady() {
+        // 초기 타임라인 렌더링 (비디오 여부와 관계없이)
+        renderTimeline();
+        startPreviewLoop();
+
         if (currentVideoId) {
             initPlayer(currentVideoId);
         } else {
@@ -1264,7 +1264,8 @@
         fetch(`/api/v1/youtube/search?q=${encodeURIComponent(q)}`)
             .then(res => res.json())
             .then(data => {
-                if (data && data.length > 0) initPlayer(data[0].video_id);
+                const items = data.items || [];
+                if (items.length > 0) initPlayer(items[0].video_id);
                 else showVideoSearchModal(q);
             });
     }
@@ -1607,17 +1608,17 @@
             // 아직 시작 전 (범위 내 첫 번째 가사 대기)
             currentEl.innerText = "준비해주세요...";
             currentEl.style.color = "white";
-            nextEl.innerText = currentToStart ? `첫 싱크 포인트: ${currentToStart.text}` : '';
+            nextEl.innerHTML = currentToStart ? `첫 싱크 포인트: ${parseTags(currentToStart.text)}` : '';
             setActive(-1);
         } else if (syncIndex <= syncEndIndex) {
             // 진행 중
-            currentEl.innerText = alreadyStarted ? alreadyStarted.text : '';
+            currentEl.innerHTML = alreadyStarted ? parseTags(alreadyStarted.text) : '';
             currentEl.style.color = "var(--accent)";
-            nextEl.innerText = currentToStart ? `준비: ${currentToStart.text} (Enter)` : '';
+            nextEl.innerHTML = currentToStart ? `준비: ${parseTags(currentToStart.text)} (Enter)` : '';
             setActive(syncIndex - 1, true);
         } else {
             // 범위 내 모든 시작점 찍음, 마지막 종료점 대기
-            currentEl.innerText = alreadyStarted ? alreadyStarted.text : '';
+            currentEl.innerHTML = alreadyStarted ? parseTags(alreadyStarted.text) : '';
             currentEl.style.color = "var(--accent)";
             nextEl.innerText = "범위 종료 지점에서 Enter를 누르세요";
             setActive(syncIndex - 1, true);
@@ -1668,7 +1669,10 @@
         let escaped = escapeHtml(text);
         // 이스케이프된 color 태그를 다시 복원 (안전한 형식으로)
         // &lt;color #RRGGBB&gt;...&lt;/color&gt; → <span style="color:#RRGGBB">...</span>
-        return escaped.replace(/&lt;color (#?[0-9a-fA-F]{6})&gt;(.*?)&lt;\/color&gt;/g, '<span style="color:$1">$2</span>');
+        escaped = escaped.replace(/&lt;color (#?[0-9a-fA-F]{6})&gt;(.*?)&lt;\/color&gt;/g, '<span style="color:$1">$2</span>');
+        // \n 또는 <br>을 줄바꿈으로 변환
+        escaped = escaped.replace(/\\n/g, '<br>').replace(/&lt;br&gt;/g, '<br>');
+        return escaped;
     }
 
     // Modals & Search
@@ -1952,6 +1956,9 @@
         }
         showVideoPlaceholder();
 
+        // 새 곡 선택 시 가사 ID 초기화 (새 작업물로 인식)
+        currentLyricsId = null;
+
         // 곡 정보 가져오기/등록 확인
         fetch(`/api/v1/songs/info?external_id=${encodeURIComponent(extId)}`)
             .then(res => {
@@ -2095,6 +2102,10 @@
     }
 
     function selectVideo(videoId) {
+        // 영상 변경 시 가사 ID 초기화 (새 작업물로 인식)
+        if (currentVideoId && currentVideoId !== videoId) {
+            currentLyricsId = null;
+        }
         currentVideoId = videoId;
         initPlayer(videoId);
         hideModals();
@@ -2446,7 +2457,16 @@
     // Initialize infinite scroll for song search
     initSongSearchScroll();
 
-    console.log("Lyric Editor script initialized.");
+    // 페이지 로드 시 초기화 (YouTube API 로드와 관계없이)
+    document.addEventListener('DOMContentLoaded', function() {
+        renderTimeline();
+        if (typeof YT !== 'undefined' && YT.Player) {
+            if (currentVideoId) {
+                initPlayer(currentVideoId);
+            }
+            startPreviewLoop();
+        }
+    });
 </script>
 {% endautoescape %}
 {% endblock %}

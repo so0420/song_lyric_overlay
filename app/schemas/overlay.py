@@ -3,16 +3,19 @@ from typing import Optional, List, Any
 from datetime import datetime
 
 
-class LyricsSyncSchema(BaseModel):
-    """가사 동기화 데이터"""
-    prev: Optional[str] = None
-    current: Optional[str] = None
-    next: Optional[str] = None
+class LyricsInitSchema(BaseModel):
+    """곡 시작 시 전체 가사 데이터 전송"""
     songTitle: Optional[str] = None
     artist: Optional[str] = None
+    lyrics: Optional[List[dict]] = None  # [{id, start, end, text}, ...]
+    currentTime: float = 0               # ms (obsOffset 적용됨)
+    isPlaying: bool = False
 
-    class Config:
-        extra = "allow"  # 추가 필드 허용
+
+class LyricsTimeSyncSchema(BaseModel):
+    """주기적 시간 동기화"""
+    currentTime: float       # ms (obsOffset 적용됨)
+    isPlaying: bool = True
 
 
 class PlaylistItemSchema(BaseModel):

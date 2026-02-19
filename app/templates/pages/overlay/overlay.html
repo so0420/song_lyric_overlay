@@ -1734,7 +1734,6 @@
             currentSearchTab: 'itunes',
             lastSearchQuery: '',
             lastLyricsIndex: -2,  // -2로 초기화하여 첫 번째 업데이트가 항상 발생하도록
-            lastObsLyricsIndex: -2,  // OBS용 별도 인덱스
             // Pagination state
             searchOffset: 0,
             searchHasMore: false,
@@ -1855,8 +1854,10 @@
 
             if (state.isPlaying) {
                 startLyricsSync();
+                syncTimeToOBS_force(true);
             } else {
                 stopLyricsSync();
+                syncTimeToOBS_force(false);
             }
 
             // 곡이 끝나면 재생목록에서 삭제하고 다음 곡 로드
@@ -2598,14 +2599,8 @@
             `;
             }
 
-            // OBS에 곡 정보 동기화 (대기 상태)
-            syncToOBS({
-                prev: '',
-                current: '',
-                next: '',
-                songTitle: state.currentSongTitle,
-                artist: state.currentArtist
-            });
+            // OBS에 전체 가사 + 곡 정보 동기화
+            syncLyricsInit();
 
             renderPlaylist();
             updateControlButtons();
@@ -2613,10 +2608,18 @@
         }
 
         // Lyrics Sync with requestAnimationFrame
+        let syncTimeThrottleId = null;
+        let lyricsInitIntervalId = null;
+
         function startLyricsSync() {
             stopLyricsSync();
 
             let lastTime = 0;
+
+            // 15초 간격으로 전체 가사 재전송 (OBS 재접속 대응)
+            lyricsInitIntervalId = setInterval(() => {
+                syncLyricsInit();
+            }, 15000);
 
             function syncFrame() {
                 if (!state.ytPlayer || !state.isPlaying) return;
@@ -2635,7 +2638,7 @@
                 elements.currentTimeEl.textContent = formatTime(currentTime / 1000);
                 elements.durationEl.textContent = formatTime(duration);
 
-                // Find current lyrics with offset applied
+                // Find current lyrics with offset applied (로컬만)
                 if (state.currentLyrics?.parsedLyrics) {
                     const lyrics = state.currentLyrics.parsedLyrics;
 
@@ -2643,21 +2646,19 @@
                     const localTime = currentTime + state.localOffset;
                     let localIndex = findLyricsIndex(lyrics, localTime);
 
-                    // OBS 오프셋 적용
-                    const obsTime = currentTime + state.obsOffset;
-                    let obsIndex = findLyricsIndex(lyrics, obsTime);
-
                     // 로컬 가사 업데이트
                     if (isSeek || localIndex !== state.lastLyricsIndex) {
                         state.lastLyricsIndex = localIndex;
                         renderLocalLyrics(localIndex, lyrics);
                     }
+                }
 
-                    // OBS 가사 업데이트
-                    if (isSeek || obsIndex !== state.lastObsLyricsIndex) {
-                        state.lastObsLyricsIndex = obsIndex;
-                        syncObsLyrics(obsIndex, lyrics);
-                    }
+                // OBS 시간 동기화 (500ms 쓰로틀)
+                syncTimeToOBS();
+
+                // 시크 시 즉시 전송
+                if (isSeek) {
+                    syncTimeToOBS_force(true);
                 }
 
                 state.animationFrameId = requestAnimationFrame(syncFrame);
@@ -2679,7 +2680,6 @@
         // 시간 이동 시 가사 강제 업데이트
         function forceUpdateLyrics() {
             state.lastLyricsIndex = -2;  // 강제 업데이트를 위해 유효하지 않은 값으로 설정
-            state.lastObsLyricsIndex = -2;
             if (state.currentLyrics?.parsedLyrics && state.ytPlayer) {
                 const currentTime = state.ytPlayer.getCurrentTime() * 1000;
                 const lyrics = state.currentLyrics.parsedLyrics;
@@ -2690,11 +2690,8 @@
                 state.lastLyricsIndex = localIndex;
                 renderLocalLyrics(localIndex, lyrics);
 
-                // OBS 오프셋 적용
-                const obsTime = currentTime + state.obsOffset;
-                const obsIndex = findLyricsIndex(lyrics, obsTime);
-                state.lastObsLyricsIndex = obsIndex;
-                syncObsLyrics(obsIndex, lyrics);
+                // OBS에 시간 강제 전송
+                syncTimeToOBS_force(state.isPlaying);
             }
         }
 
@@ -2702,6 +2699,10 @@
             if (state.animationFrameId) {
                 cancelAnimationFrame(state.animationFrameId);
                 state.animationFrameId = null;
+            }
+            if (lyricsInitIntervalId) {
+                clearInterval(lyricsInitIntervalId);
+                lyricsInitIntervalId = null;
             }
         }
 
@@ -2725,47 +2726,61 @@
         `;
         }
 
-        // OBS 오버레이에 가사 동기화
-        function syncObsLyrics(currentIndex, lyrics) {
-            if (currentIndex === -1) {
-                syncToOBS({
-                    prev: '', current: '', next: '',
+        // OBS에 전체 가사 + 곡 정보 + 현재 시간 전송
+        function syncLyricsInit() {
+            const currentTime = state.ytPlayer ? state.ytPlayer.getCurrentTime() * 1000 : 0;
+            const obsTime = currentTime + state.obsOffset;
+            const lyrics = state.currentLyrics?.parsedLyrics || null;
+
+            fetch('/api/v1/overlay/sync-init', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+                body: JSON.stringify({
                     songTitle: state.currentSongTitle,
-                    artist: state.currentArtist
-                });
-                return;
-            }
-
-            const prevLine = lyrics[currentIndex - 1];
-            const currentLine = lyrics[currentIndex];
-            const nextLine = lyrics[currentIndex + 1];
-
-            syncToOBS({
-                prev: prevLine ? prevLine.text : '',
-                current: currentLine.text,
-                next: nextLine ? nextLine.text : '',
-                songTitle: state.currentSongTitle,
-                artist: state.currentArtist
-            });
+                    artist: state.currentArtist,
+                    lyrics: lyrics,
+                    currentTime: obsTime,
+                    isPlaying: state.isPlaying
+                })
+            }).catch(err => console.log('Sync init error:', err));
         }
 
-        // 이전 호환성을 위한 래퍼 함수
-        function renderCurrentLyrics(currentIndex, lyrics) {
-            renderLocalLyrics(currentIndex, lyrics);
-            syncObsLyrics(currentIndex, lyrics);
+        // OBS에 현재 시간만 전송 (500ms 쓰로틀)
+        let lastTimeSyncSent = 0;
+        function syncTimeToOBS() {
+            const now = performance.now();
+            if (now - lastTimeSyncSent < 500) return;
+            lastTimeSyncSent = now;
+
+            if (!state.ytPlayer) return;
+            const currentTime = state.ytPlayer.getCurrentTime() * 1000;
+            const obsTime = currentTime + state.obsOffset;
+
+            fetch('/api/v1/overlay/sync-time', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+                body: JSON.stringify({
+                    currentTime: obsTime,
+                    isPlaying: state.isPlaying
+                })
+            }).catch(err => console.log('Time sync error:', err));
         }
 
-        // OBS 오버레이 동기화 (debounced)
-        let syncTimeout = null;
-        function syncToOBS(data) {
-            if (syncTimeout) clearTimeout(syncTimeout);
-            syncTimeout = setTimeout(() => {
-                fetch('/api/v1/overlay/sync', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', ...csrfHeaders },
-                    body: JSON.stringify(data)
-                }).catch(err => console.log('Sync error:', err));
-            }, 50);
+        // 일시정지/재개/시크 시 즉시 시간 전송
+        function syncTimeToOBS_force(playing) {
+            lastTimeSyncSent = performance.now();
+
+            const currentTime = state.ytPlayer ? state.ytPlayer.getCurrentTime() * 1000 : 0;
+            const obsTime = currentTime + state.obsOffset;
+
+            fetch('/api/v1/overlay/sync-time', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+                body: JSON.stringify({
+                    currentTime: obsTime,
+                    isPlaying: playing
+                })
+            }).catch(err => console.log('Time sync force error:', err));
         }
 
         // 재생목록을 OBS 오버레이로 동기화

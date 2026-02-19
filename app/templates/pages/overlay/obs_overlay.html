@@ -323,8 +323,8 @@
             <p class="lyrics-line sub" id="nextLine"></p>
         </div>
 
-        <!-- 대기 메시지 -->
-        <p class="idle-message visible" id="idleMessage">노래하기 페이지에서 재생을 시작하세요</p>
+        <!-- 대기 메시지 
+        <p class="idle-message visible" id="idleMessage">노래하기 페이지에서 재생을 시작하세요</p>-->
 
         <!-- 재생목록 -->
         <div class="playlist-box right" id="playlistBox">
@@ -413,6 +413,14 @@
 
         let currentPlaylist = [];
         let currentPlayingIndex = -1;
+
+        // 시간 기반 가사 동기화 상태
+        let lyricsData = null;        // 전체 가사 배열
+        let syncTime = 0;             // 마지막 수신 시간 (ms)
+        let syncReceivedAt = 0;       // performance.now() 수신 시점
+        let isPlaying = false;        // 재생 상태
+        let lastRenderedIndex = -2;   // 마지막 렌더링 인덱스
+        let renderAnimFrameId = null; // requestAnimationFrame ID
 
         function applySettings(s) {
             settings = { ...defaultSettings, ...s };
@@ -624,51 +632,54 @@
             songInfoBox.classList.add('visible');
         }
 
-        function updateLyrics(data) {
-            // Update song info
-            if (data.songTitle !== undefined) {
-                currentSongTitle = data.songTitle || '';
+        // 시간으로 가사 인덱스 검색
+        function findLyricsIndex(lyrics, time) {
+            for (let i = 0; i < lyrics.length; i++) {
+                if (time >= lyrics[i].start && time < lyrics[i].end) {
+                    return i;
+                }
             }
-            if (data.artist !== undefined) {
-                currentArtist = data.artist || '';
-            }
-            updateSongInfoDisplay();
+            return -1;
+        }
 
-            const prev = data.prev || '';
-            const current = data.current || '';
-            const next = data.next || '';
+        // 보간된 현재 시간 계산
+        function getCurrentInterpolatedTime() {
+            if (!isPlaying) return syncTime;
+            return syncTime + (performance.now() - syncReceivedAt);
+        }
 
-            // 모든 가사가 비어있으면 대기 메시지 표시
-            if (!prev && !current && !next) {
+        // prev/current/next 가사 렌더링
+        function renderLyricsAtIndex(index) {
+            if (index === -1) {
+                // 가사 구간 밖
                 prevLine.innerHTML = '';
                 currentLine.innerHTML = '';
                 nextLine.innerHTML = '';
                 prevLine.classList.remove('visible');
                 currentLine.classList.remove('visible');
                 nextLine.classList.remove('visible');
-                idleMessage.classList.add('visible');
                 return;
             }
 
-            idleMessage.classList.remove('visible');
+            const prev = lyricsData[index - 1];
+            const curr = lyricsData[index];
+            const next = lyricsData[index + 1];
 
-            // Update lyrics with animation
-            const formattedCurrent = formatLyrics(current);
+            const formattedCurrent = formatLyrics(curr.text);
             if (settings.animation_enabled && currentLine.innerHTML !== formattedCurrent) {
                 currentLine.classList.remove('visible');
-
                 setTimeout(() => {
                     currentLine.innerHTML = formattedCurrent;
-                    if (current) currentLine.classList.add('visible');
+                    if (curr.text) currentLine.classList.add('visible');
                 }, 150);
             } else {
                 currentLine.innerHTML = formattedCurrent;
-                if (current) currentLine.classList.add('visible');
+                if (curr.text) currentLine.classList.add('visible');
                 else currentLine.classList.remove('visible');
             }
 
-            prevLine.innerHTML = formatLyrics(prev);
-            nextLine.innerHTML = formatLyrics(next);
+            prevLine.innerHTML = prev ? formatLyrics(prev.text) : '';
+            nextLine.innerHTML = next ? formatLyrics(next.text) : '';
 
             if (prev) prevLine.classList.add('visible');
             else prevLine.classList.remove('visible');
@@ -677,7 +688,97 @@
             else nextLine.classList.remove('visible');
         }
 
+        // requestAnimationFrame 기반 자체 렌더링 루프
+        function renderLoop() {
+            if (!lyricsData) return;
+
+            const time = getCurrentInterpolatedTime();
+            const index = findLyricsIndex(lyricsData, time);
+
+            if (index !== lastRenderedIndex) {
+                lastRenderedIndex = index;
+                renderLyricsAtIndex(index);
+            }
+
+            renderAnimFrameId = requestAnimationFrame(renderLoop);
+        }
+
+        function startRenderLoop() {
+            stopRenderLoop();
+            renderAnimFrameId = requestAnimationFrame(renderLoop);
+        }
+
+        function stopRenderLoop() {
+            if (renderAnimFrameId) {
+                cancelAnimationFrame(renderAnimFrameId);
+                renderAnimFrameId = null;
+            }
+        }
+
+        // lyrics_init 메시지 처리
+        function handleLyricsInit(data) {
+            // 곡 정보 업데이트
+            if (data.songTitle !== undefined) {
+                currentSongTitle = data.songTitle || '';
+            }
+            if (data.artist !== undefined) {
+                currentArtist = data.artist || '';
+            }
+            updateSongInfoDisplay();
+
+            // 가사 데이터 저장
+            lyricsData = data.lyrics || null;
+            syncTime = data.currentTime || 0;
+            syncReceivedAt = performance.now();
+            isPlaying = data.isPlaying || false;
+            lastRenderedIndex = -2;
+
+            if (lyricsData && lyricsData.length > 0) {
+                idleMessage.classList.remove('visible');
+                startRenderLoop();
+            } else {
+                stopRenderLoop();
+                // 가사 없으면 빈 상태
+                prevLine.innerHTML = '';
+                currentLine.innerHTML = '';
+                nextLine.innerHTML = '';
+                prevLine.classList.remove('visible');
+                currentLine.classList.remove('visible');
+                nextLine.classList.remove('visible');
+            }
+        }
+
+        // lyrics_time_sync 메시지 처리
+        function handleTimeSync(data) {
+            syncTime = data.currentTime;
+            syncReceivedAt = performance.now();
+
+            const wasPlaying = isPlaying;
+            isPlaying = data.isPlaying;
+
+            if (isPlaying && !wasPlaying) {
+                // 재개됨: 렌더링 루프 시작
+                startRenderLoop();
+            } else if (!isPlaying && wasPlaying) {
+                // 일시정지됨: 마지막 위치에서 정지
+                stopRenderLoop();
+                if (lyricsData) {
+                    const index = findLyricsIndex(lyricsData, syncTime);
+                    if (index !== lastRenderedIndex) {
+                        lastRenderedIndex = index;
+                        renderLyricsAtIndex(index);
+                    }
+                }
+            }
+        }
+
         function clearLyrics() {
+            stopRenderLoop();
+            lyricsData = null;
+            syncTime = 0;
+            isPlaying = false;
+            lastRenderedIndex = -2;
+
             prevLine.innerHTML = '';
             currentLine.innerHTML = '';
             nextLine.innerHTML = '';
@@ -720,8 +821,12 @@
                             ws.send(JSON.stringify({ type: 'pong' }));
                             break;
 
-                        case 'lyrics_update':
-                            updateLyrics(message.data);
+                        case 'lyrics_init':
+                            handleLyricsInit(message.data);
+                            break;
+
+                        case 'lyrics_time_sync':
+                            handleTimeSync(message.data);
                             break;
 
                         case 'settings_update':

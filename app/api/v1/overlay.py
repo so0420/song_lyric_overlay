@@ -12,7 +12,8 @@ from app.utils.ws_token import (
 from app.utils.csrf import verify_csrf
 from app.schemas.overlay import (
     OverlaySettingsSchema,
-    LyricsSyncSchema,
+    LyricsInitSchema,
+    LyricsTimeSyncSchema,
     PlaylistSyncSchema,
     OverlayPresetCreateSchema,
     OverlayPresetUpdateSchema,
@@ -56,14 +57,26 @@ async def save_overlay_settings(
 
     return {"success": True}
 
-@router.post("/sync", dependencies=[Depends(verify_csrf)])
-async def sync_lyrics(
-    data: LyricsSyncSchema,
+@router.post("/sync-init", dependencies=[Depends(verify_csrf)])
+async def sync_lyrics_init(
+    data: LyricsInitSchema,
     user=Depends(get_current_user_api)
 ):
-    """노래하기 페이지에서 가사 동기화 요청"""
+    """곡 시작 시 전체 가사 데이터 + 시간 전송"""
     await overlay_manager.broadcast_to_user(user['id'], {
-        "type": "lyrics_update",
+        "type": "lyrics_init",
+        "data": data.model_dump()
+    })
+    return {"success": True}
+
+@router.post("/sync-time", dependencies=[Depends(verify_csrf)])
+async def sync_lyrics_time(
+    data: LyricsTimeSyncSchema,
+    user=Depends(get_current_user_api)
+):
+    """주기적 시간 동기화"""
+    await overlay_manager.broadcast_to_user(user['id'], {
+        "type": "lyrics_time_sync",
         "data": data.model_dump()
     })
     return {"success": True}

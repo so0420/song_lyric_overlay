@@ -63,7 +63,7 @@ async def sync_lyrics_init(
     user=Depends(get_current_user_api)
 ):
     """곡 시작 시 전체 가사 데이터 + 시간 전송"""
-    await overlay_manager.broadcast_to_user(user['id'], {
+    await overlay_manager.broadcast_to_overlays(user['id'], {
         "type": "lyrics_init",
         "data": data.model_dump()
     })
@@ -75,7 +75,7 @@ async def sync_lyrics_time(
     user=Depends(get_current_user_api)
 ):
     """주기적 시간 동기화"""
-    await overlay_manager.broadcast_to_user(user['id'], {
+    await overlay_manager.broadcast_to_overlays(user['id'], {
         "type": "lyrics_time_sync",
         "data": data.model_dump()
     })
@@ -87,7 +87,7 @@ async def sync_playlist(
     user=Depends(get_current_user_api)
 ):
     """재생목록 동기화 요청"""
-    await overlay_manager.broadcast_to_user(user['id'], {
+    await overlay_manager.broadcast_to_overlays(user['id'], {
         "type": "playlist_update",
         "data": data.model_dump()
     })
@@ -245,30 +245,37 @@ async def overlay_websocket(
     token: str = Query(None),
     overlay_token: str = Query(None)
 ):
-    """OBS 오버레이용 WebSocket 연결 (토큰 인증 필수, Heartbeat 지원)
+    """WebSocket 연결 (토큰 인증 필수, Heartbeat 지원)
+
+    - token: 일회용 토큰 → singer 연결 (노래하기 페이지)
+    - overlay_token: 영구 토큰 → overlay 연결 (OBS)
 
     보안: user_id는 URL에 포함하지 않고 토큰에서만 추출합니다.
-    이는 클라이언트가 URL을 조작해도 다른 사용자의 연결을 가로챌 수 없게 합니다.
     """
     verified_user_id = None
+    connection_type = None
 
-    # 1. 일회용 토큰 검증 (노래하기 페이지에서 사용)
+    # 1. 일회용 토큰 검증 (노래하기 페이지 → singer)
     if token:
         verified_user_id = await verify_ws_token(token)
-    # 2. 오버레이 영구 토큰 검증 (OBS에서 사용)
+        connection_type = "singer"
+    # 2. 오버레이 영구 토큰 검증 (OBS → overlay)
     elif overlay_token:
         verified_user_id = await verify_overlay_token_async(overlay_token)
+        connection_type = "overlay"
 
     # 검증 실패 - 토큰이 없거나 유효하지 않음
     if verified_user_id is None:
         await websocket.close(code=4001, reason="Invalid or expired token")
         return
 
-    # 토큰에서 추출한 user_id만 사용 (URL의 user_id는 무시)
-    await overlay_manager.connect(websocket, verified_user_id)
+    await overlay_manager.connect(websocket, verified_user_id, connection_type)
 
     last_pong_time = time.time()
     ping_task = None
+
+    # singer → overlay로 중계할 메시지 타입
+    RELAY_TO_OVERLAY_TYPES = {"lyrics_time_sync", "lyrics_init", "playlist_update"}
 
     async def send_ping():
         """주기적으로 ping 전송"""
@@ -293,11 +300,16 @@ async def overlay_websocket(
             # 클라이언트로부터 메시지 대기
             data = await websocket.receive_text()
 
-            # JSON 파싱 및 pong 처리
+            # JSON 파싱 및 처리
             try:
                 message = json.loads(data)
-                if message.get("type") == "pong":
+                msg_type = message.get("type")
+
+                if msg_type == "pong":
                     last_pong_time = time.time()
+                elif connection_type == "singer" and msg_type in RELAY_TO_OVERLAY_TYPES:
+                    # singer → overlay 중계
+                    await overlay_manager.broadcast_to_overlays(verified_user_id, message)
             except json.JSONDecodeError:
                 pass
 
@@ -308,4 +320,4 @@ async def overlay_websocket(
     finally:
         if ping_task:
             ping_task.cancel()
-        await overlay_manager.disconnect(websocket, verified_user_id)
+        await overlay_manager.disconnect(websocket, verified_user_id, connection_type)

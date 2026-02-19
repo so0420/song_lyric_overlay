@@ -53,7 +53,7 @@ class TestOverlayManager:
 
     @pytest.mark.asyncio
     async def test_broadcast_to_user(self):
-        """특정 사용자에게 브로드캐스트"""
+        """특정 사용자의 모든 연결에 브로드캐스트"""
         from app.core.overlay_websocket import OverlayConnectionManager
 
         manager = OverlayConnectionManager()
@@ -64,16 +64,35 @@ class TestOverlayManager:
         mock_ws2 = MagicMock()
         mock_ws2.send_json = AsyncMock()
 
-        # 연결 추가 (Set 사용)
-        manager.active_connections[1] = {mock_ws1}
-        manager.active_connections[2] = {mock_ws2}
+        # overlay + singer 연결 추가
+        manager.overlay_connections[1] = {mock_ws1}
+        manager.singer_connections[1] = {mock_ws2}
 
-        # user_id=1에게 브로드캐스트
+        # user_id=1에게 브로드캐스트 (모든 연결)
         await manager.broadcast_to_user(1, {"type": "test", "data": "hello"})
 
-        # user_id=1의 WebSocket만 호출되어야 함
         mock_ws1.send_json.assert_called_once_with({"type": "test", "data": "hello"})
-        mock_ws2.send_json.assert_not_called()
+        mock_ws2.send_json.assert_called_once_with({"type": "test", "data": "hello"})
+
+    @pytest.mark.asyncio
+    async def test_broadcast_to_overlays(self):
+        """OBS 오버레이 연결에만 브로드캐스트"""
+        from app.core.overlay_websocket import OverlayConnectionManager
+
+        manager = OverlayConnectionManager()
+
+        mock_overlay = MagicMock()
+        mock_overlay.send_json = AsyncMock()
+        mock_singer = MagicMock()
+        mock_singer.send_json = AsyncMock()
+
+        manager.overlay_connections[1] = {mock_overlay}
+        manager.singer_connections[1] = {mock_singer}
+
+        await manager.broadcast_to_overlays(1, {"type": "lyrics_time_sync", "data": {}})
+
+        mock_overlay.send_json.assert_called_once_with({"type": "lyrics_time_sync", "data": {}})
+        mock_singer.send_json.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_connect_and_disconnect(self):
@@ -85,14 +104,52 @@ class TestOverlayManager:
         mock_ws = MagicMock()
         mock_ws.accept = AsyncMock()
 
-        # 연결
-        await manager.connect(mock_ws, user_id=1)
-        assert 1 in manager.active_connections
-        assert mock_ws in manager.active_connections[1]
+        # overlay 연결
+        await manager.connect(mock_ws, user_id=1, connection_type="overlay")
+        assert 1 in manager.overlay_connections
+        assert mock_ws in manager.overlay_connections[1]
 
-        # 연결 해제
-        await manager.disconnect(mock_ws, user_id=1)
-        assert 1 not in manager.active_connections or mock_ws not in manager.active_connections[1]
+        # overlay 연결 해제
+        await manager.disconnect(mock_ws, user_id=1, connection_type="overlay")
+        assert 1 not in manager.overlay_connections or mock_ws not in manager.overlay_connections.get(1, set())
+
+    @pytest.mark.asyncio
+    async def test_connect_singer(self):
+        """singer 연결 및 연결 해제"""
+        from app.core.overlay_websocket import OverlayConnectionManager
+
+        manager = OverlayConnectionManager()
+
+        mock_ws = MagicMock()
+        mock_ws.accept = AsyncMock()
+
+        await manager.connect(mock_ws, user_id=1, connection_type="singer")
+        assert 1 in manager.singer_connections
+        assert mock_ws in manager.singer_connections[1]
+
+        await manager.disconnect(mock_ws, user_id=1, connection_type="singer")
+        assert 1 not in manager.singer_connections or mock_ws not in manager.singer_connections.get(1, set())
+
+    @pytest.mark.asyncio
+    async def test_active_connections_property(self):
+        """active_connections 호환 프로퍼티"""
+        from app.core.overlay_websocket import OverlayConnectionManager
+
+        manager = OverlayConnectionManager()
+
+        mock_overlay = MagicMock()
+        mock_overlay.accept = AsyncMock()
+        mock_singer = MagicMock()
+        mock_singer.accept = AsyncMock()
+
+        await manager.connect(mock_overlay, user_id=1, connection_type="overlay")
+        await manager.connect(mock_singer, user_id=1, connection_type="singer")
+
+        active = manager.active_connections
+        assert 1 in active
+        assert mock_overlay in active[1]
+        assert mock_singer in active[1]
+        assert len(active[1]) == 2
 
     @pytest.mark.asyncio
     async def test_multiple_connections_same_user(self):
@@ -109,14 +166,14 @@ class TestOverlayManager:
         mock_ws2.accept = AsyncMock()
         mock_ws2.send_json = AsyncMock()
 
-        # 같은 사용자로 두 개의 연결
-        await manager.connect(mock_ws1, user_id=1)
-        await manager.connect(mock_ws2, user_id=1)
+        # 같은 사용자로 두 개의 overlay 연결
+        await manager.connect(mock_ws1, user_id=1, connection_type="overlay")
+        await manager.connect(mock_ws2, user_id=1, connection_type="overlay")
 
-        assert len(manager.active_connections[1]) == 2
+        assert len(manager.overlay_connections[1]) == 2
 
         # 브로드캐스트 시 둘 다 받아야 함
-        await manager.broadcast_to_user(1, {"type": "test"})
+        await manager.broadcast_to_overlays(1, {"type": "test"})
         mock_ws1.send_json.assert_called_once()
         mock_ws2.send_json.assert_called_once()
 

@@ -2726,23 +2726,108 @@
         `;
         }
 
+        // ===== WebSocket 연결 (OBS 동기화용) =====
+        let overlayWs = null;
+        let overlayWsReconnectTimer = null;
+        let overlayWsPingTimer = null;
+
+        async function connectOverlayWs() {
+            if (overlayWs && overlayWs.readyState === WebSocket.OPEN) return;
+
+            try {
+                const resp = await fetch('/api/v1/overlay/ws-token');
+                if (!resp.ok) return;
+                const { token } = await resp.json();
+
+                const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+                overlayWs = new WebSocket(`${protocol}//${location.host}/api/v1/overlay/ws?token=${token}`);
+
+                overlayWs.onopen = () => {
+                    console.log('[WS] singer connected');
+                    if (overlayWsReconnectTimer) {
+                        clearTimeout(overlayWsReconnectTimer);
+                        overlayWsReconnectTimer = null;
+                    }
+                };
+
+                overlayWs.onmessage = (e) => {
+                    try {
+                        const msg = JSON.parse(e.data);
+                        if (msg.type === 'ping') {
+                            overlayWs.send(JSON.stringify({ type: 'pong' }));
+                        }
+                    } catch {}
+                };
+
+                overlayWs.onclose = () => {
+                    console.log('[WS] singer disconnected');
+                    overlayWs = null;
+                    scheduleReconnect();
+                };
+
+                overlayWs.onerror = () => {
+                    overlayWs?.close();
+                };
+            } catch (err) {
+                console.log('[WS] connect error:', err);
+                scheduleReconnect();
+            }
+        }
+
+        function scheduleReconnect() {
+            if (overlayWsReconnectTimer) return;
+            overlayWsReconnectTimer = setTimeout(() => {
+                overlayWsReconnectTimer = null;
+                connectOverlayWs();
+            }, 3000);
+        }
+
+        function sendWsMessage(message) {
+            if (overlayWs && overlayWs.readyState === WebSocket.OPEN) {
+                overlayWs.send(JSON.stringify(message));
+                return true;
+            }
+            return false;
+        }
+
+        // 페이지 로드 시 WebSocket 연결
+        connectOverlayWs();
+
+        // 페이지 종료 시 정리
+        window.addEventListener('beforeunload', () => {
+            if (overlayWsReconnectTimer) clearTimeout(overlayWsReconnectTimer);
+            if (overlayWs) {
+                overlayWs.onclose = null;
+                overlayWs.close();
+            }
+        });
+
+        // ===== OBS 동기화 함수 =====
+
         // OBS에 전체 가사 + 곡 정보 + 현재 시간 전송
         function syncLyricsInit() {
             const currentTime = state.ytPlayer ? state.ytPlayer.getCurrentTime() * 1000 : 0;
             const obsTime = currentTime + state.obsOffset;
             const lyrics = state.currentLyrics?.parsedLyrics || null;
 
-            fetch('/api/v1/overlay/sync-init', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...csrfHeaders },
-                body: JSON.stringify({
+            const message = {
+                type: 'lyrics_init',
+                data: {
                     songTitle: state.currentSongTitle,
                     artist: state.currentArtist,
                     lyrics: lyrics,
                     currentTime: obsTime,
                     isPlaying: state.isPlaying
-                })
-            }).catch(err => console.log('Sync init error:', err));
+                }
+            };
+
+            if (!sendWsMessage(message)) {
+                fetch('/api/v1/overlay/sync-init', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+                    body: JSON.stringify(message.data)
+                }).catch(err => console.log('Sync init error:', err));
+            }
         }
 
         // OBS에 현재 시간만 전송 (500ms 쓰로틀)
@@ -2756,14 +2841,21 @@
             const currentTime = state.ytPlayer.getCurrentTime() * 1000;
             const obsTime = currentTime + state.obsOffset;
 
-            fetch('/api/v1/overlay/sync-time', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...csrfHeaders },
-                body: JSON.stringify({
+            const message = {
+                type: 'lyrics_time_sync',
+                data: {
                     currentTime: obsTime,
                     isPlaying: state.isPlaying
-                })
-            }).catch(err => console.log('Time sync error:', err));
+                }
+            };
+
+            if (!sendWsMessage(message)) {
+                fetch('/api/v1/overlay/sync-time', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+                    body: JSON.stringify(message.data)
+                }).catch(err => console.log('Time sync error:', err));
+            }
         }
 
         // 일시정지/재개/시크 시 즉시 시간 전송
@@ -2773,27 +2865,42 @@
             const currentTime = state.ytPlayer ? state.ytPlayer.getCurrentTime() * 1000 : 0;
             const obsTime = currentTime + state.obsOffset;
 
-            fetch('/api/v1/overlay/sync-time', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...csrfHeaders },
-                body: JSON.stringify({
+            const message = {
+                type: 'lyrics_time_sync',
+                data: {
                     currentTime: obsTime,
                     isPlaying: playing
-                })
-            }).catch(err => console.log('Time sync force error:', err));
+                }
+            };
+
+            if (!sendWsMessage(message)) {
+                fetch('/api/v1/overlay/sync-time', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+                    body: JSON.stringify(message.data)
+                }).catch(err => console.log('Time sync force error:', err));
+            }
         }
 
         // 재생목록을 OBS 오버레이로 동기화
         function syncPlaylistToOBS() {
             const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
-            fetch('/api/v1/overlay/sync-playlist', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...csrfHeaders },
-                body: JSON.stringify({
+
+            const message = {
+                type: 'playlist_update',
+                data: {
                     playlist: items,
                     currentIndex: state.currentPlayingIndex
-                })
-            }).catch(err => console.log('Playlist sync error:', err));
+                }
+            };
+
+            if (!sendWsMessage(message)) {
+                fetch('/api/v1/overlay/sync-playlist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+                    body: JSON.stringify(message.data)
+                }).catch(err => console.log('Playlist sync error:', err));
+            }
         }
 
         // Favorites

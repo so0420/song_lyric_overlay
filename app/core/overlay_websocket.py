@@ -40,6 +40,24 @@ class OverlayConnectionManager:
                 if not pool[user_id]:
                     del pool[user_id]
 
+    async def broadcast_to_singers(self, user_id: int, message: dict):
+        """노래하기 페이지 연결에만 메시지 전송"""
+        if user_id not in self.singer_connections:
+            return
+
+        dead_connections = set()
+        for connection in self.singer_connections[user_id]:
+            try:
+                await connection.send_json(message)
+            except Exception:
+                dead_connections.add(connection)
+
+        if dead_connections:
+            async with self._lock:
+                if user_id in self.singer_connections:
+                    for conn in dead_connections:
+                        self.singer_connections[user_id].discard(conn)
+
     async def broadcast_to_overlays(self, user_id: int, message: dict):
         """OBS 오버레이 연결에만 메시지 전송"""
         if user_id not in self.overlay_connections:

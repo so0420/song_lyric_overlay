@@ -271,6 +271,12 @@ async def overlay_websocket(
 
     await overlay_manager.connect(websocket, verified_user_id, connection_type)
 
+    # overlay(OBS) 연결 시 singer에게 현재 상태 재전송 요청
+    if connection_type == "overlay":
+        await overlay_manager.broadcast_to_singers(verified_user_id, {
+            "type": "request_init"
+        })
+
     last_pong_time = time.time()
     ping_task = None
 

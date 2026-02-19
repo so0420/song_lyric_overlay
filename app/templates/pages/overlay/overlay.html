@@ -2755,6 +2755,10 @@
                         const msg = JSON.parse(e.data);
                         if (msg.type === 'ping') {
                             overlayWs.send(JSON.stringify({ type: 'pong' }));
+                        } else if (msg.type === 'request_init') {
+                            // OBS 오버레이가 (재)연결됨 → 현재 상태 전송
+                            syncLyricsInit();
+                            syncPlaylistToOBS();
                         }
                     } catch {}
                 };

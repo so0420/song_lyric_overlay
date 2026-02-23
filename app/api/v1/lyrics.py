@@ -15,7 +15,7 @@ MAX_LIMIT = 100
 async def get_songs_with_lyrics(
     offset: int = Query(0, ge=0),
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
-    type: str = Query("all", regex="^(all|itunes|custom)$"),
+    type: str = Query("all", pattern="^(all|itunes|custom)$"),
     repo: LyricsRepository = Depends(get_lyrics_repository)
 ):
     """공개된 가사가 있는 모든 노래 목록 조회 (페이지네이션 지원)"""

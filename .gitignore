@@ -75,5 +75,5 @@ memo.txt
 /test.*
 
 # ===== AI / Agent =====
-.claude/
-.gemini/
+.claude
+.gemini

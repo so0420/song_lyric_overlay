@@ -392,6 +392,23 @@ input:checked + .toggle-slider:before {
     transform: translateX(22px);
 }
 
+.tooltip-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--text-sub); color: white;
+    font-size: 0.7rem; font-weight: 700; cursor: help;
+    margin-left: 4px; vertical-align: middle; position: relative;
+}
+.tooltip-icon::after {
+    content: attr(data-tooltip);
+    position: absolute; bottom: 120%; right: 0; left: auto; transform: none;
+    background: #1a1a1a; color: white; font-size: 0.75rem; font-weight: 400;
+    padding: 6px 10px; border-radius: 6px; white-space: normal; text-align: left;
+    width: max-content; max-width: 240px;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 100;
+}
+.tooltip-icon:hover::after { opacity: 1; }
+
 /* URL Section */
 .url-section {
     background: #f8fafc;
@@ -838,7 +855,7 @@ input:checked + .toggle-slider:before {
             <!-- 하단 중앙: 가사 -->
             <div class="preview-lyrics">
                 <p class="preview-lyrics-line sub" id="previewPrev">이전 가사</p>
-                <p class="preview-lyrics-line current" id="previewCurrent">현재 가사가 여기에</p>
+                <p class="preview-lyrics-line current" id="previewCurrent">현재 가사 원문<br>발음 예시<br>해석 예시</p>
                 <p class="preview-lyrics-line sub" id="previewNext">다음 가사</p>
             </div>
 
@@ -1116,6 +1133,33 @@ input:checked + .toggle-slider:before {
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
+
+                    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <span class="setting-label">외국어 가사 줄 표시 <span style="font-size:0.8em; color:var(--text-sub);">(최소 1개)</span></span>
+                        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                <input type="checkbox" id="showLyricsLine1" checked onchange="onLyricsLineChange()"> 원문
+                            </label>
+                            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                <input type="checkbox" id="showLyricsLine2" checked onchange="onLyricsLineChange()"> 발음
+                            </label>
+                            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                <input type="checkbox" id="showLyricsLine3" checked onchange="onLyricsLineChange()"> 해석
+                            </label>
+                        </div>
+                        <p style="font-size:0.78rem; color:var(--text-sub); margin:0;">한국어 가사(단일 줄)에는 영향 없음</p>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">
+                            외국어 가사일 때 이전/다음 가사 끄기
+                            <span class="tooltip-icon" data-tooltip="외국어 가사는 여러 줄이라 이전/다음 가사까지 표시하면 화면이 많이 가려질 수 있습니다.">?</span>
+                        </span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="hideAdjLinesForMultiline" onchange="updatePreview()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -1377,6 +1421,10 @@ const defaultSettings = {
     animation_enabled: false,
     show_prev_line: true,
     show_next_line: true,
+    show_lyrics_line1: true,
+    show_lyrics_line2: true,
+    show_lyrics_line3: true,
+    hide_adj_lines_for_multiline: false,
     show_song_title: true,
     show_artist: true,
     show_now_badge: true,
@@ -1450,6 +1498,10 @@ function applySettingsToForm(settings) {
     document.getElementById('animationEnabled').checked = settings.animation_enabled === true;
     document.getElementById('showPrevLine').checked = settings.show_prev_line !== false;
     document.getElementById('showNextLine').checked = settings.show_next_line !== false;
+    document.getElementById('showLyricsLine1').checked = settings.show_lyrics_line1 !== false;
+    document.getElementById('showLyricsLine2').checked = settings.show_lyrics_line2 !== false;
+    document.getElementById('showLyricsLine3').checked = settings.show_lyrics_line3 !== false;
+    document.getElementById('hideAdjLinesForMultiline').checked = settings.hide_adj_lines_for_multiline === true;
     document.getElementById('showSongTitle').checked = settings.show_song_title !== false;
     document.getElementById('showArtist').checked = settings.show_artist !== false;
     document.getElementById('showNowBadge').checked = settings.show_now_badge !== false;
@@ -1495,6 +1547,10 @@ function getSettingsFromForm() {
         animation_enabled: document.getElementById('animationEnabled').checked,
         show_prev_line: document.getElementById('showPrevLine').checked,
         show_next_line: document.getElementById('showNextLine').checked,
+        show_lyrics_line1: document.getElementById('showLyricsLine1').checked,
+        show_lyrics_line2: document.getElementById('showLyricsLine2').checked,
+        show_lyrics_line3: document.getElementById('showLyricsLine3').checked,
+        hide_adj_lines_for_multiline: document.getElementById('hideAdjLinesForMultiline').checked,
         show_song_title: document.getElementById('showSongTitle').checked,
         show_artist: document.getElementById('showArtist').checked,
         show_now_badge: document.getElementById('showNowBadge').checked,
@@ -1513,6 +1569,17 @@ function getSettingsFromForm() {
         playlist_show_thumbnail: document.getElementById('playlistShowThumbnail').checked,
         playlist_show_artist: document.getElementById('playlistShowArtist').checked
     };
+}
+
+function onLyricsLineChange() {
+    const c1 = document.getElementById('showLyricsLine1');
+    const c2 = document.getElementById('showLyricsLine2');
+    const c3 = document.getElementById('showLyricsLine3');
+    const checkedCount = [c1, c2, c3].filter(c => c.checked).length;
+    if (checkedCount === 0) {
+        c1.checked = true;
+    }
+    updatePreview();
 }
 
 function updatePreview() {
@@ -1600,13 +1667,24 @@ function updatePreview() {
     currentLine.style.fontWeight = settings.current_line_weight;
     currentLine.style.color = settings.highlight_color;
 
+    // 미리보기 가사: 외국어 줄 표시 설정 반영
+    const previewParts = ['현재 가사 원문', '발음 예시', '해석 예시'];
+    const visibleParts = [];
+    if (settings.show_lyrics_line1 !== false) visibleParts.push(previewParts[0]);
+    if (settings.show_lyrics_line2 !== false) visibleParts.push(previewParts[1]);
+    if (settings.show_lyrics_line3 !== false) visibleParts.push(previewParts[2]);
+    currentLine.innerHTML = visibleParts.join('<br>');
+
+    const isMultiline = true; // 미리보기는 항상 다중 줄 예시
+    const hideAdj = settings.hide_adj_lines_for_multiline && isMultiline;
+
     prevLine.style.fontSize = (settings.font_size * 0.7 * lyricsScale) + 'px';
     prevLine.style.fontWeight = settings.prev_line_weight;
-    prevLine.style.display = settings.show_prev_line ? 'block' : 'none';
+    prevLine.style.display = (settings.show_prev_line && !hideAdj) ? 'block' : 'none';
 
     nextLine.style.fontSize = (settings.font_size * 0.7 * lyricsScale) + 'px';
     nextLine.style.fontWeight = settings.next_line_weight;
-    nextLine.style.display = settings.show_next_line ? 'block' : 'none';
+    nextLine.style.display = (settings.show_next_line && !hideAdj) ? 'block' : 'none';
 
     // Text stroke using -webkit-text-stroke (요소별 두께 적용)
     const sc = settings.stroke_color;

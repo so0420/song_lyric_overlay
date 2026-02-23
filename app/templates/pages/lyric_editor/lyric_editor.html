@@ -461,7 +461,7 @@
 
     /* Buttons */
     .btn-premium {
-        background: var(--accent-gradient);
+        background: var(--accent);
         color: white;
         padding: 12px 24px;
         border-radius: 12px;
@@ -1003,12 +1003,16 @@
             <button onclick="hideModals()" class="btn-icon" style="font-size: 1.5rem;">&times;</button>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 12px;">
-            전체 가사를 한 줄씩 입력해주세요. 빈 줄은 무시됩니다.<br>
-            한 가사에서 줄바꿈을 하고 싶다면 엔터 대신 \n을 입력해주세요<br>
-            입력 후 '적용'을 누르면 자동으로 타임라인이 구성됩니다.
+            한 줄 = 하나의 가사 구간입니다. 빈 줄은 무시됩니다.<br>
+            <b>외국어 가사</b>: 한 구간 안에 여러 줄을 입력하려면
+            줄 구분자 <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px;">\n</code>을 사용하세요. 2줄 또는 3줄 모두 가능합니다.<br>
+            예) <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px;">Hello\n안녕</code> (원문+해석 2줄),
+            <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px;">Hello\n헬로\n안녕</code> (원문+발음+해석 3줄)<br>
+            오버레이 설정의 줄 표시 체크박스는 1번째/2번째/3번째 <b>위치</b> 기준으로 제어합니다.<br>
+            표시 여부는 오버레이 설정 → 가사 표시에서 조절할 수 있습니다.
         </p>
         <textarea id="bulk-import-text" class="text-input" style="margin-bottom: 20px;"
-            placeholder="예시:&#10;동해물과 백두산이 마르고 닳도록&#10;하느님이 보우하사 우리나라 만세"></textarea>
+            placeholder="예시 (한국어):&#10;동해물과 백두산이 마르고 닳도록&#10;하느님이 보우하사 우리나라 만세&#10;&#10;예시 (외국어):&#10;Hello World\n헬로 월드\n안녕 세상&#10;Goodbye\n굿바이\n잘 가"></textarea>
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
             <label style="font-size: 0.85rem; font-weight: 600;">기본 간격 (초):</label>
             <input type="number" id="bulk-interval" value="3" min="1" max="10" class="time-input" style="width: 60px;">

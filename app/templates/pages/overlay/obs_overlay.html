@@ -372,6 +372,10 @@
             animation_enabled: false,
             show_prev_line: true,
             show_next_line: true,
+            show_lyrics_line1: true,
+            show_lyrics_line2: true,
+            show_lyrics_line3: true,
+            hide_adj_lines_for_multiline: false,
             show_song_title: true,
             show_artist: true,
             show_now_badge: true,
@@ -481,6 +485,11 @@
 
             // 재생목록 설정 적용
             applyPlaylistSettings();
+
+            // 설정 변경 시 현재 인덱스 강제 재렌더 (hide_adj, formatLyrics 즉시 반영)
+            if (lyricsData && lastRenderedIndex >= 0) {
+                renderLyricsAtIndex(lastRenderedIndex);
+            }
         }
 
         function applyPlaylistSettings() {
@@ -570,7 +579,15 @@
 
         function formatLyrics(text) {
             if (!text) return '';
-            return escapeHtml(text).replace(/\\n/g, '<br>').replace(/&lt;br&gt;/g, '<br>');
+            const parts = text.split('\\n');
+            if (parts.length > 1) {
+                const visible = [];
+                if (settings.show_lyrics_line1 !== false && parts[0] != null) visible.push(escapeHtml(parts[0]));
+                if (settings.show_lyrics_line2 !== false && parts[1] != null) visible.push(escapeHtml(parts[1]));
+                if (settings.show_lyrics_line3 !== false && parts[2] != null) visible.push(escapeHtml(parts[2]));
+                return visible.join('<br>');
+            }
+            return escapeHtml(text);
         }
 
         function applySongInfoPosition(position) {
@@ -681,11 +698,16 @@
             prevLine.innerHTML = prev ? formatLyrics(prev.text) : '';
             nextLine.innerHTML = next ? formatLyrics(next.text) : '';
 
-            if (prev) prevLine.classList.add('visible');
-            else prevLine.classList.remove('visible');
+            const isMultiline = curr.text && curr.text.includes('\\n');
+            const hideAdj = settings.hide_adj_lines_for_multiline && isMultiline;
 
-            if (next) nextLine.classList.add('visible');
+            if (prev && settings.show_prev_line && !hideAdj) prevLine.classList.add('visible');
+            else prevLine.classList.remove('visible');
+            prevLine.style.display = (settings.show_prev_line && !hideAdj) ? 'block' : 'none';
+
+            if (next && settings.show_next_line && !hideAdj) nextLine.classList.add('visible');
             else nextLine.classList.remove('visible');
+            nextLine.style.display = (settings.show_next_line && !hideAdj) ? 'block' : 'none';
         }
 
         // requestAnimationFrame 기반 자체 렌더링 루프

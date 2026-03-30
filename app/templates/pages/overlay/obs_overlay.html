@@ -487,8 +487,8 @@
             applyPlaylistSettings();
 
             // 설정 변경 시 현재 인덱스 강제 재렌더 (hide_adj, formatLyrics 즉시 반영)
-            if (lyricsData && lastRenderedIndex >= 0) {
-                renderLyricsAtIndex(lastRenderedIndex);
+            if (lyricsData && lastRenderedIndex >= -1) {
+                renderLyricsAtIndex(lastRenderedIndex, getCurrentInterpolatedTime());
             }
         }
 
@@ -665,16 +665,35 @@
             return syncTime + (performance.now() - syncReceivedAt);
         }
 
+        // 공백 구간에서 이전/다음 가사 인덱스 찾기
+        function findGapNeighbors(lyrics, time) {
+            let prevIdx = -1, nextIdx = -1;
+            for (let i = 0; i < lyrics.length; i++) {
+                if (lyrics[i].end <= time) prevIdx = i;
+                if (nextIdx === -1 && lyrics[i].start > time) { nextIdx = i; break; }
+            }
+            return { prevIdx, nextIdx };
+        }
+
         // prev/current/next 가사 렌더링
-        function renderLyricsAtIndex(index) {
+        function renderLyricsAtIndex(index, time) {
             if (index === -1) {
-                // 가사 구간 밖
-                prevLine.innerHTML = '';
+                // 공백 구간: 이전/다음 가사 표시
+                const { prevIdx, nextIdx } = findGapNeighbors(lyricsData, time);
+                const gapPrev = prevIdx >= 0 ? lyricsData[prevIdx] : null;
+                const gapNext = nextIdx >= 0 ? lyricsData[nextIdx] : null;
+
                 currentLine.innerHTML = '';
-                nextLine.innerHTML = '';
-                prevLine.classList.remove('visible');
                 currentLine.classList.remove('visible');
-                nextLine.classList.remove('visible');
+
+                prevLine.innerHTML = gapPrev ? formatLyrics(gapPrev.text) : '';
+                nextLine.innerHTML = gapNext ? formatLyrics(gapNext.text) : '';
+
+                if (gapPrev && settings.show_prev_line) { prevLine.classList.add('visible'); prevLine.style.display = 'block'; }
+                else { prevLine.classList.remove('visible'); prevLine.style.display = 'none'; }
+
+                if (gapNext && settings.show_next_line) { nextLine.classList.add('visible'); nextLine.style.display = 'block'; }
+                else { nextLine.classList.remove('visible'); nextLine.style.display = 'none'; }
                 return;
             }
 
@@ -719,7 +738,7 @@
 
             if (index !== lastRenderedIndex) {
                 lastRenderedIndex = index;
-                renderLyricsAtIndex(index);
+                renderLyricsAtIndex(index, time);
             }
 
             renderAnimFrameId = requestAnimationFrame(renderLoop);
@@ -788,7 +807,7 @@
                     const index = findLyricsIndex(lyricsData, syncTime);
                     if (index !== lastRenderedIndex) {
                         lastRenderedIndex = index;
-                        renderLyricsAtIndex(index);
+                        renderLyricsAtIndex(index, syncTime);
                     }
                 }
             }

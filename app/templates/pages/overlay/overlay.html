@@ -2649,7 +2649,7 @@
                     // 로컬 가사 업데이트
                     if (isSeek || localIndex !== state.lastLyricsIndex) {
                         state.lastLyricsIndex = localIndex;
-                        renderLocalLyrics(localIndex, lyrics);
+                        renderLocalLyrics(localIndex, lyrics, localTime);
                     }
                 }
 
@@ -2688,7 +2688,7 @@
                 const localTime = currentTime + state.localOffset;
                 const localIndex = findLyricsIndex(lyrics, localTime);
                 state.lastLyricsIndex = localIndex;
-                renderLocalLyrics(localIndex, lyrics);
+                renderLocalLyrics(localIndex, lyrics, localTime);
 
                 // OBS에 시간 강제 전송
                 syncTimeToOBS_force(state.isPlaying);
@@ -2706,9 +2706,32 @@
             }
         }
 
+        // 공백 구간에서 이전/다음 가사 인덱스 찾기
+        function findGapNeighbors(lyrics, time) {
+            let prevIdx = -1, nextIdx = -1;
+            for (let i = 0; i < lyrics.length; i++) {
+                if (lyrics[i].end <= time) prevIdx = i;
+                if (nextIdx === -1 && lyrics[i].start > time) { nextIdx = i; break; }
+            }
+            return { prevIdx, nextIdx };
+        }
+
         // 로컬(재생 페이지) 가사 렌더링
-        function renderLocalLyrics(currentIndex, lyrics) {
+        function renderLocalLyrics(currentIndex, lyrics, time) {
             if (currentIndex === -1) {
+                if (time !== undefined) {
+                    const { prevIdx, nextIdx } = findGapNeighbors(lyrics, time);
+                    const gapPrev = prevIdx >= 0 ? lyrics[prevIdx] : null;
+                    const gapNext = nextIdx >= 0 ? lyrics[nextIdx] : null;
+                    if (gapPrev || gapNext) {
+                        elements.lyricsDisplay.innerHTML = `
+                        <div class="current-lyrics">
+                            ${gapPrev ? `<p class="lyrics-line prev">${formatLyrics(gapPrev.text)}</p>` : ''}
+                            ${gapNext ? `<p class="lyrics-line next">${formatLyrics(gapNext.text)}</p>` : ''}
+                        </div>`;
+                        return;
+                    }
+                }
                 elements.lyricsDisplay.innerHTML = '<p class="lyrics-display-empty">가사가 여기에 표시됩니다</p>';
                 return;
             }

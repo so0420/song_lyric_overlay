@@ -64,6 +64,7 @@ def get_logger(name: str = "songbook"):
         return logger
 
     logger.setLevel(logging.DEBUG)
+    logger.propagate = False
 
     # 기본 포맷 설정 (파일용)
     file_formatter = logging.Formatter(

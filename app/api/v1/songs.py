@@ -43,13 +43,31 @@ async def search_songs(request: Request, q: str, offset: int = 0, limit: int = 2
                 "lyrics_count": 0  # 기본값, 실제로는 DB에서 조회 필요
             })
 
+        # 가사 제목으로 추가 검색 (iTunes 결과에 없는 곡을 맨 앞에 배치)
+        lyrics_repo = get_lyrics_repository()
+        lyrics_title_matches = await lyrics_repo.find_songs_by_lyrics_title(q, 'it_')
+        existing_ext_ids = {r['song_external_id'] for r in formatted_results}
+        prepend_results = []
+        for item in lyrics_title_matches:
+            ext_id = item['song_external_id']
+            if ext_id not in existing_ext_ids:
+                prepend_results.append({
+                    "id": item['id'],
+                    "song_external_id": ext_id,
+                    "title": item['title'] or '',
+                    "artist_name": item['artist_name'] or '',
+                    "cover_image_url": item['cover_image_url'] or '',
+                    "lyrics_count": 0
+                })
+                existing_ext_ids.add(ext_id)
+        formatted_results = prepend_results + formatted_results
+
         # 페이지네이션 적용 (가사 개수 조회 전에 슬라이싱)
         total = len(formatted_results)
         paginated_results = formatted_results[offset:offset + limit]
 
         # 가사 개수 조회 (현재 페이지 결과만)
         if paginated_results:
-            lyrics_repo = get_lyrics_repository()
             external_ids = [r['song_external_id'] for r in paginated_results]
             count_map = await lyrics_repo.get_lyrics_counts(external_ids)
 
@@ -135,25 +153,46 @@ async def search_custom_songs(request: Request, q: str, offset: int = 0, limit: 
 
         total = results.get('estimatedTotalHits', len(formatted_results))
 
+        # 가사 제목으로 추가 검색 (Meilisearch 결과에 없는 곡 보완)
+        lyrics_repo = get_lyrics_repository()
+        lyrics_title_matches = await lyrics_repo.find_songs_by_lyrics_title(q, 'custom_')
+        existing_ext_ids = {r['song_external_id'] for r in formatted_results}
+        added_count = 0
+        for item in lyrics_title_matches:
+            ext_id = item['song_external_id']
+            if ext_id not in existing_ext_ids:
+                formatted_results.append({
+                    "id": ext_id,
+                    "song_external_id": ext_id,
+                    "title": item['title'] or '',
+                    "artist_name": item['artist_name'] or '',
+                    "cover_image_url": item['cover_image_url'],
+                    "is_custom": True
+                })
+                existing_ext_ids.add(ext_id)
+                added_count += 1
+        total += added_count
+
     except Exception as e:
-        # Meilisearch 실패 시 DB 폴백
+        # Meilisearch 실패 시 DB 폴백 (가사 제목도 함께 검색)
         use_fallback = True
         search_pattern = f"%{q}%"
         fallback_query = """
-            SELECT
+            SELECT DISTINCT
                 s.song_external_id as id,
                 s.title,
                 a.name as singer,
                 s.cover_image_url as image_url
             FROM songs s
             LEFT JOIN artists a ON s.artist_id = a.id
+            LEFT JOIN song_lyrics l ON s.id = l.song_id AND l.deleted_at IS NULL AND l.is_public = 1
             WHERE s.song_external_id LIKE 'custom_%%'
-              AND (s.title LIKE %s OR a.name LIKE %s)
+              AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
             ORDER BY s.title ASC
             LIMIT %s OFFSET %s
         """
         fallback_results = await db_handler.fetch_all(
-            fallback_query, (search_pattern, search_pattern, limit, offset)
+            fallback_query, (search_pattern, search_pattern, search_pattern, limit, offset)
         )
 
         for item in fallback_results:
@@ -168,13 +207,14 @@ async def search_custom_songs(request: Request, q: str, offset: int = 0, limit: 
 
         # 전체 개수 조회
         count_query = """
-            SELECT COUNT(*) as total
+            SELECT COUNT(DISTINCT s.id) as total
             FROM songs s
             LEFT JOIN artists a ON s.artist_id = a.id
+            LEFT JOIN song_lyrics l ON s.id = l.song_id AND l.deleted_at IS NULL AND l.is_public = 1
             WHERE s.song_external_id LIKE 'custom_%%'
-              AND (s.title LIKE %s OR a.name LIKE %s)
+              AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
         """
-        count_result = await db_handler.fetch_one(count_query, (search_pattern, search_pattern))
+        count_result = await db_handler.fetch_one(count_query, (search_pattern, search_pattern, search_pattern))
         total = count_result['total'] if count_result else 0
 
     # 가사 개수 조회

@@ -903,6 +903,13 @@
                 <span id="segment-count"
                     style="font-size: 0.75rem; font-weight: 700; color: white; background: var(--accent); padding: 2px 10px; border-radius: 20px; box-shadow: 0 2px 6px rgba(139, 92, 246, 0.3);">0</span>
             </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="font-size: 0.7rem; font-weight: 700; color: #64748b;">오프셋</span>
+                <button onclick="shiftAllTimes('both', -100)" class="btn btn-outline"
+                    style="padding: 3px 6px; font-size: 0.7rem; font-weight: 700; border-radius: 6px; min-width: 0;" title="전체 시간 -0.1초">◀</button>
+                <button onclick="shiftAllTimes('both', 100)" class="btn btn-outline"
+                    style="padding: 3px 6px; font-size: 0.7rem; font-weight: 700; border-radius: 6px; min-width: 0;" title="전체 시간 +0.1초">▶</button>
+            </div>
             <button onclick="showModal('modal-sort-confirm')" class="btn btn-outline"
                 style="padding: 6px 12px; font-size: 0.75rem; font-weight: 700; border-radius: 8px;" title="다시 정렬">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
@@ -930,7 +937,7 @@
             <button class="search-tab-btn" data-song-search-tab="custom" onclick="switchSongSearchTab('custom')">커스텀</button>
         </div>
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <input type="text" id="song-search-input" class="text-input" placeholder="제목 또는 가수를 입력하세요"
+            <input type="text" id="song-search-input" class="text-input" placeholder="제목, 가수 또는 가사 버전 제목을 입력하세요"
                 onkeydown="if(event.key==='Enter') searchSongsWithTab()">
             <button onclick="searchSongsWithTab()" class="btn btn-primary" id="song-search-btn" style="flex-shrink: 0; white-space: nowrap;">검색</button>
         </div>
@@ -982,7 +989,7 @@
             <button onclick="hideModals()" class="btn-icon" style="font-size: 1.5rem;">&times;</button>
         </div>
         <div style="display: flex; gap: 10px; margin-bottom: 16px;">
-            <input type="text" id="public-song-search-input" class="text-input" placeholder="곡 제목 또는 가수를 입력하세요"
+            <input type="text" id="public-song-search-input" class="text-input" placeholder="곡 제목, 가수 또는 가사 버전 제목을 입력하세요"
                 onkeydown="if(event.key==='Enter') searchPublicSongs()">
             <button onclick="searchPublicSongs()" class="btn btn-primary" id="public-search-btn" style="flex-shrink: 0; white-space: nowrap;">검색</button>
         </div>
@@ -1351,6 +1358,19 @@
             container.appendChild(div);
         });
         document.getElementById('segment-count').innerText = segments.length;
+    }
+
+    function shiftAllTimes(field, deltaMs) {
+        if (segments.length === 0) return;
+        segments.forEach(seg => {
+            if (field === 'start' || field === 'both') {
+                seg.start = Math.max(0, seg.start + deltaMs);
+            }
+            if (field === 'end' || field === 'both') {
+                seg.end = Math.max(0, seg.end + deltaMs);
+            }
+        });
+        renderTimeline();
     }
 
     function sortSegments(force = false) {

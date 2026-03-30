@@ -235,12 +235,12 @@ class LyricsRepository:
             FROM songs s
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
-            WHERE s.title LIKE %s OR a.name LIKE %s
+            WHERE (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
             GROUP BY s.id
             ORDER BY lyrics_count DESC, s.title ASC
             LIMIT %s
         """
-        return await self.db.fetch_all(query, (search_pattern, search_pattern, limit))
+        return await self.db.fetch_all(query, (search_pattern, search_pattern, search_pattern, limit))
 
     async def search_all_songs_with_lyrics(
         self, query_term: str, offset: int = 0, limit: int = 20
@@ -262,12 +262,12 @@ class LyricsRepository:
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE s.song_external_id LIKE 'it_%%'
-              AND (s.title LIKE %s OR a.name LIKE %s)
+              AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
             GROUP BY s.id, s.title, s.song_external_id, s.cover_image_url, a.name, a.artist_external_id
             ORDER BY lyrics_count DESC, s.title ASC
             LIMIT %s OFFSET %s
         """
-        itunes_results = await self.db.fetch_all(itunes_query, (search_pattern, search_pattern, limit, offset))
+        itunes_results = await self.db.fetch_all(itunes_query, (search_pattern, search_pattern, search_pattern, limit, offset))
 
         # 음원 전체 개수
         itunes_count_query = """
@@ -276,9 +276,9 @@ class LyricsRepository:
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE s.song_external_id LIKE 'it_%%'
-              AND (s.title LIKE %s OR a.name LIKE %s)
+              AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
         """
-        itunes_count = await self.db.fetch_one(itunes_count_query, (search_pattern, search_pattern))
+        itunes_count = await self.db.fetch_one(itunes_count_query, (search_pattern, search_pattern, search_pattern))
 
         # 커스텀 노래 검색 (song_external_id가 'custom_'로 시작)
         custom_query = """
@@ -294,12 +294,12 @@ class LyricsRepository:
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE s.song_external_id LIKE 'custom_%%'
-              AND (s.title LIKE %s OR a.name LIKE %s)
+              AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
             GROUP BY s.id, s.title, s.song_external_id, s.cover_image_url, a.name, a.artist_external_id
             ORDER BY lyrics_count DESC, s.title ASC
             LIMIT %s OFFSET %s
         """
-        custom_results = await self.db.fetch_all(custom_query, (search_pattern, search_pattern, limit, offset))
+        custom_results = await self.db.fetch_all(custom_query, (search_pattern, search_pattern, search_pattern, limit, offset))
 
         # 커스텀 전체 개수
         custom_count_query = """
@@ -308,9 +308,9 @@ class LyricsRepository:
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE s.song_external_id LIKE 'custom_%%'
-              AND (s.title LIKE %s OR a.name LIKE %s)
+              AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
         """
-        custom_count = await self.db.fetch_one(custom_count_query, (search_pattern, search_pattern))
+        custom_count = await self.db.fetch_one(custom_count_query, (search_pattern, search_pattern, search_pattern))
 
         return {
             "itunes": {
@@ -370,6 +370,34 @@ class LyricsRepository:
             "limit": limit,
             "has_more": offset + len(items) < total
         }
+
+    async def find_songs_by_lyrics_title(self, query_term: str, song_type_prefix: str = None, limit: int = 100) -> List[Dict[str, Any]]:
+        """가사 버전 제목으로 노래 검색 (공개 가사의 제목과 매칭되는 노래 반환)"""
+        search_pattern = f"%{query_term}%"
+
+        type_filter = ""
+        params = [search_pattern]
+        if song_type_prefix:
+            type_filter = "AND s.song_external_id LIKE %s"
+            params.append(f"{song_type_prefix}%")
+
+        params.append(limit)
+
+        query = f"""
+            SELECT DISTINCT
+                s.id,
+                s.song_external_id,
+                s.title,
+                s.cover_image_url,
+                a.name as artist_name
+            FROM songs s
+            JOIN song_lyrics l ON s.id = l.song_id AND l.deleted_at IS NULL AND l.is_public = 1
+            LEFT JOIN artists a ON s.artist_id = a.id
+            WHERE l.title LIKE %s {type_filter}
+            ORDER BY s.title ASC
+            LIMIT %s
+        """
+        return await self.db.fetch_all(query, tuple(params))
 
 def get_lyrics_repository():
     return LyricsRepository()

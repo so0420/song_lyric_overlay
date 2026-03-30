@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+import httpx
 from app.core.auth import get_current_user_api
 from app.database.access_request_repository import get_access_request_repository, AccessRequestRepository
 from app.schemas.access_request import (
@@ -7,8 +8,32 @@ from app.schemas.access_request import (
     AccessStatusResponseSchema,
     AccessRequestStatus
 )
+from app.utils.log import logger
 
 router = APIRouter()
+
+DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1488261758002004229/sS_aOnHvsCqRdMMnDhZvCmA0wq8HFl6dgrW0JFS_n17HXUtnIs2wMxR92ZCDxZ910-or"
+
+
+async def send_discord_notification(user_name: str, user_email: str, platform_url: str, message: str | None):
+    """디스코드 웹훅으로 사용 요청 알림 전송"""
+    embed = {
+        "title": "새로운 오버레이 사용 요청",
+        "color": 0x8B5CF6,
+        "fields": [
+            {"name": "사용자", "value": user_name or "(이름 없음)", "inline": True},
+            {"name": "이메일", "value": user_email or "(없음)", "inline": True},
+            {"name": "플랫폼 주소", "value": platform_url, "inline": False},
+        ],
+    }
+    if message:
+        embed["fields"].append({"name": "메시지", "value": message, "inline": False})
+
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(DISCORD_WEBHOOK_URL, json={"embeds": [embed]}, timeout=10)
+    except Exception as e:
+        logger.error(f"Discord webhook send failed: {e}")
 
 
 @router.get("/status", response_model=AccessStatusResponseSchema)
@@ -41,6 +66,7 @@ async def get_access_status(
 @router.post("/request", response_model=AccessRequestResponseSchema)
 async def submit_access_request(
     data: AccessRequestCreateSchema,
+    background_tasks: BackgroundTasks,
     user=Depends(get_current_user_api),
     repo: AccessRequestRepository = Depends(get_access_request_repository)
 ):
@@ -58,6 +84,15 @@ async def submit_access_request(
     # 요청 생성
     request_id = await repo.create_request(user['id'], data)
     request = await repo.get_request_by_id(request_id)
+
+    # 디스코드 웹훅 알림
+    background_tasks.add_task(
+        send_discord_notification,
+        user.get('name', ''),
+        user.get('email', ''),
+        data.platform_url,
+        data.message,
+    )
 
     return request
 

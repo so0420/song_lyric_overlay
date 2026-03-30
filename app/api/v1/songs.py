@@ -62,17 +62,17 @@ async def search_songs(request: Request, q: str, offset: int = 0, limit: int = 2
                 existing_ext_ids.add(ext_id)
         formatted_results = prepend_results + formatted_results
 
-        # 페이지네이션 적용 (가사 개수 조회 전에 슬라이싱)
+        # 가사 개수 조회 (전체) → 가사 있는 노래 우선 정렬
+        if formatted_results:
+            external_ids = [r['song_external_id'] for r in formatted_results]
+            count_map = await lyrics_repo.get_lyrics_counts(external_ids)
+            for r in formatted_results:
+                r['lyrics_count'] = count_map.get(r['song_external_id'], 0)
+            formatted_results.sort(key=lambda r: r['lyrics_count'], reverse=True)
+
+        # 페이지네이션 적용
         total = len(formatted_results)
         paginated_results = formatted_results[offset:offset + limit]
-
-        # 가사 개수 조회 (현재 페이지 결과만)
-        if paginated_results:
-            external_ids = [r['song_external_id'] for r in paginated_results]
-            count_map = await lyrics_repo.get_lyrics_counts(external_ids)
-
-            for r in paginated_results:
-                r['lyrics_count'] = count_map.get(r['song_external_id'], 0)
 
         return {
             "items": paginated_results,
@@ -217,7 +217,7 @@ async def search_custom_songs(request: Request, q: str, offset: int = 0, limit: 
         count_result = await db_handler.fetch_one(count_query, (search_pattern, search_pattern, search_pattern))
         total = count_result['total'] if count_result else 0
 
-    # 가사 개수 조회
+    # 가사 개수 조회 → 가사 있는 노래 우선 정렬
     if formatted_results:
         lyrics_repo = get_lyrics_repository()
         external_ids = [r['song_external_id'] for r in formatted_results]
@@ -225,6 +225,7 @@ async def search_custom_songs(request: Request, q: str, offset: int = 0, limit: 
 
         for r in formatted_results:
             r['lyrics_count'] = count_map.get(r['song_external_id'], 0)
+        formatted_results.sort(key=lambda r: r['lyrics_count'], reverse=True)
 
     return {
         "items": formatted_results,

@@ -1009,17 +1009,24 @@
             <h3 style="font-size: 1.25rem;">가사 뭉치로 입력하기</h3>
             <button onclick="hideModals()" class="btn-icon" style="font-size: 1.5rem;">&times;</button>
         </div>
-        <p style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 12px;">
+        <div class="search-tabs" style="margin-bottom: 16px;">
+            <button class="search-tab-btn active" data-bulk-mode="single" onclick="switchBulkMode('single')">단일 줄</button>
+            <button class="search-tab-btn" data-bulk-mode="multi" onclick="switchBulkMode('multi')">여러 줄 (번역 포함)</button>
+        </div>
+        <div id="bulk-mode-desc-single" style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 12px;">
             한 줄 = 하나의 가사 구간입니다. 빈 줄은 무시됩니다.<br>
-            <b>외국어 가사</b>: 한 구간 안에 여러 줄을 입력하려면
-            줄 구분자 <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px;">\n</code>을 사용하세요. 2줄 또는 3줄 모두 가능합니다.<br>
-            예) <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px;">Hello\n안녕</code> (원문+해석 2줄),
-            <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px;">Hello\n헬로\n안녕</code> (원문+발음+해석 3줄)<br>
-            오버레이 설정의 줄 표시 체크박스는 1번째/2번째/3번째 <b>위치</b> 기준으로 제어합니다.<br>
-            표시 여부는 오버레이 설정 → 가사 표시에서 조절할 수 있습니다.
-        </p>
+            <b>예시:</b><br>
+            <code style="background:#f3f4f6;padding:2px 6px;border-radius:3px;font-size:0.8rem;display:inline-block;margin-top:4px;">동해물과 백두산이 마르고 닳도록<br>하느님이 보우하사 우리나라 만세</code>
+        </div>
+        <div id="bulk-mode-desc-multi" style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 12px; display: none;">
+            한 구간 안에 원문/발음/해석 등 여러 줄을 입력할 수 있습니다.<br>
+            <b>빈 줄(엔터 2번 이상)</b>로 구간을 구분합니다.<br>
+            표시 여부는 오버레이 설정 → 가사 표시에서 조절할 수 있습니다.<br>
+            <b>예시:</b><br>
+            <code style="background:#f3f4f6;padding:4px 8px;border-radius:3px;font-size:0.8rem;display:inline-block;margin-top:4px;line-height:1.6;">転びそうになって掴んだ手のその先で<br>코로비소-니 낫테 츠칸다 테노 소노 사키데<br>넘어질 것 같아 잡은 그 손끝에<br><br>ありがとうって楽しそうなのも<br>아리가토옷테 타노시소-나노모<br>고맙다며 즐거워하는 것도</code>
+        </div>
         <textarea id="bulk-import-text" class="text-input" style="margin-bottom: 20px;"
-            placeholder="예시 (한국어):&#10;동해물과 백두산이 마르고 닳도록&#10;하느님이 보우하사 우리나라 만세&#10;&#10;예시 (외국어):&#10;Hello World\n헬로 월드\n안녕 세상&#10;Goodbye\n잘 가"></textarea>
+            placeholder="동해물과 백두산이 마르고 닳도록&#10;하느님이 보우하사 우리나라 만세"></textarea>
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
             <label style="font-size: 0.85rem; font-weight: 600;">기본 간격 (초):</label>
             <input type="number" id="bulk-interval" value="3" min="1" max="10" class="time-input" style="width: 60px;">
@@ -1543,6 +1550,24 @@
         document.getElementById('bulk-import-text').focus();
     }
 
+    let currentBulkMode = 'single';
+
+    function switchBulkMode(mode) {
+        currentBulkMode = mode;
+        document.querySelectorAll('[data-bulk-mode]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.bulkMode === mode);
+        });
+        document.getElementById('bulk-mode-desc-single').style.display = mode === 'single' ? '' : 'none';
+        document.getElementById('bulk-mode-desc-multi').style.display = mode === 'multi' ? '' : 'none';
+
+        const textarea = document.getElementById('bulk-import-text');
+        if (mode === 'single') {
+            textarea.placeholder = '동해물과 백두산이 마르고 닳도록\n하느님이 보우하사 우리나라 만세';
+        } else {
+            textarea.placeholder = '転びそうになって掴んだ手のその先で\n코로비소-니 낫테 츠칸다 테노 소노 사키데\n넘어질 것 같아 잡은 그 손끝에\n\nありがとうって楽しそうなのも\n아리가토옷테 타노시소-나노모\n고맙다며 즐거워하는 것도';
+        }
+    }
+
     function processBulkImport() {
         const text = document.getElementById('bulk-import-text').value;
         const interval = parseFloat(document.getElementById('bulk-interval').value) || 3;
@@ -1550,23 +1575,33 @@
         if (!text.trim()) return alert('가사를 입력해 주세요.');
         if (!confirm('현재 작업 중인 타임라인이 초기화됩니다. 계속하시겠습니까?')) return;
 
-        const lines = text.split('\n').filter(l => l.trim());
+        let parsedLines;
+        if (currentBulkMode === 'multi') {
+            // 여러 줄 모드: 빈 줄(2번 이상 엔터)로 구간 구분, 구간 내 줄은 \n으로 합침
+            parsedLines = text.split(/\n\s*\n+/)
+                .map(block => block.split('\n').map(l => l.trim()).filter(l => l).join('\\n'))
+                .filter(l => l);
+        } else {
+            // 단일 줄 모드: 한 줄 = 한 구간, 빈 줄 무시
+            parsedLines = text.split('\n').filter(l => l.trim()).map(l => l.trim());
+        }
+
         segments = [];
         let now = 0;
 
-        lines.forEach((line, i) => {
+        parsedLines.forEach((line, i) => {
             segments.push({
                 id: Date.now() + i,
                 start: now,
                 end: now + (interval * 1000),
-                text: line.trim()
+                text: line
             });
             now += (interval * 1000);
         });
 
         renderTimeline();
         hideModals();
-        alert(`${lines.length}개의 가사 구간이 생성되었습니다. 실시간 싱크 모드로 박자를 맞춰보세요!`);
+        alert(`${parsedLines.length}개의 가사 구간이 생성되었습니다. 실시간 싱크 모드로 박자를 맞춰보세요!`);
     }
 
     // New Features: Sync Mode

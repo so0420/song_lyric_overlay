@@ -1578,7 +1578,9 @@
         let parsedLines;
         if (currentBulkMode === 'multi') {
             // 여러 줄 모드: 빈 줄(2번 이상 엔터)로 구간 구분, 구간 내 줄은 \n으로 합침
-            parsedLines = text.split(/\n\s*\n+/)
+            // 보이지 않는 문자(Zero-Width Space 등) 제거 후 빈 줄로 구간 분리
+            const cleaned = text.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+            parsedLines = cleaned.split(/\n\s*\n+/)
                 .map(block => block.split('\n').map(l => l.trim()).filter(l => l).join('\\n'))
                 .filter(l => l);
         } else {

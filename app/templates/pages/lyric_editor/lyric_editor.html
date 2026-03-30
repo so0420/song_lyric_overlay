@@ -1301,14 +1301,12 @@
             div.className = `timeline-item ${activeIndex === idx ? 'active' : ''}`;
             div.dataset.id = seg.id;
             div.dataset.index = idx;
-            div.draggable = true;
-
-            // Drag Events
+            // Drag Events (핸들에서만 드래그 가능)
             div.ondragstart = (e) => {
                 e.dataTransfer.setData('text/plain', idx);
                 div.classList.add('dragging');
             };
-            div.ondragend = () => div.classList.remove('dragging');
+            div.ondragend = () => { div.draggable = false; div.classList.remove('dragging'); };
             div.ondragover = (e) => {
                 e.preventDefault();
                 const draggingItem = document.querySelector('.dragging');
@@ -1362,6 +1360,10 @@
                     onfocus="setActive(${idx})">
                 <button class="btn-icon" onclick="deleteSegment(${idx}, event)">&times;</button>
             `;
+            // 핸들 mousedown 시에만 draggable 활성화
+            const handle = div.querySelector('.drag-handle');
+            handle.onmousedown = () => { div.draggable = true; };
+
             container.appendChild(div);
         });
         document.getElementById('segment-count').innerText = segments.length;

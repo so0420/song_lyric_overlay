@@ -976,7 +976,7 @@
             <h3 style="font-size: 1.25rem;">내 가사 작업 내역</h3>
             <button onclick="hideModals()" class="btn-icon" style="font-size: 1.5rem;">&times;</button>
         </div>
-        <div id="history-results" style="display: flex; flex-direction: column; gap: 10px;">
+        <div id="history-results" style="display: flex; flex-direction: column; gap: 10px; max-height: 500px; overflow-y: auto;">
             <div style="text-align: center; padding: 40px; color: var(--text-dim);">로딩 중...</div>
         </div>
     </div>
@@ -2385,18 +2385,44 @@
         }
     });
 
+    let historyOffset = 0;
+    let historyHasMore = false;
+    let historyLoading = false;
+
     function showHistoryModal() {
         showModal('modal-history');
-        fetch('/api/v1/lyrics/my')
+        historyOffset = 0;
+        document.getElementById('history-results').innerHTML = '';
+        loadHistoryPage();
+
+        // 무한 스크롤
+        const container = document.getElementById('history-results');
+        container.onscroll = () => {
+            if (historyLoading || !historyHasMore) return;
+            if (container.scrollTop + container.clientHeight >= container.scrollHeight - 50) {
+                loadHistoryPage();
+            }
+        };
+    }
+
+    function loadHistoryPage() {
+        if (historyLoading) return;
+        historyLoading = true;
+        const container = document.getElementById('history-results');
+
+        fetch(`/api/v1/lyrics/my?offset=${historyOffset}&limit=20`)
             .then(res => res.json())
             .then(data => {
-                const container = document.getElementById('history-results');
                 const items = data.items || [];
-                if (items.length === 0) {
+                historyHasMore = data.has_more || false;
+                historyOffset += items.length;
+
+                if (historyOffset === items.length && items.length === 0) {
                     container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-dim);">작성한 가사가 없습니다.</div>';
                     return;
                 }
-                container.innerHTML = items.map(l => `
+
+                container.insertAdjacentHTML('beforeend', items.map(l => `
                     <div class="card" style="padding: 12px; display: flex; align-items: center; gap: 12px;">
                         <img src="${escapeHtml(l.cover_image_url || '')}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); flex-shrink: 0;" onerror="this.style.visibility='hidden'">
                         <div style="flex: 1; min-width: 0;">
@@ -2411,8 +2437,9 @@
                             <button onclick="deleteLyrics(${parseInt(l.id)})" class="btn btn-outline" style="padding:4px 8px; color:#ef4444;">삭제</button>
                         </div>
                     </div>
-                `).join('');
-            });
+                `).join(''));
+            })
+            .finally(() => { historyLoading = false; });
     }
 
     function deleteLyrics(id) {

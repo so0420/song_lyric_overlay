@@ -80,9 +80,10 @@ async def update_my_profile(
     )
 
     # Update Session
-    user['name'] = data.name
-    user['email'] = data.email
-    request.session['user'] = user
+    session_user = dict(request.session.get('user', {}))
+    session_user['name'] = data.name
+    session_user['email'] = data.email
+    request.session['user'] = session_user
 
     return {"success": True, "name": data.name, "email": data.email}
 

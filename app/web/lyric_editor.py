@@ -18,8 +18,6 @@ async def lyric_editor_page(
     song_repo=Depends(get_song_repository),
     lyrics_repo=Depends(get_lyrics_repository)
 ):
-    if not user:
-        return HTMLResponse(content="<script>alert('로그인이 필요합니다.'); window.location.href='/login';</script>")
 
     song_info = None
     if song_id:

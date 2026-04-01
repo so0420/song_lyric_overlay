@@ -80,18 +80,20 @@ async def get_lyrics_detail(
 @router.post("/", dependencies=[Depends(verify_csrf)])
 async def create_lyrics(
     data: LyricsCreateSchema,
-    user=Depends(get_current_user_api),
+    user=Depends(get_current_user),
     repo: LyricsRepository = Depends(get_lyrics_repository)
 ):
-    """가사 작성 저장"""
-    # 가사 이름 중복 체크 (내 가사들 중에서)
-    if data.title:
-        is_duplicate = await repo.check_title_duplicate(user['id'], data.song_id, data.title)
+    """가사 작성 저장 (비로그인 시 익명으로 저장)"""
+    owner_id = user['id'] if user else None
+
+    # 가사 이름 중복 체크 (로그인 사용자만)
+    if owner_id and data.title:
+        is_duplicate = await repo.check_title_duplicate(owner_id, data.song_id, data.title)
         if is_duplicate:
             raise HTTPException(status_code=400, detail="같은 노래에 동일한 제목의 가사가 이미 존재합니다.")
 
     lyrics_id = await repo.create_lyrics(
-        owner_id=user['id'],
+        owner_id=owner_id,
         song_id=data.song_id,
         title=data.title,
         mr_youtube_video_id=data.mr_youtube_video_id,

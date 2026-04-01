@@ -112,7 +112,7 @@ class LyricsRepository:
         result = await self.db.fetch_one(query, params)
         return result is not None
 
-    async def create_lyrics(self, owner_id: int, song_id: int, mr_youtube_video_id: str, lyrics_data: str, title: str = None) -> int:
+    async def create_lyrics(self, owner_id, song_id: int, mr_youtube_video_id: str, lyrics_data: str, title: str = None) -> int:
         query = """
             INSERT INTO song_lyrics (owner_id, song_id, title, mr_youtube_video_id, lyrics_data)
             VALUES (%s, %s, %s, %s, %s)

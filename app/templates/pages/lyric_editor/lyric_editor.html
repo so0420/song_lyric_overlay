@@ -740,12 +740,14 @@
                 </svg>
                 <span class="btn-text">가사 검색</span>
             </button>
+            {% if user %}
             <button id="btn-load-history" class="btn btn-outline" style="height: 42px;" onclick="showHistoryModal()" title="내 작업 목록">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span class="btn-text">내 작업 목록</span>
             </button>
+            {% endif %}
         </div>
         <div class="version-title-box">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5">
@@ -1292,7 +1294,7 @@
     let syncIndex = 0;
 
     // Streamer Profile Pic (for cover art override)
-    const streamerProfilePic = '{{ user.picture or "/static/default_avatar.png" }}';
+    const streamerProfilePic = '{{ user.picture if user else "/static/default_avatar.png" }}';
 
     // Search Results State
     window.songSearchResults = [];
@@ -2617,7 +2619,9 @@
         })
             .then(res => res.json())
             .then(data => {
+                {% if user %}
                 if (data.id) currentLyricsId = data.id;
+                {% endif %}
                 clearDraft();
                 alert("저장되었습니다.");
             })

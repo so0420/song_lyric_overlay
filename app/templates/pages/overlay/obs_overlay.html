@@ -420,6 +420,7 @@
         let settings = { ...defaultSettings, ...initialSettings };
         let ws = null;
         let reconnectTimeout = null;
+        let tokenInvalidated = false;
         let currentSongTitle = '';
         let currentArtist = '';
 
@@ -877,6 +878,7 @@
             ws = new WebSocket(wsUrl);
 
             ws.onopen = () => {
+                if (reconnectTimeout) { clearTimeout(reconnectTimeout); reconnectTimeout = null; }
                 connectionStatus.className = 'connection-status';
                 console.log('WebSocket connected');
             };
@@ -919,6 +921,7 @@
                         case 'token_invalidated':
                             // 토큰 무효화 시 연결 종료 (재연결 하지 않음)
                             console.log('Token invalidated:', message.message);
+                            tokenInvalidated = true;
                             ws.close();
                             break;
                     }
@@ -928,6 +931,11 @@
             };
 
             ws.onclose = () => {
+                if (tokenInvalidated) {
+                    connectionStatus.textContent = '토큰이 무효화되었습니다. 새 URL을 설정하세요.';
+                    connectionStatus.className = 'connection-status disconnected';
+                    return;
+                }
                 connectionStatus.textContent = '연결 끊김 - 재연결 중...';
                 connectionStatus.className = 'connection-status disconnected';
                 reconnectTimeout = setTimeout(connect, 3000);

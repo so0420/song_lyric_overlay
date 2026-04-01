@@ -2833,7 +2833,7 @@
 
             try {
                 const resp = await fetch('/api/v1/overlay/ws-token');
-                if (!resp.ok) return;
+                if (!resp.ok) { scheduleReconnect(); return; }
                 const { token } = await resp.json();
 
                 const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';

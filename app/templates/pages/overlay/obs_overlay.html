@@ -466,12 +466,12 @@
             currentLine.style.fontStyle = settings.current_line_italic ? 'italic' : 'normal';
             currentLine.style.color = settings.highlight_color || '#FFE500';
 
-            prevLine.style.fontSize = (settings.font_size * 0.7) + 'px';
+            prevLine.style.fontSize = (settings.font_size * ((settings.prev_line_size_ratio || 70) / 100)) + 'px';
             prevLine.style.fontWeight = settings.prev_line_weight || 600;
             prevLine.style.fontStyle = settings.prev_line_italic ? 'italic' : 'normal';
             prevLine.style.color = settings.prev_line_color || '#FFFFFF';
 
-            nextLine.style.fontSize = (settings.font_size * 0.7) + 'px';
+            nextLine.style.fontSize = (settings.font_size * ((settings.next_line_size_ratio || 70) / 100)) + 'px';
             nextLine.style.fontWeight = settings.next_line_weight || 600;
             nextLine.style.fontStyle = settings.next_line_italic ? 'italic' : 'normal';
             nextLine.style.color = settings.next_line_color || '#FFFFFF';
@@ -607,14 +607,28 @@
             return div.innerHTML;
         }
 
-        function formatLyrics(text) {
+        function formatLyrics(text, baseFontSize) {
             if (!text) return '';
             const parts = text.split('\\n');
             if (parts.length > 1) {
+                const lineRatios = [
+                    settings.lyrics_line1_size_ratio || 100,
+                    settings.lyrics_line2_size_ratio || 85,
+                    settings.lyrics_line3_size_ratio || 85
+                ];
+                const showFlags = [
+                    settings.show_lyrics_line1 !== false,
+                    settings.show_lyrics_line2 !== false,
+                    settings.show_lyrics_line3 !== false
+                ];
                 const visible = [];
-                if (settings.show_lyrics_line1 !== false && parts[0] != null) visible.push(escapeHtml(parts[0]));
-                if (settings.show_lyrics_line2 !== false && parts[1] != null) visible.push(escapeHtml(parts[1]));
-                if (settings.show_lyrics_line3 !== false && parts[2] != null) visible.push(escapeHtml(parts[2]));
+                for (let i = 0; i < 3; i++) {
+                    if (showFlags[i] && parts[i] != null) {
+                        const size = baseFontSize ? Math.round(baseFontSize * lineRatios[i] / 100) : null;
+                        const escaped = escapeHtml(parts[i]);
+                        visible.push(size ? `<span style="font-size:${size}px">${escaped}</span>` : escaped);
+                    }
+                }
                 return visible.join('<br>');
             }
             return escapeHtml(text);
@@ -716,8 +730,10 @@
                 currentLine.innerHTML = '';
                 currentLine.classList.remove('visible');
 
-                prevLine.innerHTML = gapPrev ? formatLyrics(gapPrev.text) : '';
-                nextLine.innerHTML = gapNext ? formatLyrics(gapNext.text) : '';
+                const gapPrevSize = settings.font_size * ((settings.prev_line_size_ratio || 70) / 100);
+                const gapNextSize = settings.font_size * ((settings.next_line_size_ratio || 70) / 100);
+                prevLine.innerHTML = gapPrev ? formatLyrics(gapPrev.text, gapPrevSize) : '';
+                nextLine.innerHTML = gapNext ? formatLyrics(gapNext.text, gapNextSize) : '';
 
                 if (gapPrev && settings.show_prev_line) { prevLine.classList.add('visible'); prevLine.style.display = 'block'; }
                 else { prevLine.classList.remove('visible'); prevLine.style.display = 'none'; }
@@ -731,7 +747,8 @@
             const curr = lyricsData[index];
             const next = lyricsData[index + 1];
 
-            const formattedCurrent = formatLyrics(curr.text);
+            const currentBaseFontSize = settings.font_size;
+            const formattedCurrent = formatLyrics(curr.text, currentBaseFontSize);
             if (settings.animation_enabled && currentLine.innerHTML !== formattedCurrent) {
                 currentLine.classList.remove('visible');
                 setTimeout(() => {
@@ -744,8 +761,10 @@
                 else currentLine.classList.remove('visible');
             }
 
-            prevLine.innerHTML = prev ? formatLyrics(prev.text) : '';
-            nextLine.innerHTML = next ? formatLyrics(next.text) : '';
+            const prevBaseFontSize = settings.font_size * ((settings.prev_line_size_ratio || 70) / 100);
+            const nextBaseFontSize = settings.font_size * ((settings.next_line_size_ratio || 70) / 100);
+            prevLine.innerHTML = prev ? formatLyrics(prev.text, prevBaseFontSize) : '';
+            nextLine.innerHTML = next ? formatLyrics(next.text, nextBaseFontSize) : '';
 
             const isMultiline = curr.text && curr.text.includes('\\n');
             const hideAdj = settings.hide_adj_lines_for_multiline && isMultiline;

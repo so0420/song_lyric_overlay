@@ -1178,6 +1178,14 @@ input:checked + .toggle-slider:before {
                     </div>
 
                     <div class="setting-row">
+                        <span class="setting-label">글자 크기</span>
+                        <div class="setting-control">
+                            <input type="range" id="prevLineSizeRatio" min="30" max="100" value="70" oninput="updatePreview()">
+                            <span class="value-display" id="prevLineSizeRatioValue">70%</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
                         <span class="setting-label">색상</span>
                         <input type="color" id="prevLineColor" value="#FFFFFF" onchange="updatePreview()">
                     </div>
@@ -1234,6 +1242,14 @@ input:checked + .toggle-slider:before {
                             <input type="checkbox" id="showNextLine" checked onchange="updatePreview()">
                             <span class="toggle-slider"></span>
                         </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">글자 크기</span>
+                        <div class="setting-control">
+                            <input type="range" id="nextLineSizeRatio" min="30" max="100" value="70" oninput="updatePreview()">
+                            <span class="value-display" id="nextLineSizeRatioValue">70%</span>
+                        </div>
                     </div>
 
                     <div class="setting-row">
@@ -1306,6 +1322,30 @@ input:checked + .toggle-slider:before {
                             </label>
                         </div>
                         <p style="font-size:0.78rem; color:var(--text-sub); margin:0;">한국어 가사(단일 줄)에는 영향 없음</p>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">원문 글자 크기</span>
+                        <div class="setting-control">
+                            <input type="range" id="lyricsLine1SizeRatio" min="50" max="150" value="100" oninput="updatePreview()">
+                            <span class="value-display" id="lyricsLine1SizeRatioValue">100%</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">발음 글자 크기</span>
+                        <div class="setting-control">
+                            <input type="range" id="lyricsLine2SizeRatio" min="50" max="150" value="85" oninput="updatePreview()">
+                            <span class="value-display" id="lyricsLine2SizeRatioValue">85%</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">해석 글자 크기</span>
+                        <div class="setting-control">
+                            <input type="range" id="lyricsLine3SizeRatio" min="50" max="150" value="85" oninput="updatePreview()">
+                            <span class="value-display" id="lyricsLine3SizeRatioValue">85%</span>
+                        </div>
                     </div>
 
                     <div class="setting-row">
@@ -1565,9 +1605,11 @@ const defaultSettings = {
     highlight_color: "#FFE500",
     current_line_weight: 800,
     current_line_italic: false,
+    prev_line_size_ratio: 70,
     prev_line_color: "#FFFFFF",
     prev_line_weight: 600,
     prev_line_italic: false,
+    next_line_size_ratio: 70,
     next_line_color: "#FFFFFF",
     next_line_weight: 600,
     next_line_italic: false,
@@ -1587,6 +1629,9 @@ const defaultSettings = {
     show_lyrics_line1: true,
     show_lyrics_line2: true,
     show_lyrics_line3: true,
+    lyrics_line1_size_ratio: 100,
+    lyrics_line2_size_ratio: 85,
+    lyrics_line3_size_ratio: 85,
     hide_adj_lines_for_multiline: false,
     show_song_title: true,
     show_artist: true,
@@ -1659,9 +1704,11 @@ function applySettingsToForm(settings) {
     document.getElementById('highlightColor').value = settings.highlight_color || defaultSettings.highlight_color;
     document.getElementById('currentLineWeight').value = settings.current_line_weight || defaultSettings.current_line_weight;
     document.getElementById('currentLineItalic').checked = settings.current_line_italic === true;
+    document.getElementById('prevLineSizeRatio').value = settings.prev_line_size_ratio || defaultSettings.prev_line_size_ratio;
     document.getElementById('prevLineColor').value = settings.prev_line_color || defaultSettings.prev_line_color;
     document.getElementById('prevLineWeight').value = settings.prev_line_weight || defaultSettings.prev_line_weight;
     document.getElementById('prevLineItalic').checked = settings.prev_line_italic === true;
+    document.getElementById('nextLineSizeRatio').value = settings.next_line_size_ratio || defaultSettings.next_line_size_ratio;
     document.getElementById('nextLineColor').value = settings.next_line_color || defaultSettings.next_line_color;
     document.getElementById('nextLineWeight').value = settings.next_line_weight || defaultSettings.next_line_weight;
     document.getElementById('nextLineItalic').checked = settings.next_line_italic === true;
@@ -1677,6 +1724,9 @@ function applySettingsToForm(settings) {
     document.getElementById('showLyricsLine1').checked = settings.show_lyrics_line1 !== false;
     document.getElementById('showLyricsLine2').checked = settings.show_lyrics_line2 !== false;
     document.getElementById('showLyricsLine3').checked = settings.show_lyrics_line3 !== false;
+    document.getElementById('lyricsLine1SizeRatio').value = settings.lyrics_line1_size_ratio || defaultSettings.lyrics_line1_size_ratio;
+    document.getElementById('lyricsLine2SizeRatio').value = settings.lyrics_line2_size_ratio || defaultSettings.lyrics_line2_size_ratio;
+    document.getElementById('lyricsLine3SizeRatio').value = settings.lyrics_line3_size_ratio || defaultSettings.lyrics_line3_size_ratio;
     document.getElementById('hideAdjLinesForMultiline').checked = settings.hide_adj_lines_for_multiline === true;
     document.getElementById('showSongTitle').checked = settings.show_song_title !== false;
     document.getElementById('showArtist').checked = settings.show_artist !== false;
@@ -1709,9 +1759,11 @@ function getSettingsFromForm() {
         highlight_color: document.getElementById('highlightColor').value,
         current_line_weight: parseInt(document.getElementById('currentLineWeight').value),
         current_line_italic: document.getElementById('currentLineItalic').checked,
+        prev_line_size_ratio: parseInt(document.getElementById('prevLineSizeRatio').value),
         prev_line_color: document.getElementById('prevLineColor').value,
         prev_line_weight: parseInt(document.getElementById('prevLineWeight').value),
         prev_line_italic: document.getElementById('prevLineItalic').checked,
+        next_line_size_ratio: parseInt(document.getElementById('nextLineSizeRatio').value),
         next_line_color: document.getElementById('nextLineColor').value,
         next_line_weight: parseInt(document.getElementById('nextLineWeight').value),
         next_line_italic: document.getElementById('nextLineItalic').checked,
@@ -1731,6 +1783,9 @@ function getSettingsFromForm() {
         show_lyrics_line1: document.getElementById('showLyricsLine1').checked,
         show_lyrics_line2: document.getElementById('showLyricsLine2').checked,
         show_lyrics_line3: document.getElementById('showLyricsLine3').checked,
+        lyrics_line1_size_ratio: parseInt(document.getElementById('lyricsLine1SizeRatio').value),
+        lyrics_line2_size_ratio: parseInt(document.getElementById('lyricsLine2SizeRatio').value),
+        lyrics_line3_size_ratio: parseInt(document.getElementById('lyricsLine3SizeRatio').value),
         hide_adj_lines_for_multiline: document.getElementById('hideAdjLinesForMultiline').checked,
         show_song_title: document.getElementById('showSongTitle').checked,
         show_artist: document.getElementById('showArtist').checked,
@@ -1795,8 +1850,13 @@ function updatePreview() {
     // Update value displays
     document.getElementById('fontSizeValue').textContent = settings.font_size + 'px';
     document.getElementById('currentLineStrokeValue').textContent = settings.current_line_stroke + 'px';
+    document.getElementById('prevLineSizeRatioValue').textContent = settings.prev_line_size_ratio + '%';
     document.getElementById('prevLineStrokeValue').textContent = settings.prev_line_stroke + 'px';
+    document.getElementById('nextLineSizeRatioValue').textContent = settings.next_line_size_ratio + '%';
     document.getElementById('nextLineStrokeValue').textContent = settings.next_line_stroke + 'px';
+    document.getElementById('lyricsLine1SizeRatioValue').textContent = settings.lyrics_line1_size_ratio + '%';
+    document.getElementById('lyricsLine2SizeRatioValue').textContent = settings.lyrics_line2_size_ratio + '%';
+    document.getElementById('lyricsLine3SizeRatioValue').textContent = settings.lyrics_line3_size_ratio + '%';
     document.getElementById('songTitleSizeValue').textContent = settings.song_title_size + 'px';
     document.getElementById('songTitleStrokeValue').textContent = settings.song_title_stroke + 'px';
     document.getElementById('artistSizeValue').textContent = settings.artist_size + 'px';
@@ -1875,24 +1935,30 @@ function updatePreview() {
     currentLine.style.fontStyle = settings.current_line_italic ? 'italic' : 'normal';
     currentLine.style.color = settings.highlight_color;
 
-    // 미리보기 가사: 외국어 줄 표시 설정 반영
-    const previewParts = ['현재 가사 원문', '발음 예시', '해석 예시'];
-    const visibleParts = [];
-    if (settings.show_lyrics_line1 !== false) visibleParts.push(previewParts[0]);
-    if (settings.show_lyrics_line2 !== false) visibleParts.push(previewParts[1]);
-    if (settings.show_lyrics_line3 !== false) visibleParts.push(previewParts[2]);
-    currentLine.innerHTML = visibleParts.join('<br>');
+    // 미리보기 가사: 외국어 줄 표시 설정 반영 (줄별 크기 적용)
+    const previewParts = [
+        { text: '현재 가사 원문', show: settings.show_lyrics_line1, ratio: settings.lyrics_line1_size_ratio },
+        { text: '발음 예시', show: settings.show_lyrics_line2, ratio: settings.lyrics_line2_size_ratio },
+        { text: '해석 예시', show: settings.show_lyrics_line3, ratio: settings.lyrics_line3_size_ratio },
+    ];
+    const baseFontSize = settings.font_size * lyricsScale;
+    const visibleHtml = previewParts
+        .filter(p => p.show !== false)
+        .map(p => `<span style="font-size:${baseFontSize * (p.ratio / 100)}px">${p.text}</span>`)
+        .join('<br>');
+    currentLine.innerHTML = visibleHtml;
+    currentLine.style.fontSize = '';
 
     const isMultiline = true; // 미리보기는 항상 다중 줄 예시
     const hideAdj = settings.hide_adj_lines_for_multiline && isMultiline;
 
-    prevLine.style.fontSize = (settings.font_size * 0.7 * lyricsScale) + 'px';
+    prevLine.style.fontSize = (settings.font_size * (settings.prev_line_size_ratio / 100) * lyricsScale) + 'px';
     prevLine.style.fontWeight = settings.prev_line_weight;
     prevLine.style.fontStyle = settings.prev_line_italic ? 'italic' : 'normal';
     prevLine.style.color = settings.prev_line_color || '#FFFFFF';
     prevLine.style.display = (settings.show_prev_line && !hideAdj) ? 'block' : 'none';
 
-    nextLine.style.fontSize = (settings.font_size * 0.7 * lyricsScale) + 'px';
+    nextLine.style.fontSize = (settings.font_size * (settings.next_line_size_ratio / 100) * lyricsScale) + 'px';
     nextLine.style.fontWeight = settings.next_line_weight;
     nextLine.style.fontStyle = settings.next_line_italic ? 'italic' : 'normal';
     nextLine.style.color = settings.next_line_color || '#FFFFFF';

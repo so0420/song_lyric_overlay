@@ -1,472 +1,146 @@
-{% extends "base/base.html" %}
+{% extends "pages/help/base_help.html" %}
 
 {% block title %}사용법 안내 - Jamku Song{% endblock %}
 
-{% block extra_styles %}
-<style>
-.help-container {
-    max-width: 860px;
-    margin: 0 auto;
-    padding-top: 40px;
-}
-
-.help-header {
-    text-align: center;
-    margin-bottom: 48px;
-}
-
-.help-title {
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--text-main);
-    margin-bottom: 8px;
-}
-
-.help-subtitle {
-    color: var(--text-sub);
-    font-size: 1rem;
-}
-
-.help-toc {
-    background: #f8fafc;
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    padding: 24px 32px;
-    margin-bottom: 48px;
-}
-
-.help-toc-title {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 12px;
-}
-
-.help-toc-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 8px;
-}
-
-.help-toc-list a {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    color: var(--accent);
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.9rem;
-    border-radius: 8px;
-    transition: background 0.2s;
-}
-
-.help-toc-list a:hover {
-    background: var(--accent-light);
-}
-
-.help-section {
-    margin-bottom: 48px;
-}
-
-.help-section-title {
-    font-size: 1.3rem;
-    font-weight: 800;
-    color: var(--text-main);
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-    border-bottom: 2px solid var(--accent);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.help-section-title svg {
-    color: var(--accent);
-    flex-shrink: 0;
-}
-
-.help-card {
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 20px 24px;
-    margin-bottom: 16px;
-}
-
-.help-card h4 {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--text-main);
-    margin-bottom: 8px;
-}
-
-.help-card p, .help-card li {
-    font-size: 0.9rem;
-    color: var(--text-sub);
-    line-height: 1.7;
-}
-
-.help-card ol, .help-card ul {
-    padding-left: 20px;
-    margin: 8px 0 0;
-}
-
-.help-card ol li, .help-card ul li {
-    margin-bottom: 4px;
-}
-
-.help-steps {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.help-step {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-}
-
-.help-step-num {
-    width: 28px;
-    height: 28px;
-    background: var(--accent);
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    font-weight: 700;
-    flex-shrink: 0;
-    margin-top: 2px;
-}
-
-.help-step-content {
-    flex: 1;
-}
-
-.help-step-content h4 {
-    font-weight: 700;
-    color: var(--text-main);
-    margin-bottom: 4px;
-}
-
-.help-step-content p {
-    font-size: 0.9rem;
-    color: var(--text-sub);
-    line-height: 1.6;
-}
-
-.kbd {
-    background: #f1f5f9;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 0.8rem;
-    border: 1px solid #e2e8f0;
-}
-
-.shortcuts-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-}
-
-.shortcut-group h4 {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--accent);
-    margin-bottom: 8px;
-}
-
-.shortcut-group table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.shortcut-group td {
-    padding: 4px 0;
-    font-size: 0.85rem;
-    color: var(--text-sub);
-}
-
-.shortcut-group td:first-child {
-    width: 140px;
-}
-
-@media (max-width: 640px) {
-    .shortcuts-grid {
-        grid-template-columns: 1fr;
-    }
-    .help-toc-list {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="help-container">
-    <div class="help-header">
+    <div class="help-header" style="text-align: center;">
         <h1 class="help-title">Jamku Song 사용법</h1>
         <p class="help-subtitle">노래 가사 자막 오버레이의 전체 사용 방법을 안내합니다</p>
     </div>
 
-    <nav class="help-toc">
-        <div class="help-toc-title">목차</div>
-        <ul class="help-toc-list">
-            <li><a href="#overview">서비스 소개</a></li>
-            <li><a href="#lyrics-editor">가사 편집기</a></li>
-            <li><a href="#singing">노래하기</a></li>
-            <li><a href="#obs-setup">OBS 오버레이 설정</a></li>
-            <li><a href="#overlay-settings">오버레이 디자인 설정</a></li>
-            <li><a href="#shortcuts">키보드 단축키</a></li>
-        </ul>
-    </nav>
+    <!-- 전체 흐름 요약 -->
+    <div class="help-card" style="margin-bottom: 40px;">
+        <h4>서비스 소개</h4>
+        <p>
+            Jamku Song은 방송 중 노래 가사를 OBS 오버레이로 표시하는 서비스입니다.<br>
+            노래를 검색하고, 가사를 싱크에 맞춰 편집한 뒤, OBS 브라우저 소스를 통해 시청자에게 실시간으로 가사를 보여줄 수 있습니다.
+        </p>
+        <div class="help-tip">
+            <b>기본 흐름:</b> 가사 편집기에서 가사 작성 &rarr; 노래하기 페이지에서 곡 재생 &rarr; OBS 오버레이에 실시간 표시
+        </div>
+        <p style="margin-top: 12px;">
+            로그인 없이도 가사 편집 및 저장(익명)이 가능합니다. 노래하기 기능은 승인된 사용자만 이용할 수 있습니다.
+        </p>
+    </div>
 
-    <!-- 서비스 소개 -->
-    <section class="help-section" id="overview">
+    <!-- 상세 가이드 링크 -->
+    <div class="help-hub-grid">
+        <a href="/help/editor" class="help-hub-card">
+            <div class="help-hub-card-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+            </div>
+            <div class="help-hub-card-title">가사 편집기</div>
+            <div class="help-hub-card-desc">곡 검색, 가사 입력, 싱크 맞추기, 파일 가져오기, Undo/Redo, 자동 저장 등</div>
+        </a>
+
+        <a href="/help/singing" class="help-hub-card">
+            <div class="help-hub-card-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18V5l12-2v13"></path>
+                    <circle cx="6" cy="18" r="3"></circle>
+                    <circle cx="18" cy="16" r="3"></circle>
+                </svg>
+            </div>
+            <div class="help-hub-card-title">노래하기</div>
+            <div class="help-hub-card-desc">곡 검색 및 재생, 재생목록 관리, 오프셋 조정, 즐겨찾기 등</div>
+        </a>
+
+        <a href="/help/obs" class="help-hub-card">
+            <div class="help-hub-card-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+            </div>
+            <div class="help-hub-card-title">OBS 오버레이 설정</div>
+            <div class="help-hub-card-desc">OBS 브라우저 소스 추가, 디자인 커스터마이징, 프리셋, 토큰 관리 등</div>
+        </a>
+
+        <a href="/help/shortcuts" class="help-hub-card">
+            <div class="help-hub-card-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+                    <line x1="6" y1="8" x2="6.01" y2="8"></line>
+                    <line x1="10" y1="8" x2="10.01" y2="8"></line>
+                    <line x1="14" y1="8" x2="14.01" y2="8"></line>
+                    <line x1="6" y1="12" x2="18" y2="12"></line>
+                    <line x1="8" y1="16" x2="16" y2="16"></line>
+                </svg>
+            </div>
+            <div class="help-hub-card-title">키보드 단축키</div>
+            <div class="help-hub-card-desc">편집기 및 노래하기 페이지의 전체 단축키 목록</div>
+        </a>
+    </div>
+
+    <!-- 빠른 시작 가이드 -->
+    <section class="help-section">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            빠른 시작 가이드
+        </h2>
+        <div class="help-card">
+            <div class="help-steps">
+                <div class="help-step">
+                    <span class="help-step-num">1</span>
+                    <div class="help-step-content">
+                        <h4>가사 만들기</h4>
+                        <p><a href="/lyrics" style="color: var(--accent);">가사 편집기</a>에서 노래를 검색하고, MR 영상을 연결한 뒤, 가사를 입력합니다. 뭉치 입력이나 파일 가져오기로 빠르게 가사를 넣고, 실시간 싱크 모드로 타이밍을 맞춥니다.</p>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">2</span>
+                    <div class="help-step-content">
+                        <h4>OBS 오버레이 연결</h4>
+                        <p><a href="/overlay/settings" style="color: var(--accent);">오버레이 설정</a> 페이지에서 OBS 브라우저 소스 URL을 복사하여 OBS에 추가합니다. 디자인도 자유롭게 커스터마이징할 수 있습니다.</p>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">3</span>
+                    <div class="help-step-content">
+                        <h4>방송에서 사용</h4>
+                        <p><a href="/overlay" style="color: var(--accent);">노래하기</a> 페이지에서 곡을 검색하여 재생하면, OBS 오버레이에 가사가 실시간으로 표시됩니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="help-section">
         <h2 class="help-section-title">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="16" x2="12" y2="12"></line>
-                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
             </svg>
-            서비스 소개
+            자주 묻는 질문
         </h2>
         <div class="help-card">
-            <p>
-                Jamku Song은 방송 중 노래 가사를 OBS 오버레이로 표시하는 서비스입니다.<br>
-                노래를 검색하고, 가사를 싱크에 맞춰 편집한 뒤, OBS 브라우저 소스를 통해 시청자에게 실시간으로 가사를 보여줄 수 있습니다.
-            </p>
-            <p style="margin-top: 12px;">
-                <b>기본 흐름:</b> 가사 편집 &rarr; 노래하기 페이지에서 재생 &rarr; OBS 오버레이에 실시간 표시
-            </p>
-        </div>
-    </section>
-
-    <!-- 가사 편집기 -->
-    <section class="help-section" id="lyrics-editor">
-        <h2 class="help-section-title">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-            가사 편집기
-        </h2>
-
-        <div class="help-card">
-            <h4>가사 편집 순서</h4>
-            <div class="help-steps">
-                <div class="help-step">
-                    <span class="help-step-num">1</span>
-                    <div class="help-step-content">
-                        <h4>곡 검색 &amp; 선택</h4>
-                        <p>편집기에서 노래를 검색하여 선택합니다. iTunes 음원 또는 커스텀 노래를 등록할 수 있습니다.</p>
-                    </div>
-                </div>
-                <div class="help-step">
-                    <span class="help-step-num">2</span>
-                    <div class="help-step-content">
-                        <h4>MR 영상 선택</h4>
-                        <p>유튜브에서 MR(반주) 영상을 검색하여 연결합니다.</p>
-                    </div>
-                </div>
-                <div class="help-step">
-                    <span class="help-step-num">3</span>
-                    <div class="help-step-content">
-                        <h4>가사 입력</h4>
-                        <p><b>뭉치 가사 입력</b>으로 전체 가사를 한번에 붙여넣거나, <b>구간 추가</b> 버튼으로 한 줄씩 추가합니다.</p>
-                    </div>
-                </div>
-                <div class="help-step">
-                    <span class="help-step-num">4</span>
-                    <div class="help-step-content">
-                        <h4>싱크 맞추기</h4>
-                        <p><b>실시간 싱크 모드</b>를 사용하면 영상을 재생하면서 Enter 키로 박자를 맞출 수 있습니다. 이후 타임라인에서 세밀하게 조정합니다.</p>
-                    </div>
-                </div>
-                <div class="help-step">
-                    <span class="help-step-num">5</span>
-                    <div class="help-step-content">
-                        <h4>저장</h4>
-                        <p>가사 버전 제목을 입력하고 저장합니다. 로그인하지 않아도 익명으로 저장 가능합니다.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="help-card">
-            <h4>뭉치 가사 입력 모드</h4>
-            <ul>
-                <li><b>단일 줄 모드:</b> 한 줄이 하나의 가사 구간이 됩니다.</li>
-                <li><b>여러 줄 모드:</b> 빈 줄(엔터 2번)로 구간을 나눕니다.
-                    <ul>
-                        <li>1줄 = 그대로 가사 한 줄</li>
-                        <li>2줄 = 원문 / 해석</li>
-                        <li>3줄 = 원문 / 발음 / 해석</li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-
-        <div class="help-card">
-            <h4>편리한 기능</h4>
-            <ul>
-                <li><b>Undo/Redo:</b> <span class="kbd">Ctrl+Z</span> / <span class="kbd">Ctrl+Shift+Z</span>로 실행 취소/다시 실행</li>
-                <li><b>자동 저장:</b> 편집 내용이 브라우저에 자동 저장되어 페이지를 닫아도 복구 가능</li>
-                <li><b>모양 정리:</b> 가사의 불필요한 공백, 특수문자, 중복 줄바꿈을 한번에 정리</li>
-                <li><b>드래그 &amp; 드롭:</b> 타임라인에서 가사 순서를 드래그로 변경</li>
-                <li><b>오프셋 조정:</b> 전체 가사의 시작/종료 시간을 일괄 조정</li>
-            </ul>
-        </div>
-    </section>
-
-    <!-- 노래하기 -->
-    <section class="help-section" id="singing">
-        <h2 class="help-section-title">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 18V5l12-2v13"></path>
-                <circle cx="6" cy="18" r="3"></circle>
-                <circle cx="18" cy="16" r="3"></circle>
-            </svg>
-            노래하기
-        </h2>
-        <div class="help-card">
-            <h4>사용 방법</h4>
-            <ol>
-                <li>노래하기 페이지에서 노래를 검색합니다.</li>
-                <li>검색 결과에서 원하는 가사 버전을 선택하면 재생목록에 추가됩니다.</li>
-                <li><span class="kbd">Space</span>로 재생하면 MR이 재생되며, 가사가 OBS 오버레이에 실시간으로 표시됩니다.</li>
-                <li>재생목록에 여러 곡을 추가하여 연속 재생할 수 있습니다.</li>
-            </ol>
+            <h4>로그인 없이도 사용할 수 있나요?</h4>
+            <p>가사 편집기에서 가사를 작성하고 익명으로 저장하는 것은 가능합니다. 단, 노래하기 기능(OBS 실시간 동기화)은 관리자 승인이 필요합니다.</p>
         </div>
         <div class="help-card">
-            <h4>오프셋 조정</h4>
-            <p>싱크가 미세하게 맞지 않을 때 <b>로컬 오프셋</b>과 <b>OBS 오프셋</b>을 조정할 수 있습니다.</p>
-            <ul>
-                <li><b>로컬 오프셋:</b> 노래하기 화면에 표시되는 가사 타이밍 조정</li>
-                <li><b>OBS 오프셋:</b> OBS 오버레이에 표시되는 가사 타이밍 조정</li>
-            </ul>
-        </div>
-    </section>
-
-    <!-- OBS 설정 -->
-    <section class="help-section" id="obs-setup">
-        <h2 class="help-section-title">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                <line x1="8" y1="21" x2="16" y2="21"></line>
-                <line x1="12" y1="17" x2="12" y2="21"></line>
-            </svg>
-            OBS 오버레이 설정
-        </h2>
-        <div class="help-card">
-            <h4>OBS에 오버레이 추가하기</h4>
-            <div class="help-steps">
-                <div class="help-step">
-                    <span class="help-step-num">1</span>
-                    <div class="help-step-content">
-                        <h4>오버레이 설정 페이지 접속</h4>
-                        <p>메뉴에서 <b>OBS 오버레이 설정</b>으로 이동합니다.</p>
-                    </div>
-                </div>
-                <div class="help-step">
-                    <span class="help-step-num">2</span>
-                    <div class="help-step-content">
-                        <h4>URL 복사</h4>
-                        <p>하단의 <b>OBS 브라우저 소스 URL</b>을 복사합니다. 이 URL에는 고유 토큰이 포함되어 있으므로 타인에게 공유하지 마세요.</p>
-                    </div>
-                </div>
-                <div class="help-step">
-                    <span class="help-step-num">3</span>
-                    <div class="help-step-content">
-                        <h4>OBS 브라우저 소스 추가</h4>
-                        <p>OBS에서 소스 추가 &rarr; <b>브라우저</b>를 선택하고, URL에 복사한 주소를 붙여넣습니다. 권장 크기: <b>1920x1080</b></p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- 오버레이 디자인 -->
-    <section class="help-section" id="overlay-settings">
-        <h2 class="help-section-title">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-            오버레이 디자인 설정
-        </h2>
-        <div class="help-card">
-            <h4>설정 카테고리</h4>
-            <ul>
-                <li><b>가사 공통:</b> 글꼴, 가사 크기, 외곽선, 그림자, 애니메이션</li>
-                <li><b>현재 가사:</b> 색상, 굵기, 기울임꼴, 외곽선 두께</li>
-                <li><b>이전/다음 가사:</b> 표시 여부, 글자 크기 비율, 색상, 굵기, 기울임꼴, 외곽선 두께</li>
-                <li><b>가사 표시:</b> 외국어 가사 줄 표시 (원문/발음/해석), 줄별 크기 비율</li>
-                <li><b>노래 정보:</b> 제목/가수/NOW 배지 표시 위치 및 스타일</li>
-                <li><b>재생목록:</b> 표시 여부, 위치, 글자 크기, 배경 색상</li>
-            </ul>
+            <h4>다른 사람이 만든 가사를 사용할 수 있나요?</h4>
+            <p>네. <a href="/songs" style="color: var(--accent);">가사 목록</a>에서 공개된 가사를 찾아볼 수 있고, 노래하기 페이지에서 검색하면 다른 사용자가 만든 가사도 바로 사용할 수 있습니다. 편집기에서 가사 검색을 통해 다른 사람의 가사를 복사해 올 수도 있습니다.</p>
         </div>
         <div class="help-card">
-            <h4>프리셋</h4>
-            <p>현재 설정을 프리셋으로 저장해두면 언제든 불러올 수 있습니다. 상황에 따라 여러 프리셋을 만들어 활용하세요.</p>
+            <h4>외국어 가사(일본어, 영어 등)도 지원하나요?</h4>
+            <p>네. 여러 줄 모드로 원문/발음/해석을 함께 입력할 수 있으며, 오버레이 설정에서 각 줄의 표시 여부와 크기를 개별 조절할 수 있습니다.</p>
         </div>
-    </section>
-
-    <!-- 단축키 -->
-    <section class="help-section" id="shortcuts">
-        <h2 class="help-section-title">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
-                <line x1="6" y1="8" x2="6.01" y2="8"></line>
-                <line x1="10" y1="8" x2="10.01" y2="8"></line>
-                <line x1="14" y1="8" x2="14.01" y2="8"></line>
-                <line x1="18" y1="8" x2="18.01" y2="8"></line>
-                <line x1="6" y1="12" x2="18" y2="12"></line>
-                <line x1="8" y1="16" x2="16" y2="16"></line>
-            </svg>
-            키보드 단축키
-        </h2>
-
         <div class="help-card">
-            <div class="shortcuts-grid">
-                <div class="shortcut-group">
-                    <h4>가사 편집기</h4>
-                    <table>
-                        <tr><td><span class="kbd">Space</span></td><td>재생 / 일시정지</td></tr>
-                        <tr><td><span class="kbd">J</span> / <span class="kbd">L</span></td><td>-5초 / +5초 이동</td></tr>
-                        <tr><td><span class="kbd">S</span></td><td>시작점 캡처</td></tr>
-                        <tr><td><span class="kbd">E</span></td><td>종료점 캡처</td></tr>
-                        <tr><td><span class="kbd">Enter</span></td><td>구간 추가 / 싱크 진행</td></tr>
-                        <tr><td><span class="kbd">Ctrl+Z</span></td><td>실행 취소</td></tr>
-                        <tr><td><span class="kbd">Ctrl+Shift+Z</span></td><td>다시 실행</td></tr>
-                        <tr><td><span class="kbd">Ctrl+S</span></td><td>즉시 저장</td></tr>
-                        <tr><td><span class="kbd">Esc</span></td><td>싱크 모드 종료</td></tr>
-                    </table>
-                </div>
-                <div class="shortcut-group">
-                    <h4>노래하기</h4>
-                    <table>
-                        <tr><td><span class="kbd">Space</span></td><td>재생 / 일시정지</td></tr>
-                        <tr><td><span class="kbd">&larr;</span> / <span class="kbd">&rarr;</span></td><td>이전 곡 / 다음 곡</td></tr>
-                        <tr><td><span class="kbd">[</span> / <span class="kbd">]</span></td><td>로컬 오프셋 &plusmn;100ms</td></tr>
-                        <tr><td><span class="kbd">Shift+[</span> / <span class="kbd">]</span></td><td>로컬 오프셋 &plusmn;500ms</td></tr>
-                        <tr><td><span class="kbd">,</span> / <span class="kbd">.</span></td><td>OBS 오프셋 &plusmn;100ms</td></tr>
-                        <tr><td><span class="kbd">Shift+,</span> / <span class="kbd">.</span></td><td>OBS 오프셋 &plusmn;500ms</td></tr>
-                        <tr><td><span class="kbd">Shift+0</span></td><td>오프셋 초기화</td></tr>
-                        <tr><td><span class="kbd">?</span></td><td>단축키 도움말</td></tr>
-                    </table>
-                </div>
-            </div>
+            <h4>OBS 오버레이 URL이 노출되면 어떻게 하나요?</h4>
+            <p>오버레이 설정 페이지에서 <b>토큰 재발급</b> 버튼을 눌러 새 URL을 발급받으세요. 기존 URL은 즉시 무효화됩니다.</p>
+        </div>
+        <div class="help-card">
+            <h4>가사 싱크가 잘 안 맞아요.</h4>
+            <p>노래하기 페이지에서 <span class="kbd">[</span> <span class="kbd">]</span> 키로 로컬 오프셋을, <span class="kbd">,</span> <span class="kbd">.</span> 키로 OBS 오프셋을 미세 조정할 수 있습니다. <span class="kbd">Shift</span>를 함께 누르면 500ms 단위로 조정됩니다.</p>
         </div>
     </section>
 </div>

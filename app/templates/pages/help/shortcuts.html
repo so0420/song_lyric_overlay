@@ -1,0 +1,109 @@
+{% extends "pages/help/base_help.html" %}
+
+{% block title %}키보드 단축키 - Jamku Song{% endblock %}
+
+{% block content %}
+<div class="help-container">
+    <div class="help-header">
+        <div class="help-breadcrumb"><a href="/help">사용법 안내</a> &rsaquo; 키보드 단축키</div>
+        <h1 class="help-title">키보드 단축키</h1>
+        <p class="help-subtitle">가사 편집기와 노래하기 페이지에서 사용할 수 있는 전체 단축키 목록입니다</p>
+    </div>
+
+    <!-- 편집기 -->
+    <section class="help-section">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            가사 편집기
+        </h2>
+
+        <div class="help-card">
+            <h4>재생 제어</h4>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; width: 200px;"><span class="kbd">Space</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">재생 / 일시정지</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">J</span> 또는 <span class="kbd">&larr;</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">5초 뒤로 이동</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">L</span> 또는 <span class="kbd">&rarr;</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">5초 앞으로 이동</td></tr>
+            </table>
+        </div>
+
+        <div class="help-card">
+            <h4>싱크 &amp; 편집</h4>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; width: 200px;"><span class="kbd">S</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">선택된 가사의 시작 시간을 현재 재생 위치로 설정</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">E</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">선택된 가사의 종료 시간을 현재 재생 위치로 설정</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">Enter</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">텍스트 입력 중: 새 구간 추가<br>싱크 모드: 다음 구간으로 진행</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">Esc</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">싱크 모드 종료 / 모달 닫기</td></tr>
+            </table>
+        </div>
+
+        <div class="help-card">
+            <h4>파일 &amp; 편집 관리</h4>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; width: 200px;"><span class="kbd">Ctrl+S</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">즉시 저장 (서버에 저장)</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">Ctrl+Z</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">실행 취소 (최대 50단계)</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">Ctrl+Shift+Z</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">다시 실행</td></tr>
+            </table>
+        </div>
+
+        <div class="help-tip">
+            <b>참고:</b> <span class="kbd">Space</span>, <span class="kbd">J</span>, <span class="kbd">L</span>, <span class="kbd">S</span>, <span class="kbd">E</span> 단축키는 텍스트 입력 필드에 포커스가 있을 때는 작동하지 않습니다. <span class="kbd">Ctrl+Z</span>, <span class="kbd">Ctrl+Shift+Z</span>, <span class="kbd">Ctrl+S</span>는 어디서나 작동합니다.
+        </div>
+    </section>
+
+    <!-- 노래하기 -->
+    <section class="help-section">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18V5l12-2v13"></path>
+                <circle cx="6" cy="18" r="3"></circle>
+                <circle cx="18" cy="16" r="3"></circle>
+            </svg>
+            노래하기
+        </h2>
+
+        <div class="help-card">
+            <h4>재생 제어</h4>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; width: 200px;"><span class="kbd">Space</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">재생 / 일시정지</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">&larr;</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">이전 곡으로 이동</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">&rarr;</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">다음 곡으로 이동</td></tr>
+            </table>
+        </div>
+
+        <div class="help-card">
+            <h4>오프셋 조정</h4>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; width: 200px;"><span class="kbd">[</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">로컬 오프셋 -100ms</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">]</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">로컬 오프셋 +100ms</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">Shift</span> + <span class="kbd">[</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">로컬 오프셋 -500ms</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">Shift</span> + <span class="kbd">]</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">로컬 오프셋 +500ms</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">,</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">OBS 오프셋 -100ms</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">.</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">OBS 오프셋 +100ms</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">Shift</span> + <span class="kbd">,</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">OBS 오프셋 -500ms</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">Shift</span> + <span class="kbd">.</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">OBS 오프셋 +500ms</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">Shift</span> + <span class="kbd">0</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">모든 오프셋 초기화 (0ms)</td></tr>
+            </table>
+        </div>
+
+        <div class="help-card">
+            <h4>기타</h4>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; width: 200px;"><span class="kbd">?</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">단축키 도움말 모달 열기</td></tr>
+                <tr><td style="padding: 8px 0;"><span class="kbd">Esc</span></td><td style="padding: 8px 0; font-size: 0.9rem; color: var(--text-sub);">모달 닫기</td></tr>
+            </table>
+        </div>
+
+        <div class="help-tip">
+            <b>참고:</b> 검색창 등 텍스트 입력 필드에 포커스가 있을 때는 단축키가 작동하지 않습니다. 입력 필드 바깥을 클릭하거나 <span class="kbd">Esc</span>로 포커스를 해제한 후 사용하세요.
+        </div>
+    </section>
+
+    <div class="help-nav-bottom">
+        <a href="/help/obs" class="help-nav-link">&larr; OBS 오버레이 설정</a>
+        <a href="/help" class="help-nav-link">사용법 안내 &rarr;</a>
+    </div>
+</div>
+{% endblock %}

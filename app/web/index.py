@@ -41,3 +41,23 @@ async def songs_page(request: Request, user=Depends(get_current_user)):
 async def help_page(request: Request, user=Depends(get_current_user)):
     """사용법 안내 페이지"""
     return templates.TemplateResponse("pages/help/index.html", {"request": request, "user": user})
+
+@router.get("/help/editor", response_class=HTMLResponse)
+async def help_editor_page(request: Request, user=Depends(get_current_user)):
+    """가사 편집기 사용법"""
+    return templates.TemplateResponse("pages/help/editor.html", {"request": request, "user": user})
+
+@router.get("/help/singing", response_class=HTMLResponse)
+async def help_singing_page(request: Request, user=Depends(get_current_user)):
+    """노래하기 사용법"""
+    return templates.TemplateResponse("pages/help/singing.html", {"request": request, "user": user})
+
+@router.get("/help/obs", response_class=HTMLResponse)
+async def help_obs_page(request: Request, user=Depends(get_current_user)):
+    """OBS 오버레이 설정 사용법"""
+    return templates.TemplateResponse("pages/help/obs.html", {"request": request, "user": user})
+
+@router.get("/help/shortcuts", response_class=HTMLResponse)
+async def help_shortcuts_page(request: Request, user=Depends(get_current_user)):
+    """키보드 단축키"""
+    return templates.TemplateResponse("pages/help/shortcuts.html", {"request": request, "user": user})

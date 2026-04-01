@@ -1,0 +1,221 @@
+{% extends "pages/help/base_help.html" %}
+
+{% block title %}OBS 오버레이 설정 - Jamku Song{% endblock %}
+
+{% block content %}
+<div class="help-container">
+    <div class="help-header">
+        <div class="help-breadcrumb"><a href="/help">사용법 안내</a> &rsaquo; OBS 오버레이 설정</div>
+        <h1 class="help-title">OBS 오버레이 설정</h1>
+        <p class="help-subtitle">OBS에 가사 오버레이를 추가하고 디자인을 커스터마이징하는 방법입니다</p>
+    </div>
+
+    <nav class="help-toc">
+        <div class="help-toc-title">목차</div>
+        <ul class="help-toc-list">
+            <li><a href="#setup">OBS 브라우저 소스 추가</a></li>
+            <li><a href="#design">디자인 설정</a></li>
+            <li><a href="#presets">프리셋</a></li>
+            <li><a href="#token">토큰 관리</a></li>
+            <li><a href="#troubleshoot">문제 해결</a></li>
+        </ul>
+    </nav>
+
+    <!-- OBS 설정 -->
+    <section class="help-section" id="setup">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            OBS 브라우저 소스 추가
+        </h2>
+        <div class="help-card">
+            <div class="help-steps">
+                <div class="help-step">
+                    <span class="help-step-num">1</span>
+                    <div class="help-step-content">
+                        <h4>오버레이 설정 페이지 접속</h4>
+                        <p>사이드바 메뉴에서 <b>OBS 오버레이 설정</b>을 클릭하거나 <a href="/overlay/settings" style="color: var(--accent);">/overlay/settings</a>에 접속합니다.</p>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">2</span>
+                    <div class="help-step-content">
+                        <h4>URL 복사</h4>
+                        <p>페이지 좌측 하단의 <b>OBS 브라우저 소스 URL</b> 영역에서 "클릭하여 URL 표시"를 누른 뒤 <b>복사</b> 버튼을 클릭합니다.</p>
+                        <div class="help-warn">이 URL에는 고유 인증 토큰이 포함되어 있습니다. 타인에게 공유하지 마세요. URL이 노출되면 다른 사람이 오버레이를 제어할 수 있습니다.</div>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">3</span>
+                    <div class="help-step-content">
+                        <h4>OBS에서 브라우저 소스 추가</h4>
+                        <p>OBS Studio에서:</p>
+                        <ol>
+                            <li><b>소스</b> 패널에서 <b>+</b> 버튼 클릭</li>
+                            <li><b>브라우저</b> 선택</li>
+                            <li>이름을 입력하고 <b>확인</b></li>
+                            <li><b>URL</b> 필드에 복사한 주소 붙여넣기</li>
+                            <li><b>너비:</b> 1920, <b>높이:</b> 1080 입력</li>
+                            <li><b>확인</b> 클릭</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">4</span>
+                    <div class="help-step-content">
+                        <h4>위치 조정</h4>
+                        <p>브라우저 소스를 OBS 화면에서 원하는 위치와 크기로 배치합니다. 보통 화면 전체를 덮도록 설정하는 것이 좋습니다 (가사 위치는 오버레이 설정에서 조정).</p>
+                    </div>
+                </div>
+            </div>
+            <div class="help-tip" style="margin-top: 16px;">
+                <b>권장 설정:</b> 너비 1920 x 높이 1080 (Full HD). 소스를 화면 전체에 맞추면 가사 위치가 오버레이 설정과 정확히 일치합니다.
+            </div>
+        </div>
+    </section>
+
+    <!-- 디자인 설정 -->
+    <section class="help-section" id="design">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09c-.658.003-1.25.396-1.51 1z"></path></svg>
+            디자인 설정
+        </h2>
+
+        <div class="help-card">
+            <h4>가사 공통</h4>
+            <ul>
+                <li><b>글꼴:</b> 다양한 한국어/일본어 글꼴 중 선택 (Pretendard, Noto Sans KR, 나눔고딕, 도현, 굴림체, 궁서체, 온글잎 박다현체, 옴돋체, 강원교육모두체, 조선굴림 등)</li>
+                <li><b>가사 크기:</b> 현재 가사의 기본 글자 크기 (32~80px)</li>
+                <li><b>외곽선:</b> 텍스트 외곽선 켜기/끄기 및 색상</li>
+                <li><b>그림자:</b> 텍스트 그림자 효과</li>
+                <li><b>애니메이션:</b> 가사 전환 시 페이드 애니메이션</li>
+            </ul>
+        </div>
+
+        <div class="help-card">
+            <h4>현재 / 이전 / 다음 가사</h4>
+            <p>각 가사 유형별로 개별 스타일을 설정할 수 있습니다:</p>
+            <ul>
+                <li><b>색상:</b> 텍스트 색상 (현재 가사 기본: 노란색, 이전/다음: 흰색)</li>
+                <li><b>글자 크기:</b> 이전/다음 가사는 현재 가사 대비 비율(30~100%)로 설정</li>
+                <li><b>굵기:</b> Regular ~ Black (6단계)</li>
+                <li><b>기울임꼴:</b> 이탤릭체 적용</li>
+                <li><b>외곽선 두께:</b> 각 가사별 외곽선 두께 개별 설정</li>
+                <li><b>표시 여부:</b> 이전/다음 가사를 끄거나 켤 수 있음</li>
+            </ul>
+        </div>
+
+        <div class="help-card">
+            <h4>외국어 가사 줄별 설정</h4>
+            <p>외국어 가사(원문/발음/해석)의 각 줄을 개별적으로 설정할 수 있습니다:</p>
+            <ul>
+                <li><b>표시 여부:</b> 원문, 발음, 해석 중 필요한 줄만 선택 (최소 1개)</li>
+                <li><b>줄별 크기 비율:</b> 각 줄의 크기를 해당 가사 크기 대비 50~150%로 설정</li>
+                <li><b>외국어 가사일 때 이전/다음 끄기:</b> 여러 줄 가사 표시 시 화면이 가려지는 것을 방지</li>
+            </ul>
+        </div>
+
+        <div class="help-card">
+            <h4>노래 정보</h4>
+            <ul>
+                <li><b>표시 위치:</b> 6가지 위치 (좌상단, 중앙상단, 우상단, 좌하단, 중앙하단, 우하단)</li>
+                <li><b>NOW 배지:</b> "NOW" 태그 표시 여부</li>
+                <li><b>제목/가수:</b> 각각 표시 여부, 크기, 굵기, 외곽선 개별 설정</li>
+            </ul>
+        </div>
+
+        <div class="help-card">
+            <h4>재생목록 표시</h4>
+            <ul>
+                <li><b>표시 위치:</b> 왼쪽 또는 오른쪽</li>
+                <li><b>최대 표시 곡 수:</b> 3~10곡</li>
+                <li><b>스타일:</b> 글자 크기, 배경 색상/투명도, 글자 색상, 현재 곡 강조 색상</li>
+                <li><b>썸네일/가수명:</b> 표시 여부 개별 설정</li>
+            </ul>
+        </div>
+
+        <div class="help-card">
+            <h4>미리보기</h4>
+            <p>설정 페이지 좌측에 실시간 미리보기가 표시됩니다. 설정을 변경하면 즉시 미리보기에 반영되어, 저장 전에 결과를 확인할 수 있습니다.</p>
+            <div class="help-tip">
+                <b>팁:</b> 설정을 변경한 후 반드시 <b>설정 저장</b> 버튼을 눌러야 실제 OBS 오버레이에 적용됩니다.
+            </div>
+        </div>
+    </section>
+
+    <!-- 프리셋 -->
+    <section class="help-section" id="presets">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+            프리셋
+        </h2>
+        <div class="help-card">
+            <p>자주 사용하는 디자인 설정을 프리셋으로 저장하여 빠르게 전환할 수 있습니다.</p>
+            <ul>
+                <li><b>프리셋 저장:</b> 현재 설정을 이름을 지정하여 저장</li>
+                <li><b>프리셋 적용:</b> 저장된 프리셋 이름을 클릭하여 한번에 적용</li>
+                <li><b>프리셋 덮어쓰기:</b> 기존 프리셋에 현재 설정을 덮어쓰기</li>
+                <li><b>이름 변경 / 삭제:</b> 프리셋에 마우스를 올리면 편집/삭제 버튼 표시</li>
+            </ul>
+            <div class="help-tip">
+                <b>활용 예시:</b> "일반 노래용", "일본어 노래용", "숏츠 녹화용" 등 상황별 프리셋을 만들어두면 편리합니다.
+            </div>
+        </div>
+    </section>
+
+    <!-- 토큰 관리 -->
+    <section class="help-section" id="token">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            토큰 관리
+        </h2>
+        <div class="help-card">
+            <h4>오버레이 URL과 토큰</h4>
+            <p>OBS 브라우저 소스 URL에는 고유한 인증 토큰이 포함되어 있습니다. 이 토큰으로 OBS 오버레이가 서버에 인증되어 가사를 수신합니다.</p>
+        </div>
+        <div class="help-card">
+            <h4>토큰 재발급</h4>
+            <p>URL이 유출되었거나 보안이 걱정되면 <b>토큰 재발급</b> 버튼으로 새 토큰을 발급받을 수 있습니다.</p>
+            <div class="help-warn">
+                토큰을 재발급하면 기존 URL은 즉시 무효화됩니다. OBS에서 새 URL로 다시 설정해야 합니다.
+            </div>
+        </div>
+    </section>
+
+    <!-- 문제 해결 -->
+    <section class="help-section" id="troubleshoot">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            문제 해결
+        </h2>
+        <div class="help-card">
+            <h4>OBS에 가사가 표시되지 않아요</h4>
+            <ul>
+                <li>OBS 브라우저 소스의 URL이 올바른지 확인하세요.</li>
+                <li>노래하기 페이지에서 곡이 재생 중인지 확인하세요.</li>
+                <li>OBS 오버레이 좌측 상단에 "연결 끊김" 메시지가 있다면, 서버 연결이 끊긴 것입니다. 잠시 후 자동 재연결됩니다.</li>
+                <li>토큰을 재발급한 경우, 새 URL을 OBS에 다시 입력해야 합니다.</li>
+            </ul>
+        </div>
+        <div class="help-card">
+            <h4>가사 싱크가 안 맞아요</h4>
+            <ul>
+                <li>노래하기 페이지에서 오프셋을 조정해보세요 (<span class="kbd">[</span><span class="kbd">]</span> 또는 <span class="kbd">,</span><span class="kbd">.</span> 키).</li>
+                <li>가사 편집기에서 전체 오프셋을 조정할 수도 있습니다 (타임라인 상단 &#9664;&#9654; 버튼).</li>
+                <li>정밀 조정이 필요하면 편집기에서 개별 구간의 시작/종료 시간을 수정하세요.</li>
+            </ul>
+        </div>
+        <div class="help-card">
+            <h4>OBS 오버레이가 검은 화면이에요</h4>
+            <ul>
+                <li>이것은 정상입니다. 노래가 재생되지 않을 때는 오버레이가 투명(또는 검은색)으로 표시됩니다.</li>
+                <li>노래하기 페이지에서 곡을 재생하면 가사가 나타납니다.</li>
+            </ul>
+        </div>
+    </section>
+
+    <div class="help-nav-bottom">
+        <a href="/help/singing" class="help-nav-link">&larr; 노래하기</a>
+        <a href="/help/shortcuts" class="help-nav-link">키보드 단축키 &rarr;</a>
+    </div>
+</div>
+{% endblock %}

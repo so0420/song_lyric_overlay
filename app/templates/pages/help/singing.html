@@ -1,0 +1,187 @@
+{% extends "pages/help/base_help.html" %}
+
+{% block title %}노래하기 사용법 - Jamku Song{% endblock %}
+
+{% block content %}
+<div class="help-container">
+    <div class="help-header">
+        <div class="help-breadcrumb"><a href="/help">사용법 안내</a> &rsaquo; 노래하기</div>
+        <h1 class="help-title">노래하기</h1>
+        <p class="help-subtitle">노래를 재생하고 OBS 오버레이에 가사를 실시간으로 표시하는 방법입니다</p>
+    </div>
+
+    <nav class="help-toc">
+        <div class="help-toc-title">목차</div>
+        <ul class="help-toc-list">
+            <li><a href="#access">접근 권한</a></li>
+            <li><a href="#search">곡 검색 &amp; 추가</a></li>
+            <li><a href="#playlist">재생목록 관리</a></li>
+            <li><a href="#playback">재생 &amp; 가사 표시</a></li>
+            <li><a href="#offset">오프셋 조정</a></li>
+            <li><a href="#shortcuts">단축키</a></li>
+        </ul>
+    </nav>
+
+    <!-- 접근 권한 -->
+    <section class="help-section" id="access">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            접근 권한
+        </h2>
+        <div class="help-card">
+            <p>노래하기 기능은 <b>승인된 사용자</b>만 이용할 수 있습니다.</p>
+            <div class="help-steps">
+                <div class="help-step">
+                    <span class="help-step-num">1</span>
+                    <div class="help-step-content">
+                        <h4>회원 가입 &amp; 로그인</h4>
+                        <p>이메일로 가입하거나 Google/Naver 소셜 로그인을 이용합니다.</p>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">2</span>
+                    <div class="help-step-content">
+                        <h4>사용 요청</h4>
+                        <p>노래하기 페이지에 접근하면 사용 요청 양식이 표시됩니다. 방송 플랫폼 주소를 입력하고 요청을 보냅니다.</p>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">3</span>
+                    <div class="help-step-content">
+                        <h4>승인 대기</h4>
+                        <p>관리자가 요청을 검토한 후 승인하면 노래하기 기능을 사용할 수 있습니다. 자동 승인이 켜져 있으면 즉시 승인됩니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 곡 검색 -->
+    <section class="help-section" id="search">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            곡 검색 &amp; 추가
+        </h2>
+        <div class="help-card">
+            <h4>곡 검색</h4>
+            <p>상단 검색창에 노래 제목, 가수명, 또는 가사 버전 제목을 입력하면 검색 결과가 나타납니다.</p>
+            <ul>
+                <li><b>음원 탭:</b> iTunes 기반 음원 검색 결과</li>
+                <li><b>커스텀 탭:</b> 사용자가 등록한 커스텀 노래 검색 결과</li>
+            </ul>
+        </div>
+        <div class="help-card">
+            <h4>가사 선택 &amp; 재생목록 추가</h4>
+            <p>검색 결과에서 노래를 클릭하면 해당 곡에 등록된 가사 버전 목록이 표시됩니다. 원하는 버전을 선택하면 재생목록에 추가됩니다.</p>
+            <div class="help-tip">
+                <b>팁:</b> 같은 곡이라도 여러 사람이 만든 다양한 가사 버전이 있을 수 있습니다. 작성자와 제목을 확인하고 선택하세요.
+            </div>
+        </div>
+        <div class="help-card">
+            <h4>커스텀 노래 추가</h4>
+            <p>검색 결과 하단의 <b>노래 직접 등록</b> 버튼으로 iTunes에 없는 노래를 등록할 수 있습니다.</p>
+        </div>
+    </section>
+
+    <!-- 재생목록 -->
+    <section class="help-section" id="playlist">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            재생목록 관리
+        </h2>
+        <div class="help-card">
+            <h4>재생목록 &amp; 즐겨찾기 탭</h4>
+            <ul>
+                <li><b>재생목록:</b> 현재 세션에서 추가한 곡 목록. 순서대로 재생됩니다.</li>
+                <li><b>즐겨찾기:</b> 하트를 눌러 저장해둔 곡 목록. 즐겨찾기에서 클릭하면 재생목록에 추가됩니다.</li>
+            </ul>
+        </div>
+        <div class="help-card">
+            <h4>재생목록 조작</h4>
+            <ul>
+                <li><b>곡 클릭:</b> 해당 곡으로 즉시 이동하여 재생</li>
+                <li><b>삭제 버튼:</b> 재생목록에서 곡 제거</li>
+                <li><b>재생목록 비우기:</b> 전체 재생목록 초기화</li>
+                <li><b>자동 삭제:</b> 토글을 켜면 재생이 끝난 곡이 자동으로 제거됩니다</li>
+            </ul>
+        </div>
+        <div class="help-card">
+            <h4>OBS 재생목록 표시</h4>
+            <p>오버레이 설정에서 재생목록 표시를 켜면, OBS 화면에도 재생목록이 표시됩니다. 현재 재생 중인 곡이 강조되어 시청자가 곡 목록을 볼 수 있습니다.</p>
+        </div>
+    </section>
+
+    <!-- 재생 -->
+    <section class="help-section" id="playback">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            재생 &amp; 가사 표시
+        </h2>
+        <div class="help-card">
+            <h4>재생 방법</h4>
+            <ul>
+                <li>재생목록에서 곡을 클릭하거나, <span class="kbd">Space</span> 키를 눌러 재생/일시정지합니다.</li>
+                <li>곡이 끝나면 자동으로 다음 곡으로 넘어갑니다.</li>
+                <li><span class="kbd">&larr;</span> / <span class="kbd">&rarr;</span> 키로 이전/다음 곡으로 이동합니다.</li>
+            </ul>
+        </div>
+        <div class="help-card">
+            <h4>가사 동기화</h4>
+            <p>노래하기 페이지에서 곡을 재생하면 WebSocket을 통해 OBS 오버레이에 가사가 실시간으로 전송됩니다.</p>
+            <ul>
+                <li><b>노래하기 화면:</b> 현재 가사가 화면 하단에 표시됩니다.</li>
+                <li><b>OBS 오버레이:</b> 동일한 가사가 오버레이 설정에 따라 스타일링되어 표시됩니다.</li>
+            </ul>
+            <div class="help-tip">
+                <b>참고:</b> 연결이 끊어지면 3초마다 자동으로 재연결을 시도합니다. OBS 오버레이도 마찬가지로 자동 재연결됩니다.
+            </div>
+        </div>
+    </section>
+
+    <!-- 오프셋 -->
+    <section class="help-section" id="offset">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            오프셋 조정
+        </h2>
+        <div class="help-card">
+            <p>가사 싱크가 미세하게 맞지 않을 때, 가사 전체의 표시 타이밍을 실시간으로 조정할 수 있습니다.</p>
+            <ul>
+                <li><b>로컬 오프셋:</b> 노래하기 화면에서 보이는 가사 타이밍을 조정합니다. <span class="kbd">[</span> / <span class="kbd">]</span> 키로 &plusmn;100ms, <span class="kbd">Shift</span>와 함께 누르면 &plusmn;500ms.</li>
+                <li><b>OBS 오프셋:</b> OBS 오버레이에 전송되는 가사 타이밍을 조정합니다. <span class="kbd">,</span> / <span class="kbd">.</span> 키로 &plusmn;100ms, <span class="kbd">Shift</span>와 함께 누르면 &plusmn;500ms.</li>
+                <li><b>초기화:</b> <span class="kbd">Shift+0</span>으로 모든 오프셋을 0으로 리셋합니다.</li>
+            </ul>
+            <div class="help-tip">
+                <b>팁:</b> 보통은 OBS 오프셋만 조정하면 됩니다. 노래하기 화면과 OBS 오버레이의 타이밍이 서로 다를 때만 각각 따로 조정하세요.
+            </div>
+        </div>
+    </section>
+
+    <!-- 단축키 -->
+    <section class="help-section" id="shortcuts">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect><line x1="6" y1="8" x2="6.01" y2="8"></line><line x1="10" y1="8" x2="10.01" y2="8"></line><line x1="6" y1="12" x2="18" y2="12"></line></svg>
+            단축키
+        </h2>
+        <div class="help-card">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 6px 0; width: 200px;"><span class="kbd">Space</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">재생 / 일시정지</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">&larr;</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">이전 곡</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">&rarr;</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">다음 곡</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">[</span> / <span class="kbd">]</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">로컬 오프셋 &plusmn;100ms</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">Shift</span> + <span class="kbd">[</span> / <span class="kbd">]</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">로컬 오프셋 &plusmn;500ms</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">,</span> / <span class="kbd">.</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">OBS 오프셋 &plusmn;100ms</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">Shift</span> + <span class="kbd">,</span> / <span class="kbd">.</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">OBS 오프셋 &plusmn;500ms</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">Shift+0</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">모든 오프셋 초기화</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">?</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">단축키 도움말 모달 열기</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">Esc</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">모달 닫기</td></tr>
+            </table>
+        </div>
+    </section>
+
+    <div class="help-nav-bottom">
+        <a href="/help/editor" class="help-nav-link">&larr; 가사 편집기</a>
+        <a href="/help/obs" class="help-nav-link">OBS 오버레이 설정 &rarr;</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,318 @@
+{% extends "pages/help/base_help.html" %}
+
+{% block title %}가사 편집기 사용법 - Jamku Song{% endblock %}
+
+{% block content %}
+<div class="help-container">
+    <div class="help-header">
+        <div class="help-breadcrumb"><a href="/help">사용법 안내</a> &rsaquo; 가사 편집기</div>
+        <h1 class="help-title">가사 편집기</h1>
+        <p class="help-subtitle">노래 가사를 입력하고 싱크를 맞추는 편집기의 전체 사용법입니다</p>
+    </div>
+
+    <nav class="help-toc">
+        <div class="help-toc-title">목차</div>
+        <ul class="help-toc-list">
+            <li><a href="#flow">전체 편집 순서</a></li>
+            <li><a href="#song-search">곡 검색 &amp; 선택</a></li>
+            <li><a href="#video-search">MR 영상 연결</a></li>
+            <li><a href="#lyrics-input">가사 입력 방법</a></li>
+            <li><a href="#sync-mode">싱크 맞추기</a></li>
+            <li><a href="#timeline">타임라인 편집</a></li>
+            <li><a href="#save">저장 &amp; 자동 저장</a></li>
+            <li><a href="#shortcuts">단축키</a></li>
+        </ul>
+    </nav>
+
+    <!-- 전체 편집 순서 -->
+    <section class="help-section" id="flow">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            전체 편집 순서
+        </h2>
+        <div class="help-card">
+            <div class="help-steps">
+                <div class="help-step">
+                    <span class="help-step-num">1</span>
+                    <div class="help-step-content">
+                        <h4>곡 검색 &amp; 선택</h4>
+                        <p>편집기 좌측 영역에서 곡을 검색합니다. iTunes 음원 또는 커스텀 노래를 선택할 수 있습니다.</p>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">2</span>
+                    <div class="help-step-content">
+                        <h4>MR 영상 선택</h4>
+                        <p>유튜브에서 MR(반주) 영상을 검색하여 연결합니다. 영상이 있어야 싱크를 맞출 수 있습니다.</p>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">3</span>
+                    <div class="help-step-content">
+                        <h4>가사 입력</h4>
+                        <p>가사를 입력합니다. 3가지 방법이 있습니다: <b>파일 가져오기</b>, <b>뭉치 가사 입력</b>, <b>구간 추가</b> 버튼으로 한 줄씩 추가.</p>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">4</span>
+                    <div class="help-step-content">
+                        <h4>싱크 맞추기</h4>
+                        <p><b>실시간 싱크 모드</b>로 영상에 맞춰 Enter 키를 눌러 박자를 맞춥니다. 이후 타임라인에서 세밀하게 조정합니다.</p>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">5</span>
+                    <div class="help-step-content">
+                        <h4>저장</h4>
+                        <p>가사 버전 제목을 입력하고 <b>저장하기</b> 버튼을 누릅니다. 로그인 없이 익명으로도 저장 가능합니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 곡 검색 -->
+    <section class="help-section" id="song-search">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            곡 검색 &amp; 선택
+        </h2>
+        <div class="help-card">
+            <h4>곡 검색</h4>
+            <p>편집기 좌측의 <b>곡 검색</b> 버튼을 누르면 검색 모달이 열립니다.</p>
+            <ul>
+                <li><b>음원 탭:</b> iTunes 데이터베이스에서 검색합니다. 곡 제목이나 가수명으로 검색 가능합니다.</li>
+                <li><b>커스텀 탭:</b> 사용자가 직접 등록한 노래를 검색합니다.</li>
+            </ul>
+        </div>
+        <div class="help-card">
+            <h4>커스텀 노래 등록</h4>
+            <p>iTunes에 없는 노래(인디 음악, 동인 음악 등)는 직접 등록할 수 있습니다. 커스텀 탭에서 <b>새 노래 등록</b> 버튼을 눌러 노래 제목과 가수를 입력합니다. 등록된 노래는 모든 사용자가 검색할 수 있습니다.</p>
+        </div>
+    </section>
+
+    <!-- MR 영상 -->
+    <section class="help-section" id="video-search">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+            MR 영상 연결
+        </h2>
+        <div class="help-card">
+            <p>곡을 선택하면 자동으로 유튜브 MR 영상 검색이 실행됩니다. 검색 결과에서 원하는 MR 영상을 선택하세요.</p>
+            <ul>
+                <li>자동 검색 결과가 마음에 들지 않으면 직접 검색어를 입력하여 다시 검색할 수 있습니다.</li>
+                <li>유튜브 영상 ID를 직접 입력할 수도 있습니다.</li>
+                <li>무한 스크롤로 더 많은 결과를 불러올 수 있습니다.</li>
+            </ul>
+            <div class="help-tip">
+                <b>팁:</b> "곡 제목 + MR" 또는 "곡 제목 + instrumental"로 검색하면 반주 영상을 찾기 쉽습니다.
+            </div>
+        </div>
+    </section>
+
+    <!-- 가사 입력 -->
+    <section class="help-section" id="lyrics-input">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            가사 입력 방법
+        </h2>
+
+        <div class="help-card">
+            <h4>1. 가사 파일 가져오기</h4>
+            <p><b>파일</b> 버튼으로 <span class="help-code">.txt</span> 또는 <span class="help-code">.lrc</span> 파일을 불러올 수 있습니다.</p>
+            <p style="margin-top: 8px;">지원하는 파일 형식:</p>
+            <ul>
+                <li>각 줄이 <span class="help-code">[MM:SS.ss]가사텍스트</span> 형식</li>
+                <li>같은 타임스탬프의 연속 줄은 하나의 구간으로 합쳐짐 (원문/발음/해석)</li>
+                <li><span class="help-code">@KEY:</span> 같은 메타데이터 줄은 자동 무시</li>
+            </ul>
+            <div class="help-tip">
+                <b>팁:</b> 파일에서 가져온 가사는 시작/종료 시간이 자동으로 설정됩니다. 각 구간의 종료 시간은 다음 구간의 시작 시간으로 설정됩니다.
+            </div>
+        </div>
+
+        <div class="help-card">
+            <h4>2. 뭉치 가사 입력</h4>
+            <p><b>뭉치 가사 입력</b> 버튼으로 전체 가사를 한번에 붙여넣을 수 있습니다. 두 가지 모드가 있습니다:</p>
+
+            <p style="margin-top: 12px; font-weight: 700;">단일 줄 모드</p>
+            <ul>
+                <li>한 줄 = 하나의 가사 구간</li>
+                <li>빈 줄은 무시됩니다</li>
+                <li>한국어 가사처럼 한 줄로 된 가사에 적합</li>
+            </ul>
+
+            <p style="margin-top: 12px; font-weight: 700;">여러 줄 모드 (번역 포함)</p>
+            <ul>
+                <li>빈 줄(엔터 2번 이상)로 구간을 구분합니다</li>
+                <li>구간 내 줄 수에 따라 자동 분류:
+                    <ul>
+                        <li><b>1줄</b> = 그대로 가사 한 줄 (한국어 가사 등)</li>
+                        <li><b>2줄</b> = 원문 / 해석</li>
+                        <li><b>3줄</b> = 원문 / 발음 / 해석</li>
+                    </ul>
+                </li>
+                <li>외국어 가사(일본어, 영어 등)에 적합</li>
+            </ul>
+
+            <div class="help-tip">
+                <b>가사 정리 기능:</b> 뭉치 입력 모달의 <b>가사 정리</b> 버튼을 누르면 불필요한 공백, 특수문자, 중복 줄바꿈을 자동 정리합니다. 다른 곳에서 복사해 온 가사에 이상한 문자가 섞여있을 때 유용합니다.
+            </div>
+        </div>
+
+        <div class="help-card">
+            <h4>3. 구간 추가 버튼</h4>
+            <p><b>가사 구간 추가</b> 버튼이나 <span class="kbd">Enter</span> 키로 새 구간을 추가합니다. 선택된 가사 뒤에 삽입되며, 선택된 것이 없으면 맨 뒤에 추가됩니다.</p>
+        </div>
+
+        <div class="help-card">
+            <h4>가사 검색 (다른 사용자의 가사 복사)</h4>
+            <p>상단 툴바의 <b>가사 검색</b> 버튼으로 다른 사용자가 공개한 가사를 검색하여 복사해올 수 있습니다. 복사한 가사는 자유롭게 수정하여 저장할 수 있습니다.</p>
+        </div>
+
+        <div class="help-card">
+            <h4>컬러 태그</h4>
+            <p>가사 텍스트에 색상을 적용할 수 있습니다. 형식:</p>
+            <p style="margin-top: 6px;"><span class="help-code">&lt;color #FF0000&gt;빨간 텍스트&lt;/color&gt;</span></p>
+            <p style="margin-top: 6px;">OBS 오버레이에서 해당 부분만 지정한 색상으로 표시됩니다.</p>
+        </div>
+    </section>
+
+    <!-- 싱크 맞추기 -->
+    <section class="help-section" id="sync-mode">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path></svg>
+            싱크 맞추기
+        </h2>
+
+        <div class="help-card">
+            <h4>실시간 싱크 모드</h4>
+            <p>영상을 재생하면서 가사 타이밍을 맞추는 모드입니다.</p>
+            <div class="help-steps">
+                <div class="help-step">
+                    <span class="help-step-num">1</span>
+                    <div class="help-step-content">
+                        <h4>시작</h4>
+                        <p><b>실시간 싱크</b> 버튼을 누르면 모든 가사에 대해 싱크 모드가 시작됩니다. 영상이 자동 재생됩니다.</p>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">2</span>
+                    <div class="help-step-content">
+                        <h4>타이밍 입력</h4>
+                        <p>화면에 현재/다음 가사가 표시됩니다. 가사가 시작되는 순간 <span class="kbd">Enter</span>를 누르세요. 그 시점이 해당 구간의 시작점이 됩니다.</p>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">3</span>
+                    <div class="help-step-content">
+                        <h4>종료</h4>
+                        <p>모든 구간을 처리하면 자동 종료됩니다. 중간에 <span class="kbd">Esc</span>를 눌러 중단할 수도 있습니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="help-card">
+            <h4>범위 싱크</h4>
+            <p><b>실시간 싱크</b> 옆의 작은 버튼을 누르면 특정 범위만 선택하여 싱크를 맞출 수 있습니다. 이미 맞춘 부분을 건드리지 않고 일부만 다시 맞추고 싶을 때 유용합니다.</p>
+        </div>
+
+        <div class="help-card">
+            <h4>수동 시간 조정</h4>
+            <ul>
+                <li><b>시작점 캡처 (<span class="kbd">S</span>):</b> 현재 영상 재생 위치를 선택된 가사의 시작 시간으로 설정</li>
+                <li><b>종료점 캡처 (<span class="kbd">E</span>):</b> 현재 영상 재생 위치를 선택된 가사의 종료 시간으로 설정</li>
+                <li><b>타임라인에서 직접 입력:</b> 각 가사의 시작/종료 시간을 <span class="help-code">M:SS.mm</span> 형식으로 직접 입력</li>
+            </ul>
+        </div>
+
+        <div class="help-card">
+            <h4>전체 오프셋 조정</h4>
+            <p>타임라인 상단의 <b>&#9664; &#9654;</b> 버튼으로 모든 가사의 시간을 일괄적으로 &plusmn;0.1초씩 이동할 수 있습니다. 전체적으로 싱크가 미세하게 밀려있을 때 유용합니다.</p>
+        </div>
+    </section>
+
+    <!-- 타임라인 -->
+    <section class="help-section" id="timeline">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            타임라인 편집
+        </h2>
+        <div class="help-card">
+            <h4>타임라인 항목</h4>
+            <p>각 가사 구간은 타임라인에 하나의 항목으로 표시됩니다. 각 항목에는:</p>
+            <ul>
+                <li><b>드래그 핸들 (&#8942;&#8942;):</b> 끌어서 순서 변경</li>
+                <li><b>시작/종료 시간:</b> 직접 편집 가능 (<span class="help-code">M:SS.mm</span> 형식)</li>
+                <li><b>가사 텍스트:</b> 직접 편집 가능</li>
+                <li><b>삭제 버튼 (&times;):</b> 해당 구간 삭제</li>
+            </ul>
+        </div>
+        <div class="help-card">
+            <h4>드래그 &amp; 드롭</h4>
+            <p>드래그 핸들을 잡고 위아래로 끌면 가사 순서를 변경할 수 있습니다. 순서를 바꿔도 각 위치의 시간대는 유지됩니다 (텍스트만 자리를 바꿈).</p>
+        </div>
+        <div class="help-card">
+            <h4>다시 정렬</h4>
+            <p><b>다시 정렬</b> 버튼을 누르면 모든 가사가 시작 시간 기준으로 오름차순 정렬됩니다.</p>
+        </div>
+    </section>
+
+    <!-- 저장 -->
+    <section class="help-section" id="save">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            저장 &amp; 자동 저장
+        </h2>
+        <div class="help-card">
+            <h4>수동 저장</h4>
+            <ul>
+                <li>상단 툴바의 <b>저장하기</b> 버튼 또는 <span class="kbd">Ctrl+S</span></li>
+                <li>저장 전 가사 버전 제목(예: "정식 싱크", "숏츠용" 등)을 입력해야 합니다</li>
+                <li>로그인하지 않아도 익명으로 저장 가능합니다</li>
+                <li>같은 곡에 여러 버전의 가사를 저장할 수 있습니다</li>
+            </ul>
+        </div>
+        <div class="help-card">
+            <h4>자동 저장 (브라우저)</h4>
+            <p>편집 내용은 2.5초 간격으로 브라우저(localStorage)에 자동 저장됩니다. 실수로 페이지를 닫아도 다시 열면 복구 여부를 물어봅니다.</p>
+            <div class="help-warn">자동 저장은 <b>브라우저 내부</b>에만 저장됩니다. 다른 브라우저나 기기에서는 복구할 수 없으므로, 중요한 작업은 반드시 <b>저장하기</b> 버튼으로 서버에 저장하세요.</div>
+        </div>
+        <div class="help-card">
+            <h4>Undo / Redo</h4>
+            <p><span class="kbd">Ctrl+Z</span>로 실행 취소, <span class="kbd">Ctrl+Shift+Z</span>로 다시 실행할 수 있습니다. 최대 50단계까지 지원합니다. 가사 추가, 삭제, 시간 변경, 텍스트 편집, 순서 변경, 뭉치 입력 등 모든 작업이 Undo 대상입니다.</p>
+        </div>
+    </section>
+
+    <!-- 단축키 -->
+    <section class="help-section" id="shortcuts">
+        <h2 class="help-section-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect><line x1="6" y1="8" x2="6.01" y2="8"></line><line x1="10" y1="8" x2="10.01" y2="8"></line><line x1="6" y1="12" x2="18" y2="12"></line></svg>
+            단축키
+        </h2>
+        <div class="help-card">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 6px 0; width: 180px;"><span class="kbd">Space</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">재생 / 일시정지</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">J</span> 또는 <span class="kbd">&larr;</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">-5초 이동</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">L</span> 또는 <span class="kbd">&rarr;</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">+5초 이동</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">S</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">선택된 가사의 시작점을 현재 재생 위치로 설정</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">E</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">선택된 가사의 종료점을 현재 재생 위치로 설정</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">Enter</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">새 구간 추가 (텍스트 입력 중) / 싱크 진행 (싱크 모드)</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">Ctrl+Z</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">실행 취소</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">Ctrl+Shift+Z</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">다시 실행</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">Ctrl+S</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">즉시 저장</td></tr>
+                <tr><td style="padding: 6px 0;"><span class="kbd">Esc</span></td><td style="padding: 6px 0; font-size: 0.9rem; color: var(--text-sub);">싱크 모드 종료 / 모달 닫기</td></tr>
+            </table>
+            <div class="help-tip" style="margin-top: 12px;">
+                <b>참고:</b> <span class="kbd">Space</span>, <span class="kbd">J</span>, <span class="kbd">L</span>, <span class="kbd">S</span>, <span class="kbd">E</span>는 텍스트 입력 필드에 포커스가 없을 때만 작동합니다.
+            </div>
+        </div>
+    </section>
+
+    <div class="help-nav-bottom">
+        <a href="/help" class="help-nav-link">&larr; 사용법 안내</a>
+        <a href="/help/singing" class="help-nav-link">노래하기 &rarr;</a>
+    </div>
+</div>
+{% endblock %}

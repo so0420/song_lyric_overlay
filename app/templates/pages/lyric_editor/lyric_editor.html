@@ -1042,10 +1042,6 @@
         </div>
         <textarea id="bulk-import-text" class="text-input" style="margin-bottom: 20px;"
             placeholder="동해물과 백두산이 마르고 닳도록&#10;하느님이 보우하사 우리나라 만세"></textarea>
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
-            <label style="font-size: 0.85rem; font-weight: 600;">기본 간격 (초):</label>
-            <input type="number" id="bulk-interval" value="3" min="1" max="10" class="time-input" style="width: 60px;">
-        </div>
         <div style="display: flex; gap: 10px;">
             <button onclick="processBulkImport()" class="btn btn-primary" style="flex: 1;">적용하기</button>
             <button onclick="hideModals()" class="btn btn-outline" style="flex: 1;">취소</button>
@@ -1686,7 +1682,6 @@
 
     function processBulkImport() {
         const text = document.getElementById('bulk-import-text').value;
-        const interval = parseFloat(document.getElementById('bulk-interval').value) || 3;
 
         if (!text.trim()) return alert('가사를 입력해 주세요.');
         if (!confirm('현재 작업 중인 타임라인이 초기화됩니다. 계속하시겠습니까?')) return;
@@ -1706,16 +1701,14 @@
         }
 
         segments = [];
-        let now = 0;
 
         parsedLines.forEach((line, i) => {
             segments.push({
                 id: Date.now() + i,
-                start: now,
-                end: now + (interval * 1000),
+                start: 0,
+                end: 3600000,
                 text: line
             });
-            now += (interval * 1000);
         });
 
         renderTimeline();

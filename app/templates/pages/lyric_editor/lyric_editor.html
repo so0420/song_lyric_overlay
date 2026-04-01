@@ -720,6 +720,18 @@
     </div>
     <div class="toolbar-group">
         <div class="btn-action-group" style="padding-right: 12px; border-right: 1px solid #f1f5f9;">
+            <button id="btn-undo" class="btn btn-outline" style="height: 42px;" onclick="undo()" title="실행 취소 (Ctrl+Z)" disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="1 4 1 10 7 10"></polyline>
+                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                </svg>
+            </button>
+            <button id="btn-redo" class="btn btn-outline" style="height: 42px;" onclick="redo()" title="다시 실행 (Ctrl+Shift+Z)" disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"></path>
+                </svg>
+            </button>
             <button id="btn-search-public" class="btn btn-outline" style="height: 42px;"
                 onclick="showPublicLyricsSearchModal()" title="가사 검색">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -753,6 +765,7 @@
             </svg>
             <span class="btn-text">저장하기</span>
         </button>
+        <span id="auto-save-indicator" style="font-size:0.75rem; color:#10b981; font-weight:600; white-space:nowrap; opacity:0.6;"></span>
         <button class="btn btn-outline"
             style="aspect-ratio: 1; padding: 0; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;"
             onclick="showHelpModal()" title="도움말">
@@ -1199,6 +1212,79 @@
     let currentVideoId = {{ (lyrics.mr_youtube_video_id if lyrics else (default_mr_video_id or '')) | tojson }};
     let activeIndex = -1;
 
+    // Undo/Redo
+    const MAX_HISTORY = 50;
+    let undoStack = [];
+    let redoStack = [];
+    let textBeforeEdit = null;
+
+    // Auto-save
+    const DRAFT_KEY = 'lyrics_draft_{{ user.id if user else 0 }}';
+    let autoSaveTimer = null;
+
+    function scheduleDraftSave() {
+        if (autoSaveTimer) clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(saveDraft, 2500);
+    }
+
+    function saveDraft() {
+        try {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify({
+                segments, currentSongId, currentLyricsId, currentVideoId,
+                currentLyricsTitle: document.getElementById('lyrics-title-input').value,
+                savedAt: Date.now()
+            }));
+            const el = document.getElementById('auto-save-indicator');
+            if (el) {
+                const now = new Date();
+                el.textContent = `자동 저장됨 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+                el.style.opacity = '1';
+                setTimeout(() => { el.style.opacity = '0.6'; }, 2000);
+            }
+        } catch (e) { console.warn('Auto-save failed:', e); }
+    }
+
+    function clearDraft() {
+        localStorage.removeItem(DRAFT_KEY);
+        const el = document.getElementById('auto-save-indicator');
+        if (el) el.textContent = '';
+    }
+
+    function pushUndo() {
+        undoStack.push({ segments: JSON.parse(JSON.stringify(segments)), activeIndex });
+        if (undoStack.length > MAX_HISTORY) undoStack.shift();
+        redoStack = [];
+        updateUndoRedoButtons();
+        scheduleDraftSave();
+    }
+
+    function undo() {
+        if (undoStack.length === 0) return;
+        redoStack.push({ segments: JSON.parse(JSON.stringify(segments)), activeIndex });
+        const state = undoStack.pop();
+        segments = state.segments;
+        activeIndex = state.activeIndex;
+        renderTimeline();
+        updateUndoRedoButtons();
+    }
+
+    function redo() {
+        if (redoStack.length === 0) return;
+        undoStack.push({ segments: JSON.parse(JSON.stringify(segments)), activeIndex });
+        const state = redoStack.pop();
+        segments = state.segments;
+        activeIndex = state.activeIndex;
+        renderTimeline();
+        updateUndoRedoButtons();
+    }
+
+    function updateUndoRedoButtons() {
+        const ub = document.getElementById('btn-undo');
+        const rb = document.getElementById('btn-redo');
+        if (ub) ub.disabled = undoStack.length === 0;
+        if (rb) rb.disabled = redoStack.length === 0;
+    }
+
     // Sync Mode State
     let syncModeActive = false;
     let syncStartIndex = 0;
@@ -1328,6 +1414,7 @@
                 const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
                 const toIdx = idx;
                 if (fromIdx === toIdx) return;
+                pushUndo();
 
                 // 1. 현재 모든 구간의 시간(시작, 종료) 목록을 캡처합니다.
                 const timeRanges = segments.map(s => ({ start: s.start, end: s.end }));
@@ -1357,7 +1444,8 @@
                 <input type="text" class="text-input" value="${seg.text.replace(/"/g, '&quot;')}"
                     oninput="updateSegText(${idx}, this.value)"
                     placeholder="가사 입력 (예: <color #FF0000>중요</color>)"
-                    onfocus="setActive(${idx})">
+                    onfocus="onTextFocus(${idx})" onblur="onTextBlur(${idx})"
+                    onclick="setActive(${idx})">
                 <button class="btn-icon" onclick="deleteSegment(${idx}, event)">&times;</button>
             `;
             // 핸들 mousedown 시에만 draggable 활성화
@@ -1371,6 +1459,7 @@
 
     function shiftAllTimes(field, deltaMs) {
         if (segments.length === 0) return;
+        pushUndo();
         segments.forEach(seg => {
             if (field === 'start' || field === 'both') {
                 seg.start = Math.max(0, seg.start + deltaMs);
@@ -1384,6 +1473,7 @@
 
     function sortSegments(force = false) {
         if (syncModeActive) return alert('싱크 모드 중에는 정렬할 수 없습니다.');
+        pushUndo();
         segments.sort((a, b) => a.start - b.start);
         renderTimeline();
         if (force) hideModals();
@@ -1423,6 +1513,7 @@
     }
 
     function addNewSegment() {
+        pushUndo();
         let startTime = player ? Math.floor(player.getCurrentTime() * 1000) : 0;
         let insertIndex = segments.length; // 기본값: 맨 뒤
 
@@ -1458,16 +1549,37 @@
     }
 
     function updateSegTime(idx, field, val) {
+        pushUndo();
         segments[idx][field] = parseToMs(val);
         renderTimeline();
     }
 
     function updateSegText(idx, val) {
         segments[idx].text = val;
+        scheduleDraftSave();
+    }
+
+    function onTextFocus(idx) {
+        textBeforeEdit = segments[idx] ? segments[idx].text : null;
+        setActive(idx);
+    }
+
+    function onTextBlur(idx) {
+        if (textBeforeEdit !== null && segments[idx] && textBeforeEdit !== segments[idx].text) {
+            // 변경 전 상태를 undoStack에 push
+            const snapshot = JSON.parse(JSON.stringify(segments));
+            snapshot[idx].text = textBeforeEdit;
+            undoStack.push({ segments: snapshot, activeIndex });
+            if (undoStack.length > MAX_HISTORY) undoStack.shift();
+            redoStack = [];
+            updateUndoRedoButtons();
+        }
+        textBeforeEdit = null;
     }
 
     function deleteSegment(idx, e) {
         e.stopPropagation();
+        pushUndo();
         segments.splice(idx, 1);
         if (activeIndex >= segments.length) activeIndex = segments.length - 1;
         renderTimeline();
@@ -1576,6 +1688,7 @@
 
         if (!text.trim()) return alert('가사를 입력해 주세요.');
         if (!confirm('현재 작업 중인 타임라인이 초기화됩니다. 계속하시겠습니까?')) return;
+        pushUndo();
 
         let parsedLines;
         if (currentBulkMode === 'multi') {
@@ -2364,7 +2477,7 @@
         const importLyricsId = urlParams.get('import_lyrics_id');
         if (importLyricsId) {
             // URL에 import_lyrics_id가 있으면 자동으로 해당 가사를 불러와서 segments에 채움
-            // (이미 lyric_editor.py에서 song_id 처리가 되었으므로 이 시점엔 currentSongId가 일치함)
+            clearDraft();
             fetch(`/api/v1/lyrics/${importLyricsId}`)
                 .then(res => res.json())
                 .then(data => {
@@ -2377,11 +2490,37 @@
 
                         if (currentVideoId) initPlayer(currentVideoId);
                         renderTimeline();
-                        // URL 파라미터 제거 (선택 사항)
                         window.history.replaceState({}, document.title, window.location.pathname + window.location.search.replace(/&import_lyrics_id=\d+/, ''));
                         setTimeout(() => alert('다른 사용자의 가사를 불러왔습니다. 편집 후 저장해 주세요!'), 500);
                     } catch (e) { }
                 });
+        } else if (segments.length === 0) {
+            // 드래프트 복구 (새 작업이거나 기존 가사가 없을 때)
+            try {
+                const raw = localStorage.getItem(DRAFT_KEY);
+                if (raw) {
+                    const draft = JSON.parse(raw);
+                    if (draft.segments && draft.segments.length > 0) {
+                        const savedDate = new Date(draft.savedAt);
+                        const timeStr = savedDate.toLocaleString();
+                        if (confirm(`저장되지 않은 작업물이 있습니다 (${timeStr}).\n복구하시겠습니까?`)) {
+                            segments = draft.segments;
+                            if (draft.currentSongId) currentSongId = draft.currentSongId;
+                            if (draft.currentLyricsId) currentLyricsId = draft.currentLyricsId;
+                            if (draft.currentLyricsTitle) {
+                                document.getElementById('lyrics-title-input').value = draft.currentLyricsTitle;
+                            }
+                            if (draft.currentVideoId && draft.currentVideoId !== currentVideoId) {
+                                currentVideoId = draft.currentVideoId;
+                                initPlayer(currentVideoId);
+                            }
+                            renderTimeline();
+                        } else {
+                            clearDraft();
+                        }
+                    }
+                }
+            } catch (e) { console.warn('Draft recovery failed:', e); }
         }
     });
 
@@ -2479,6 +2618,7 @@
             .then(res => res.json())
             .then(data => {
                 if (data.id) currentLyricsId = data.id;
+                clearDraft();
                 alert("저장되었습니다.");
             })
             .catch(err => {
@@ -2489,6 +2629,18 @@
 
     // Keyboard Shortcuts
     window.onkeydown = (e) => {
+        // Undo/Redo (works in any context including inputs)
+        if (e.ctrlKey && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+            e.preventDefault();
+            undo();
+            return;
+        }
+        if (e.ctrlKey && e.key.toLowerCase() === 'z' && e.shiftKey) {
+            e.preventDefault();
+            redo();
+            return;
+        }
+
         // Common tools that should always work (even in sync mode)
         if (e.key === ' ') {
             if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {

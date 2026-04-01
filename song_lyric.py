@@ -92,8 +92,8 @@ async def add_security_headers(request: Request, call_next):
     csp_directives = [
         "default-src 'self'",
         "script-src 'self' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "font-src 'self' https://fonts.gstatic.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+        "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
         "img-src 'self' data: https: blob:",
         "frame-src 'self' https://www.youtube.com",
         "connect-src 'self' ws: wss: https://itunes.apple.com https://www.googleapis.com",

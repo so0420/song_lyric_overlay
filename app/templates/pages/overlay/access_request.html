@@ -545,10 +545,18 @@
                 });
 
                 if (res.ok) {
-                    showToast('요청이 접수되었습니다', 'success');
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
+                    const result = await res.json();
+                    if (result.status === 'approved') {
+                        showToast('요청이 자동 승인되었습니다! 잠시 후 이동합니다.', 'success');
+                        setTimeout(() => {
+                            window.location.href = '/overlay';
+                        }, 1500);
+                    } else {
+                        showToast('요청이 접수되었습니다', 'success');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    }
                 } else {
                     const data = await res.json();
                     showToast(data.detail || '요청에 실패했습니다', 'error');

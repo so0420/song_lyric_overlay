@@ -1,11 +1,37 @@
 from app.database.mariadb import db_handler
+from app.database.redis.redis import redis
 from app.schemas.access_request import AccessRequestCreateSchema, AccessRequestStatus
 from typing import Optional, Dict, Any, List
+
+AUTO_APPROVE_KEY = "admin:auto_approve_access"
 
 
 class AccessRequestRepository:
     def __init__(self, db=db_handler):
         self.db = db
+
+    async def get_auto_approve(self) -> bool:
+        """자동 승인 설정 조회"""
+        val = await redis.get(AUTO_APPROVE_KEY)
+        return val == "1"
+
+    async def set_auto_approve(self, enabled: bool) -> None:
+        """자동 승인 설정 변경"""
+        await redis.set(AUTO_APPROVE_KEY, "1" if enabled else "0")
+
+    async def auto_approve_request(self, request_id: int, user_id: int) -> bool:
+        """요청 자동 승인 처리"""
+        await self.db.execute_query(
+            """UPDATE overlay_access_requests
+               SET status = 'approved', reviewed_at = CURRENT_TIMESTAMP
+               WHERE id = %s""",
+            (request_id,)
+        )
+        await self.db.execute_query(
+            "UPDATE users SET overlay_approved = 1 WHERE id = %s",
+            (user_id,)
+        )
+        return True
 
     async def get_user_latest_request(self, user_id: int) -> Optional[Dict[str, Any]]:
         """사용자의 가장 최근 요청 조회"""

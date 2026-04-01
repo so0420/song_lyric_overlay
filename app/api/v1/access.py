@@ -83,6 +83,12 @@ async def submit_access_request(
 
     # 요청 생성
     request_id = await repo.create_request(user['id'], data)
+
+    # 자동 승인 확인
+    auto_approve = await repo.get_auto_approve()
+    if auto_approve:
+        await repo.auto_approve_request(request_id, user['id'])
+
     request = await repo.get_request_by_id(request_id)
 
     # 디스코드 웹훅 알림

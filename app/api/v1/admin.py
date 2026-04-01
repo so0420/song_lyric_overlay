@@ -96,6 +96,30 @@ async def broadcast_message(
     }
 
 
+# ============ Auto Approve Setting ============
+
+@router.get("/auto-approve")
+async def get_auto_approve(
+    user=Depends(require_admin),
+    repo: AccessRequestRepository = Depends(get_access_request_repository)
+):
+    """자동 승인 설정 조회"""
+    enabled = await repo.get_auto_approve()
+    return {"enabled": enabled}
+
+
+@router.post("/auto-approve")
+async def set_auto_approve(
+    data: dict,
+    user=Depends(require_admin),
+    repo: AccessRequestRepository = Depends(get_access_request_repository)
+):
+    """자동 승인 설정 변경"""
+    enabled = data.get("enabled", False)
+    await repo.set_auto_approve(enabled)
+    return {"success": True, "enabled": enabled}
+
+
 # ============ Access Request Management ============
 
 @router.get("/access-requests", response_model=List[AccessRequestResponseSchema])

@@ -3,7 +3,85 @@
 {% block title %}오버레이 설정 - Jamku Song{% endblock %}
 
 {% block extra_styles %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Nanum+Gothic:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
+@font-face {
+    font-family: 'OngleipParkDahyeon';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2411-3@1.0/Ownglyph_ParkDaHyun.woff2') format('woff2');
+    font-weight: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Umdot';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-4@1.1/Umdot12.woff2') format('woff2');
+    font-weight: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'GangwonEducationModuche';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2201-2@1.0/GangwonEdu_OTFLightA.woff') format('woff');
+    font-weight: 300;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'GangwonEducationModuche';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2201-2@1.0/GangwonEdu_OTFBoldA.woff') format('woff');
+    font-weight: 700;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'JoseonGulim';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-04@1.0/ChosunGu.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+.font-select {
+    position: relative;
+    flex: 1;
+    margin-left: 12px;
+}
+.font-select-current {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-main);
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+.font-select-current::after {
+    content: '\25BC';
+    float: right;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+}
+.font-select-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 100;
+    max-height: 250px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+.font-select-dropdown.open { display: block; }
+.font-select-option {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 1.05rem;
+    transition: background 0.15s;
+}
+.font-select-option:hover { background: var(--bg-hover, #f1f5f9); }
+.font-select-option.selected { background: #ede9fe; color: #7c3aed; }
 .settings-layout {
     display: grid;
     grid-template-columns: 1fr 420px;
@@ -966,13 +1044,23 @@ input:checked + .toggle-slider:before {
                 <div class="setting-group-content">
                     <div class="setting-row">
                     <span class="setting-label">글꼴</span>
-                    <select id="fontFamily" onchange="updatePreview()">
-                        <option value="Pretendard">Pretendard</option>
-                        <option value="Noto Sans KR">Noto Sans KR</option>
-                        <option value="Nanum Gothic">나눔고딕</option>
-                        <option value="Black Han Sans">Black Han Sans</option>
-                        <option value="Do Hyeon">도현</option>
-                    </select>
+                    <input type="hidden" id="fontFamily">
+                    <div class="font-select" id="fontSelect">
+                        <div class="font-select-current" id="fontSelectCurrent" onclick="toggleFontDropdown()">Pretendard</div>
+                        <div class="font-select-dropdown" id="fontSelectDropdown">
+                            <div class="font-select-option" data-value="Pretendard" style="font-family:'Pretendard',sans-serif">Pretendard</div>
+                            <div class="font-select-option" data-value="Noto Sans KR" style="font-family:'Noto Sans KR',sans-serif">Noto Sans KR</div>
+                            <div class="font-select-option" data-value="Nanum Gothic" style="font-family:'Nanum Gothic',sans-serif">나눔고딕</div>
+                            <div class="font-select-option" data-value="Black Han Sans" style="font-family:'Black Han Sans',sans-serif">Black Han Sans</div>
+                            <div class="font-select-option" data-value="Do Hyeon" style="font-family:'Do Hyeon',sans-serif">도현</div>
+                            <div class="font-select-option" data-value="Gulim" style="font-family:'Gulim',sans-serif">굴림체</div>
+                            <div class="font-select-option" data-value="Gungsuh" style="font-family:'Gungsuh',sans-serif">궁서체</div>
+                            <div class="font-select-option" data-value="OngleipParkDahyeon" style="font-family:'OngleipParkDahyeon',sans-serif">온글잎 박다현체</div>
+                            <div class="font-select-option" data-value="Umdot" style="font-family:'Umdot',sans-serif">옴돋체</div>
+                            <div class="font-select-option" data-value="GangwonEducationModuche" style="font-family:'GangwonEducationModuche',sans-serif">강원교육모두체</div>
+                            <div class="font-select-option" data-value="JoseonGulim" style="font-family:'JoseonGulim',sans-serif">조선굴림</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="setting-row">
@@ -1483,7 +1571,15 @@ async function loadSettings() {
 }
 
 function applySettingsToForm(settings) {
-    document.getElementById('fontFamily').value = settings.font_family || defaultSettings.font_family;
+    const fontValue = settings.font_family || defaultSettings.font_family;
+    document.getElementById('fontFamily').value = fontValue;
+    const fontOption = document.querySelector(`.font-select-option[data-value="${fontValue}"]`);
+    if (fontOption) {
+        document.getElementById('fontSelectCurrent').textContent = fontOption.textContent;
+        document.getElementById('fontSelectCurrent').style.fontFamily = "'" + fontValue + "', sans-serif";
+        document.querySelectorAll('.font-select-option').forEach(o => o.classList.remove('selected'));
+        fontOption.classList.add('selected');
+    }
     document.getElementById('fontSize').value = settings.font_size || defaultSettings.font_size;
     document.getElementById('highlightColor').value = settings.highlight_color || defaultSettings.highlight_color;
     document.getElementById('currentLineWeight').value = settings.current_line_weight || defaultSettings.current_line_weight;
@@ -1581,6 +1677,32 @@ function onLyricsLineChange() {
     }
     updatePreview();
 }
+
+function toggleFontDropdown() {
+    document.getElementById('fontSelectDropdown').classList.toggle('open');
+}
+
+document.addEventListener('click', (e) => {
+    const fontSelect = document.getElementById('fontSelect');
+    if (fontSelect && !fontSelect.contains(e.target)) {
+        document.getElementById('fontSelectDropdown').classList.remove('open');
+    }
+});
+
+document.getElementById('fontSelectDropdown').addEventListener('click', (e) => {
+    const option = e.target.closest('.font-select-option');
+    if (!option) return;
+    const value = option.dataset.value;
+    const label = option.textContent;
+    document.getElementById('fontFamily').value = value;
+    const current = document.getElementById('fontSelectCurrent');
+    current.textContent = label;
+    current.style.fontFamily = "'" + value + "', sans-serif";
+    document.querySelectorAll('.font-select-option').forEach(o => o.classList.remove('selected'));
+    option.classList.add('selected');
+    document.getElementById('fontSelectDropdown').classList.remove('open');
+    updatePreview();
+});
 
 function updatePreview() {
     const settings = getSettingsFromForm();

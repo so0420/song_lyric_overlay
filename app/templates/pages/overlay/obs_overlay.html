@@ -462,13 +462,18 @@
             // Lyrics styles - 각 요소별 굵기 적용
             currentLine.style.fontSize = settings.font_size + 'px';
             currentLine.style.fontWeight = settings.current_line_weight || 800;
+            currentLine.style.fontStyle = settings.current_line_italic ? 'italic' : 'normal';
             currentLine.style.color = settings.highlight_color || '#FFE500';
 
             prevLine.style.fontSize = (settings.font_size * 0.7) + 'px';
             prevLine.style.fontWeight = settings.prev_line_weight || 600;
+            prevLine.style.fontStyle = settings.prev_line_italic ? 'italic' : 'normal';
+            prevLine.style.color = settings.prev_line_color || '#FFFFFF';
 
             nextLine.style.fontSize = (settings.font_size * 0.7) + 'px';
             nextLine.style.fontWeight = settings.next_line_weight || 600;
+            nextLine.style.fontStyle = settings.next_line_italic ? 'italic' : 'normal';
+            nextLine.style.color = settings.next_line_color || '#FFFFFF';
 
             // Text stroke using -webkit-text-stroke (요소별 두께 적용)
             const sc = settings.stroke_color || '#000000';

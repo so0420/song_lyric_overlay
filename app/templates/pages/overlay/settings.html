@@ -1024,16 +1024,16 @@ input:checked + .toggle-slider:before {
         </div>
 
         <div class="settings-body">
-            <!-- 가사 스타일 -->
-            <div class="setting-group" id="groupLyrics">
-                <div class="setting-group-header" onclick="toggleGroup('groupLyrics')">
+            <!-- 가사 공통 -->
+            <div class="setting-group" id="groupLyricsCommon">
+                <div class="setting-group-header" onclick="toggleGroup('groupLyricsCommon')">
                     <div class="setting-group-title">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="4 7 4 4 20 4 20 7"></polyline>
                             <line x1="9" y1="20" x2="15" y2="20"></line>
                             <line x1="12" y1="4" x2="12" y2="20"></line>
                         </svg>
-                        가사 스타일
+                        가사 공통
                     </div>
                     <div class="setting-group-toggle">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1043,93 +1043,34 @@ input:checked + .toggle-slider:before {
                 </div>
                 <div class="setting-group-content">
                     <div class="setting-row">
-                    <span class="setting-label">글꼴</span>
-                    <input type="hidden" id="fontFamily">
-                    <div class="font-select" id="fontSelect">
-                        <div class="font-select-current" id="fontSelectCurrent" onclick="toggleFontDropdown()">Pretendard</div>
-                        <div class="font-select-dropdown" id="fontSelectDropdown">
-                            <div class="font-select-option" data-value="Pretendard" style="font-family:'Pretendard',sans-serif">Pretendard</div>
-                            <div class="font-select-option" data-value="Noto Sans KR" style="font-family:'Noto Sans KR',sans-serif">Noto Sans KR</div>
-                            <div class="font-select-option" data-value="Nanum Gothic" style="font-family:'Nanum Gothic',sans-serif">나눔고딕</div>
-                            <div class="font-select-option" data-value="Black Han Sans" style="font-family:'Black Han Sans',sans-serif">Black Han Sans</div>
-                            <div class="font-select-option" data-value="Do Hyeon" style="font-family:'Do Hyeon',sans-serif">도현</div>
-                            <div class="font-select-option" data-value="Gulim" style="font-family:'Gulim',sans-serif">굴림체</div>
-                            <div class="font-select-option" data-value="Gungsuh" style="font-family:'Gungsuh',sans-serif">궁서체</div>
-                            <div class="font-select-option" data-value="OngleipParkDahyeon" style="font-family:'OngleipParkDahyeon',sans-serif">온글잎 박다현체</div>
-                            <div class="font-select-option" data-value="Umdot" style="font-family:'Umdot',sans-serif">옴돋체</div>
-                            <div class="font-select-option" data-value="GangwonEducationModuche" style="font-family:'GangwonEducationModuche',sans-serif">강원교육모두체</div>
-                            <div class="font-select-option" data-value="JoseonGulim" style="font-family:'JoseonGulim',sans-serif">조선굴림</div>
+                        <span class="setting-label">글꼴</span>
+                        <input type="hidden" id="fontFamily">
+                        <div class="font-select" id="fontSelect">
+                            <div class="font-select-current" id="fontSelectCurrent" onclick="toggleFontDropdown()">Pretendard</div>
+                            <div class="font-select-dropdown" id="fontSelectDropdown">
+                                <div class="font-select-option" data-value="Pretendard" style="font-family:'Pretendard',sans-serif">Pretendard</div>
+                                <div class="font-select-option" data-value="Noto Sans KR" style="font-family:'Noto Sans KR',sans-serif">Noto Sans KR</div>
+                                <div class="font-select-option" data-value="Nanum Gothic" style="font-family:'Nanum Gothic',sans-serif">나눔고딕</div>
+                                <div class="font-select-option" data-value="Black Han Sans" style="font-family:'Black Han Sans',sans-serif">Black Han Sans</div>
+                                <div class="font-select-option" data-value="Do Hyeon" style="font-family:'Do Hyeon',sans-serif">도현</div>
+                                <div class="font-select-option" data-value="Gulim" style="font-family:'Gulim',sans-serif">굴림체</div>
+                                <div class="font-select-option" data-value="Gungsuh" style="font-family:'Gungsuh',sans-serif">궁서체</div>
+                                <div class="font-select-option" data-value="OngleipParkDahyeon" style="font-family:'OngleipParkDahyeon',sans-serif">온글잎 박다현체</div>
+                                <div class="font-select-option" data-value="Umdot" style="font-family:'Umdot',sans-serif">옴돋체</div>
+                                <div class="font-select-option" data-value="GangwonEducationModuche" style="font-family:'GangwonEducationModuche',sans-serif">강원교육모두체</div>
+                                <div class="font-select-option" data-value="JoseonGulim" style="font-family:'JoseonGulim',sans-serif">조선굴림</div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="setting-row">
-                    <span class="setting-label">가사 크기</span>
-                    <div class="setting-control">
-                        <input type="range" id="fontSize" min="32" max="80" value="52" oninput="updatePreview()">
-                        <span class="value-display" id="fontSizeValue">52px</span>
+                    <div class="setting-row">
+                        <span class="setting-label">가사 크기</span>
+                        <div class="setting-control">
+                            <input type="range" id="fontSize" min="32" max="80" value="52" oninput="updatePreview()">
+                            <span class="value-display" id="fontSizeValue">52px</span>
+                        </div>
                     </div>
-                </div>
 
-                <div class="setting-row">
-                    <span class="setting-label">현재 가사 색상</span>
-                    <input type="color" id="highlightColor" value="#FFE500" onchange="updatePreview()">
-                </div>
-
-                <div class="setting-row">
-                    <span class="setting-label">현재 가사 굵기</span>
-                    <select id="currentLineWeight" onchange="updatePreview()">
-                        <option value="400">Regular</option>
-                        <option value="500">Medium</option>
-                        <option value="600">SemiBold</option>
-                        <option value="700">Bold</option>
-                        <option value="800" selected>ExtraBold</option>
-                        <option value="900">Black</option>
-                    </select>
-                </div>
-
-                <div class="setting-row">
-                    <span class="setting-label">이전 가사 굵기</span>
-                    <select id="prevLineWeight" onchange="updatePreview()">
-                        <option value="400">Regular</option>
-                        <option value="500">Medium</option>
-                        <option value="600" selected>SemiBold</option>
-                        <option value="700">Bold</option>
-                        <option value="800">ExtraBold</option>
-                        <option value="900">Black</option>
-                    </select>
-                </div>
-
-                <div class="setting-row">
-                    <span class="setting-label">다음 가사 굵기</span>
-                    <select id="nextLineWeight" onchange="updatePreview()">
-                        <option value="400">Regular</option>
-                        <option value="500">Medium</option>
-                        <option value="600" selected>SemiBold</option>
-                        <option value="700">Bold</option>
-                        <option value="800">ExtraBold</option>
-                        <option value="900">Black</option>
-                    </select>
-                </div>
-                </div>
-            </div>
-
-            <!-- 텍스트 외곽선 -->
-            <div class="setting-group" id="groupEffects">
-                <div class="setting-group-header" onclick="toggleGroup('groupEffects')">
-                    <div class="setting-group-title">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        </svg>
-                        텍스트 효과
-                    </div>
-                    <div class="setting-group-toggle">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                    </div>
-                </div>
-                <div class="setting-group-content">
                     <div class="setting-row">
                         <span class="setting-label">외곽선</span>
                         <label class="toggle-switch">
@@ -1144,30 +1085,6 @@ input:checked + .toggle-slider:before {
                     </div>
 
                     <div class="setting-row">
-                        <span class="setting-label">현재 가사 외곽선</span>
-                        <div class="setting-control">
-                            <input type="range" id="currentLineStroke" min="0" max="8" value="3" oninput="updatePreview()">
-                            <span class="value-display" id="currentLineStrokeValue">3px</span>
-                        </div>
-                    </div>
-
-                    <div class="setting-row">
-                        <span class="setting-label">이전 가사 외곽선</span>
-                        <div class="setting-control">
-                            <input type="range" id="prevLineStroke" min="0" max="8" value="2" oninput="updatePreview()">
-                            <span class="value-display" id="prevLineStrokeValue">2px</span>
-                        </div>
-                    </div>
-
-                    <div class="setting-row">
-                        <span class="setting-label">다음 가사 외곽선</span>
-                        <div class="setting-control">
-                            <input type="range" id="nextLineStroke" min="0" max="8" value="2" oninput="updatePreview()">
-                            <span class="value-display" id="nextLineStrokeValue">2px</span>
-                        </div>
-                    </div>
-
-                    <div class="setting-row">
                         <span class="setting-label">그림자</span>
                         <label class="toggle-switch">
                             <input type="checkbox" id="textShadow" checked onchange="updatePreview()">
@@ -1179,6 +1096,175 @@ input:checked + .toggle-slider:before {
                         <span class="setting-label">애니메이션</span>
                         <label class="toggle-switch">
                             <input type="checkbox" id="animationEnabled" onchange="updatePreview()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 현재 가사 -->
+            <div class="setting-group" id="groupCurrentLyrics">
+                <div class="setting-group-header" onclick="toggleGroup('groupCurrentLyrics')">
+                    <div class="setting-group-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        </svg>
+                        현재 가사
+                    </div>
+                    <div class="setting-group-toggle">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="setting-group-content">
+                    <div class="setting-row">
+                        <span class="setting-label">색상</span>
+                        <input type="color" id="highlightColor" value="#FFE500" onchange="updatePreview()">
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">굵기</span>
+                        <select id="currentLineWeight" onchange="updatePreview()">
+                            <option value="400">Regular</option>
+                            <option value="500">Medium</option>
+                            <option value="600">SemiBold</option>
+                            <option value="700">Bold</option>
+                            <option value="800" selected>ExtraBold</option>
+                            <option value="900">Black</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">외곽선 두께</span>
+                        <div class="setting-control">
+                            <input type="range" id="currentLineStroke" min="0" max="8" value="3" oninput="updatePreview()">
+                            <span class="value-display" id="currentLineStrokeValue">3px</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">기울임꼴</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="currentLineItalic" onchange="updatePreview()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 이전 가사 -->
+            <div class="setting-group" id="groupPrevLyrics">
+                <div class="setting-group-header" onclick="toggleGroup('groupPrevLyrics')">
+                    <div class="setting-group-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                        이전 가사
+                    </div>
+                    <div class="setting-group-toggle">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="setting-group-content">
+                    <div class="setting-row">
+                        <span class="setting-label">표시</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="showPrevLine" checked onchange="updatePreview()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">색상</span>
+                        <input type="color" id="prevLineColor" value="#FFFFFF" onchange="updatePreview()">
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">굵기</span>
+                        <select id="prevLineWeight" onchange="updatePreview()">
+                            <option value="400">Regular</option>
+                            <option value="500">Medium</option>
+                            <option value="600" selected>SemiBold</option>
+                            <option value="700">Bold</option>
+                            <option value="800">ExtraBold</option>
+                            <option value="900">Black</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">외곽선 두께</span>
+                        <div class="setting-control">
+                            <input type="range" id="prevLineStroke" min="0" max="8" value="2" oninput="updatePreview()">
+                            <span class="value-display" id="prevLineStrokeValue">2px</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">기울임꼴</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="prevLineItalic" onchange="updatePreview()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 다음 가사 -->
+            <div class="setting-group" id="groupNextLyrics">
+                <div class="setting-group-header" onclick="toggleGroup('groupNextLyrics')">
+                    <div class="setting-group-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                        다음 가사
+                    </div>
+                    <div class="setting-group-toggle">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="setting-group-content">
+                    <div class="setting-row">
+                        <span class="setting-label">표시</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="showNextLine" checked onchange="updatePreview()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">색상</span>
+                        <input type="color" id="nextLineColor" value="#FFFFFF" onchange="updatePreview()">
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">굵기</span>
+                        <select id="nextLineWeight" onchange="updatePreview()">
+                            <option value="400">Regular</option>
+                            <option value="500">Medium</option>
+                            <option value="600" selected>SemiBold</option>
+                            <option value="700">Bold</option>
+                            <option value="800">ExtraBold</option>
+                            <option value="900">Black</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">외곽선 두께</span>
+                        <div class="setting-control">
+                            <input type="range" id="nextLineStroke" min="0" max="8" value="2" oninput="updatePreview()">
+                            <span class="value-display" id="nextLineStrokeValue">2px</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">기울임꼴</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="nextLineItalic" onchange="updatePreview()">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -1206,22 +1292,6 @@ input:checked + .toggle-slider:before {
                     </div>
                 </div>
                 <div class="setting-group-content">
-                    <div class="setting-row">
-                        <span class="setting-label">이전 가사 표시</span>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="showPrevLine" checked onchange="updatePreview()">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="setting-row">
-                        <span class="setting-label">다음 가사 표시</span>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="showNextLine" checked onchange="updatePreview()">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-
                     <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
                         <span class="setting-label">외국어 가사 줄 표시 <span style="font-size:0.8em; color:var(--text-sub);">(최소 1개)</span></span>
                         <div style="display: flex; gap: 16px; flex-wrap: wrap;">
@@ -1494,8 +1564,13 @@ const defaultSettings = {
     font_color: "#FFFFFF",
     highlight_color: "#FFE500",
     current_line_weight: 800,
+    current_line_italic: false,
+    prev_line_color: "#FFFFFF",
     prev_line_weight: 600,
+    prev_line_italic: false,
+    next_line_color: "#FFFFFF",
     next_line_weight: 600,
+    next_line_italic: false,
     song_title_weight: 800,
     artist_weight: 600,
     text_stroke: true,
@@ -1583,8 +1658,13 @@ function applySettingsToForm(settings) {
     document.getElementById('fontSize').value = settings.font_size || defaultSettings.font_size;
     document.getElementById('highlightColor').value = settings.highlight_color || defaultSettings.highlight_color;
     document.getElementById('currentLineWeight').value = settings.current_line_weight || defaultSettings.current_line_weight;
+    document.getElementById('currentLineItalic').checked = settings.current_line_italic === true;
+    document.getElementById('prevLineColor').value = settings.prev_line_color || defaultSettings.prev_line_color;
     document.getElementById('prevLineWeight').value = settings.prev_line_weight || defaultSettings.prev_line_weight;
+    document.getElementById('prevLineItalic').checked = settings.prev_line_italic === true;
+    document.getElementById('nextLineColor').value = settings.next_line_color || defaultSettings.next_line_color;
     document.getElementById('nextLineWeight').value = settings.next_line_weight || defaultSettings.next_line_weight;
+    document.getElementById('nextLineItalic').checked = settings.next_line_italic === true;
     document.getElementById('textStroke').checked = settings.text_stroke !== false;
     document.getElementById('strokeColor').value = settings.stroke_color || defaultSettings.stroke_color;
     document.getElementById('currentLineStroke').value = settings.current_line_stroke ?? defaultSettings.current_line_stroke;
@@ -1628,8 +1708,13 @@ function getSettingsFromForm() {
         font_color: "#FFFFFF",
         highlight_color: document.getElementById('highlightColor').value,
         current_line_weight: parseInt(document.getElementById('currentLineWeight').value),
+        current_line_italic: document.getElementById('currentLineItalic').checked,
+        prev_line_color: document.getElementById('prevLineColor').value,
         prev_line_weight: parseInt(document.getElementById('prevLineWeight').value),
+        prev_line_italic: document.getElementById('prevLineItalic').checked,
+        next_line_color: document.getElementById('nextLineColor').value,
         next_line_weight: parseInt(document.getElementById('nextLineWeight').value),
+        next_line_italic: document.getElementById('nextLineItalic').checked,
         song_title_weight: parseInt(document.getElementById('songTitleWeight').value),
         artist_weight: parseInt(document.getElementById('artistWeight').value),
         text_stroke: document.getElementById('textStroke').checked,
@@ -1787,6 +1872,7 @@ function updatePreview() {
     const lyricsScale = 0.6;
     currentLine.style.fontSize = (settings.font_size * lyricsScale) + 'px';
     currentLine.style.fontWeight = settings.current_line_weight;
+    currentLine.style.fontStyle = settings.current_line_italic ? 'italic' : 'normal';
     currentLine.style.color = settings.highlight_color;
 
     // 미리보기 가사: 외국어 줄 표시 설정 반영
@@ -1802,10 +1888,14 @@ function updatePreview() {
 
     prevLine.style.fontSize = (settings.font_size * 0.7 * lyricsScale) + 'px';
     prevLine.style.fontWeight = settings.prev_line_weight;
+    prevLine.style.fontStyle = settings.prev_line_italic ? 'italic' : 'normal';
+    prevLine.style.color = settings.prev_line_color || '#FFFFFF';
     prevLine.style.display = (settings.show_prev_line && !hideAdj) ? 'block' : 'none';
 
     nextLine.style.fontSize = (settings.font_size * 0.7 * lyricsScale) + 'px';
     nextLine.style.fontWeight = settings.next_line_weight;
+    nextLine.style.fontStyle = settings.next_line_italic ? 'italic' : 'normal';
+    nextLine.style.color = settings.next_line_color || '#FFFFFF';
     nextLine.style.display = (settings.show_next_line && !hideAdj) ? 'block' : 'none';
 
     // Text stroke using -webkit-text-stroke (요소별 두께 적용)

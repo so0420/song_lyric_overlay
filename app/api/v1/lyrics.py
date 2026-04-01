@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from app.core.auth import get_current_user_api, get_current_user
 from app.database.lyrics_repository import get_lyrics_repository, LyricsRepository
 from app.schemas.lyrics import LyricsCreateSchema, LyricsUpdateSchema
@@ -79,6 +79,7 @@ async def get_lyrics_detail(
 
 @router.post("/", dependencies=[Depends(verify_csrf)])
 async def create_lyrics(
+    request: Request,
     data: LyricsCreateSchema,
     user=Depends(get_current_user),
     repo: LyricsRepository = Depends(get_lyrics_repository)
@@ -99,25 +100,41 @@ async def create_lyrics(
         mr_youtube_video_id=data.mr_youtube_video_id,
         lyrics_data=data.lyrics_data
     )
+
+    # 익명 사용자: 세션에 생성한 가사 ID 기록
+    if not owner_id:
+        anon_ids = request.session.get('anon_lyrics_ids', [])
+        anon_ids.append(lyrics_id)
+        request.session['anon_lyrics_ids'] = anon_ids
+
     return IdResponse(id=lyrics_id)
 
 @router.patch("/{lyrics_id}", dependencies=[Depends(verify_csrf)])
 async def update_lyrics(
+    request: Request,
     lyrics_id: int,
     data: LyricsUpdateSchema,
-    user=Depends(get_current_user_api),
+    user=Depends(get_current_user),
     repo: LyricsRepository = Depends(get_lyrics_repository)
 ):
-    """가사 수정"""
-    # 가사 이름 중복 체크 (내 가사들 중에서, 자기 자신 제외)
-    if data.title:
-        is_duplicate = await repo.check_title_duplicate(user['id'], None, data.title, exclude_id=lyrics_id)
+    """가사 수정 (비로그인 시 본인이 생성한 익명 가사만 수정 가능)"""
+    owner_id = user['id'] if user else None
+
+    # 익명 사용자: 세션에 기록된 가사만 수정 가능
+    if not owner_id:
+        anon_ids = request.session.get('anon_lyrics_ids', [])
+        if lyrics_id not in anon_ids:
+            raise HTTPException(status_code=403, detail="수정 권한이 없습니다.")
+
+    # 가사 이름 중복 체크 (로그인 사용자만)
+    if owner_id and data.title:
+        is_duplicate = await repo.check_title_duplicate(owner_id, None, data.title, exclude_id=lyrics_id)
         if is_duplicate:
             raise HTTPException(status_code=400, detail="같은 노래에 동일한 제목의 가사가 이미 존재합니다.")
 
     await repo.update_lyrics(
         lyrics_id=lyrics_id,
-        owner_id=user['id'],
+        owner_id=owner_id,
         title=data.title,
         mr_youtube_video_id=data.mr_youtube_video_id,
         lyrics_data=data.lyrics_data

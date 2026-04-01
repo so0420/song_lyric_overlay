@@ -119,13 +119,21 @@ class LyricsRepository:
         """
         return await self.db.execute_query(query, (owner_id, song_id, title, mr_youtube_video_id, lyrics_data))
 
-    async def update_lyrics(self, lyrics_id: int, owner_id: int, mr_youtube_video_id: str, lyrics_data: str, title: str = None) -> bool:
-        query = """
-            UPDATE song_lyrics
-            SET title = %s, mr_youtube_video_id = %s, lyrics_data = %s, updated_at = CURRENT_TIMESTAMP
-            WHERE id = %s AND owner_id = %s
-        """
-        await self.db.execute_query(query, (title, mr_youtube_video_id, lyrics_data, lyrics_id, owner_id))
+    async def update_lyrics(self, lyrics_id: int, owner_id, mr_youtube_video_id: str, lyrics_data: str, title: str = None) -> bool:
+        if owner_id is None:
+            query = """
+                UPDATE song_lyrics
+                SET title = %s, mr_youtube_video_id = %s, lyrics_data = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s AND owner_id IS NULL
+            """
+            await self.db.execute_query(query, (title, mr_youtube_video_id, lyrics_data, lyrics_id))
+        else:
+            query = """
+                UPDATE song_lyrics
+                SET title = %s, mr_youtube_video_id = %s, lyrics_data = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s AND owner_id = %s
+            """
+            await self.db.execute_query(query, (title, mr_youtube_video_id, lyrics_data, lyrics_id, owner_id))
         return True
 
     async def delete_lyrics(self, lyrics_id: int, owner_id: int) -> bool:

@@ -869,7 +869,18 @@
                 </button>
             </div>
             <div
-                style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+                style="display: grid; grid-template-columns: auto 1fr 1fr; gap: 12px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+                <button onclick="document.getElementById('lyric-file-input').click()" class="btn btn-outline btn-standard-height"
+                    style="background: #f8fafc; border-style: dashed; font-size: 0.85rem; font-weight: 700;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right: 2px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    파일
+                </button>
+                <input type="file" id="lyric-file-input" accept=".txt,.lrc" style="display: none;" onchange="importLyricFile(this)">
                 <button onclick="showBulkImportModal()" class="btn btn-outline btn-standard-height"
                     style="background: #f8fafc; border-style: dashed; font-size: 0.9rem; font-weight: 700;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -1764,6 +1775,73 @@
         renderTimeline();
         hideModals();
         alert(`${parsedLines.length}개의 가사 구간이 생성되었습니다. 실시간 싱크 모드로 박자를 맞춰보세요!`);
+    }
+
+    function importLyricFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+        input.value = '';
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target.result;
+            if (!confirm('현재 작업 중인 타임라인이 초기화됩니다. 계속하시겠습니까?')) return;
+            pushUndo();
+
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+
+            // 타임스탬프별로 그룹핑: [MM:SS.ss]텍스트
+            const timeRegex = /^\[(\d+):(\d+(?:\.\d+)?)\](.*)$/;
+            const groups = [];
+            let lastTime = null;
+            let lastGroup = null;
+
+            for (const line of lines) {
+                // 메타데이터 줄 무시 (@KEY: 등)
+                if (line.startsWith('@')) continue;
+
+                const match = line.match(timeRegex);
+                if (!match) continue;
+
+                const min = parseInt(match[1]);
+                const sec = parseFloat(match[2]);
+                const ms = Math.round((min * 60 + sec) * 1000);
+                const content = match[3].trim();
+                if (!content) continue;
+
+                if (lastTime !== null && ms === lastTime && lastGroup) {
+                    // 같은 타임스탬프 → 같은 구간에 추가
+                    lastGroup.lines.push(content);
+                } else {
+                    // 새 구간
+                    lastGroup = { time: ms, lines: [content] };
+                    groups.push(lastGroup);
+                    lastTime = ms;
+                }
+            }
+
+            if (groups.length === 0) {
+                alert('파싱할 수 있는 가사가 없습니다. [MM:SS.ss]텍스트 형식인지 확인해주세요.');
+                return;
+            }
+
+            // segments 생성: 각 구간의 end는 다음 구간의 start, 마지막은 +3초
+            segments = [];
+            for (let i = 0; i < groups.length; i++) {
+                const g = groups[i];
+                const nextTime = (i + 1 < groups.length) ? groups[i + 1].time : g.time + 3000;
+                segments.push({
+                    id: Date.now() + i,
+                    start: g.time,
+                    end: nextTime,
+                    text: g.lines.join('\\n')
+                });
+            }
+
+            renderTimeline();
+            alert(`${segments.length}개의 가사 구간이 파일에서 불러와졌습니다.`);
+        };
+        reader.readAsText(file, 'UTF-8');
     }
 
     // New Features: Sync Mode

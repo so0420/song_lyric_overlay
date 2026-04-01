@@ -160,33 +160,6 @@
     to { transform: rotate(360deg); }
 }
 
-/* Load More */
-.load-more-container {
-    text-align: center;
-    margin-bottom: 40px;
-}
-
-.btn-load-more {
-    padding: 12px 32px;
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 100px;
-    font-weight: 600;
-    color: var(--text-main);
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-load-more:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-}
-
-.btn-load-more:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 /* Modal */
 .modal-overlay {
     display: none;
@@ -365,6 +338,16 @@
 
     <div class="songs-stats" id="songs-stats"></div>
 
+    <div style="max-width: 500px; margin: 0 auto 24px;">
+        <div style="display: flex; align-items: center; gap: 10px; background: white; border: 1px solid var(--border-color); border-radius: 100px; padding: 10px 20px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="flex-shrink:0;">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="songs-search" placeholder="노래 제목, 가수, 가사 제목으로 검색..." style="flex:1; border:none; outline:none; font-size:0.95rem; background:transparent;">
+        </div>
+    </div>
+
     <div class="songs-grid" id="songs-grid">
         <div class="songs-loading">
             <div class="spinner"></div>
@@ -372,8 +355,9 @@
         </div>
     </div>
 
-    <div class="load-more-container" id="load-more-container" style="display: none;">
-        <button class="btn-load-more" id="btn-load-more">더 보기</button>
+    <div id="scroll-sentinel" style="height: 1px;"></div>
+    <div class="songs-loading" id="scroll-loading" style="display: none;">
+        <div class="spinner"></div>
     </div>
 </div>
 
@@ -408,10 +392,13 @@
 <script>
 const LIMIT = 20;
 let currentType = 'all';
+let currentSearch = '';
 let currentOffset = 0;
 let totalCount = 0;
 let isLoading = false;
+let hasMore = false;
 let currentSong = null;
+let searchDebounce = null;
 
 function escapeHtml(str) {
     if (!str) return '';
@@ -425,26 +412,27 @@ async function loadSongs(append = false) {
     isLoading = true;
 
     const grid = document.getElementById('songs-grid');
-    const loadMoreBtn = document.getElementById('btn-load-more');
+    const scrollLoading = document.getElementById('scroll-loading');
 
     if (!append) {
         grid.innerHTML = `<div class="songs-loading"><div class="spinner"></div><p>불러오는 중...</p></div>`;
         currentOffset = 0;
     } else {
-        loadMoreBtn.disabled = true;
-        loadMoreBtn.textContent = '불러오는 중...';
+        scrollLoading.style.display = 'block';
     }
 
     try {
-        const res = await fetch(`/api/v1/lyrics/songs?type=${currentType}&offset=${currentOffset}&limit=${LIMIT}`);
+        let url = `/api/v1/lyrics/songs?type=${currentType}&offset=${currentOffset}&limit=${LIMIT}`;
+        if (currentSearch) url += `&q=${encodeURIComponent(currentSearch)}`;
+        const res = await fetch(url);
         const data = await res.json();
 
         totalCount = data.total;
+        hasMore = data.has_more;
         document.getElementById('songs-stats').textContent = `총 ${totalCount}곡`;
 
         if (data.items.length === 0 && !append) {
             grid.innerHTML = `<div class="songs-empty" style="grid-column: 1/-1;">등록된 가사가 없습니다.</div>`;
-            document.getElementById('load-more-container').style.display = 'none';
             return;
         }
 
@@ -472,14 +460,6 @@ async function loadSongs(append = false) {
         }
 
         currentOffset += data.items.length;
-
-        if (data.has_more) {
-            document.getElementById('load-more-container').style.display = 'block';
-            loadMoreBtn.disabled = false;
-            loadMoreBtn.textContent = '더 보기';
-        } else {
-            document.getElementById('load-more-container').style.display = 'none';
-        }
     } catch (e) {
         console.error(e);
         if (!append) {
@@ -487,6 +467,7 @@ async function loadSongs(append = false) {
         }
     } finally {
         isLoading = false;
+        scrollLoading.style.display = 'none';
     }
 }
 
@@ -564,10 +545,22 @@ document.querySelectorAll('.filter-tab').forEach(tab => {
     });
 });
 
-// Load more button
-document.getElementById('btn-load-more').addEventListener('click', () => {
-    loadSongs(true);
+// Search
+document.getElementById('songs-search').addEventListener('input', (e) => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => {
+        currentSearch = e.target.value.trim();
+        loadSongs();
+    }, 300);
 });
+
+// Infinite scroll
+const observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && !isLoading && hasMore) {
+        loadSongs(true);
+    }
+}, { rootMargin: '200px' });
+observer.observe(document.getElementById('scroll-sentinel'));
 
 // Initial load
 loadSongs();

@@ -933,6 +933,14 @@
                 </svg>
                 다시 정렬
             </button>
+            <button onclick="cleanupLyrics()" class="btn btn-outline"
+                style="padding: 6px 12px; font-size: 0.75rem; font-weight: 700; border-radius: 8px;" title="가사 텍스트 정리">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    style="margin-right: 4px;">
+                    <path d="M20 7l-8 8-4-4M4 12l4 4 8-8" />
+                </svg>
+                모양 정리
+            </button>
         </div>
         <div id="timeline" class="timeline-list">
             <!-- Timeline items JS -->
@@ -1034,13 +1042,31 @@
             <code style="background:#f3f4f6;padding:2px 6px;border-radius:3px;font-size:0.8rem;display:inline-block;margin-top:4px;">동해물과 백두산이 마르고 닳도록<br>하느님이 보우하사 우리나라 만세</code>
         </div>
         <div id="bulk-mode-desc-multi" style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 12px; display: none;">
-            한 구간 안에 원문/발음/해석 등 여러 줄을 입력할 수 있습니다.<br>
-            <b>빈 줄(엔터 2번 이상)</b>로 구간을 구분합니다.<br>
-            표시 여부는 오버레이 설정 → 가사 표시에서 조절할 수 있습니다.<br>
-            <b>예시:</b><br>
-            <code style="background:#f3f4f6;padding:4px 8px;border-radius:3px;font-size:0.8rem;display:inline-block;margin-top:4px;line-height:1.6;">転びそうになって掴んだ手のその先で<br>코로비소-니 낫테 츠칸다 테노 소노 사키데<br>넘어질 것 같아 잡은 그 손끝에<br><br>ありがとうって楽しそうなのも<br>아리가토옷테 타노시소-나노모<br>고맙다며 즐거워하는 것도</code>
+            <details>
+                <summary style="cursor: pointer; font-weight: 600; color: var(--accent); margin-bottom: 8px;">설명 보기</summary>
+                <div style="margin-top: 8px;">
+                    한 구간 안에 여러 줄을 입력할 수 있습니다. <b>빈 줄(엔터 2번 이상)</b>로 구간을 구분합니다.<br>
+                    줄 수에 따라 자동으로 분류됩니다:<br>
+                    <div style="margin: 8px 0; padding: 8px 12px; background: #f8fafc; border-radius: 6px; line-height: 1.7;">
+                        <b>1줄</b> = 그대로 가사 한 줄 (한국어 가사 등)<br>
+                        <b>2줄</b> = 원문 / 해석<br>
+                        <b>3줄</b> = 원문 / 발음 / 해석
+                    </div>
+                    표시 여부와 줄별 크기는 오버레이 설정 → 가사 표시에서 조절할 수 있습니다.
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                        <div>
+                            <b>예시 (2줄 - 원문/해석):</b><br>
+                            <code style="background:#f3f4f6;padding:4px 8px;border-radius:3px;font-size:0.8rem;display:inline-block;margin-top:4px;line-height:1.6;">We are the champions<br>우리는 챔피언이야<br><br>No time for losers<br>패배자를 위한 시간은 없어</code>
+                        </div>
+                        <div>
+                            <b>예시 (3줄 - 원문/발음/해석):</b><br>
+                            <code style="background:#f3f4f6;padding:4px 8px;border-radius:3px;font-size:0.8rem;display:inline-block;margin-top:4px;line-height:1.6;">転びそうになって<br>코로비소-니 낫테<br>넘어질 것 같아<br><br>ありがとうって<br>아리가토옷테<br>고맙다며</code>
+                        </div>
+                    </div>
+                </div>
+            </details>
         </div>
-        <textarea id="bulk-import-text" class="text-input" style="margin-bottom: 20px;"
+        <textarea id="bulk-import-text" class="text-input" style="margin-bottom: 20px; min-height: 250px;"
             placeholder="동해물과 백두산이 마르고 닳도록&#10;하느님이 보우하사 우리나라 만세"></textarea>
         <div style="display: flex; gap: 10px;">
             <button onclick="processBulkImport()" class="btn btn-primary" style="flex: 1;">적용하기</button>
@@ -1475,6 +1501,30 @@
         segments.sort((a, b) => a.start - b.start);
         renderTimeline();
         if (force) hideModals();
+    }
+
+    function cleanupLyrics() {
+        if (segments.length === 0) return alert('정리할 가사가 없습니다.');
+        pushUndo();
+        let changed = 0;
+        segments.forEach(seg => {
+            const before = seg.text;
+            let t = seg.text;
+            // Zero-Width 및 보이지 않는 특수문자 제거
+            t = t.replace(/[\u200B\u200C\u200D\uFEFF\u00AD\u2060\u180E]/g, '');
+            // \\n\\n → \\n (중복 줄바꿈 정리)
+            t = t.replace(/\\n\\n+/g, '\\n');
+            // 앞뒤 \\n 제거
+            t = t.replace(/^(\\n)+|(\\n)+$/g, '');
+            // 각 줄 앞뒤 공백 제거
+            t = t.split('\\n').map(l => l.trim()).join('\\n');
+            // 전체 앞뒤 공백 제거
+            t = t.trim();
+            seg.text = t;
+            if (before !== t) changed++;
+        });
+        renderTimeline();
+        alert(`${changed}개의 가사가 정리되었습니다.`);
     }
 
     function formatMs(ms) {

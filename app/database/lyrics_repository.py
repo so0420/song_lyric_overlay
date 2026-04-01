@@ -239,13 +239,14 @@ class LyricsRepository:
                 s.cover_image_url as artwork_url,
                 a.name as artist_name,
                 a.artist_external_id as artist_id,
-                COUNT(l.id) as lyrics_count
+                COUNT(l.id) as lyrics_count,
+                MAX(l.updated_at) as last_updated
             FROM songs s
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
             GROUP BY s.id
-            ORDER BY lyrics_count DESC, s.title ASC
+            ORDER BY last_updated DESC
             LIMIT %s
         """
         return await self.db.fetch_all(query, (search_pattern, search_pattern, search_pattern, limit))
@@ -265,14 +266,15 @@ class LyricsRepository:
                 s.cover_image_url as artwork_url,
                 a.name as artist_name,
                 a.artist_external_id as artist_id,
-                COUNT(l.id) as lyrics_count
+                COUNT(l.id) as lyrics_count,
+                MAX(l.updated_at) as last_updated
             FROM songs s
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE s.song_external_id LIKE 'it_%%'
               AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
             GROUP BY s.id, s.title, s.song_external_id, s.cover_image_url, a.name, a.artist_external_id
-            ORDER BY lyrics_count DESC, s.title ASC
+            ORDER BY last_updated DESC
             LIMIT %s OFFSET %s
         """
         itunes_results = await self.db.fetch_all(itunes_query, (search_pattern, search_pattern, search_pattern, limit, offset))
@@ -297,14 +299,15 @@ class LyricsRepository:
                 s.cover_image_url as artwork_url,
                 a.name as artist_name,
                 a.artist_external_id as artist_id,
-                COUNT(l.id) as lyrics_count
+                COUNT(l.id) as lyrics_count,
+                MAX(l.updated_at) as last_updated
             FROM songs s
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE s.song_external_id LIKE 'custom_%%'
               AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
             GROUP BY s.id, s.title, s.song_external_id, s.cover_image_url, a.name, a.artist_external_id
-            ORDER BY lyrics_count DESC, s.title ASC
+            ORDER BY last_updated DESC
             LIMIT %s OFFSET %s
         """
         custom_results = await self.db.fetch_all(custom_query, (search_pattern, search_pattern, search_pattern, limit, offset))
@@ -334,14 +337,21 @@ class LyricsRepository:
         }
 
     async def get_all_songs_with_lyrics(
-        self, offset: int = 0, limit: int = 20, song_type: str = "all"
+        self, offset: int = 0, limit: int = 20, song_type: str = "all", search: str = None
     ) -> Dict[str, Any]:
-        """공개된 가사가 있는 모든 노래 조회 (페이지네이션 지원)"""
+        """공개된 가사가 있는 모든 노래 조회 (페이지네이션, 검색 지원)"""
         type_filter = ""
         if song_type == "itunes":
             type_filter = "AND s.song_external_id LIKE 'it_%%'"
         elif song_type == "custom":
             type_filter = "AND s.song_external_id LIKE 'custom_%%'"
+
+        search_filter = ""
+        params = []
+        if search:
+            search_filter = "AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)"
+            pattern = f"%{search}%"
+            params = [pattern, pattern, pattern]
 
         query = f"""
             SELECT
@@ -351,24 +361,26 @@ class LyricsRepository:
                 s.cover_image_url as artwork_url,
                 a.name as artist_name,
                 a.artist_external_id as artist_id,
-                COUNT(l.id) as lyrics_count
+                COUNT(l.id) as lyrics_count,
+                MAX(l.updated_at) as last_updated
             FROM songs s
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
-            WHERE 1=1 {type_filter}
+            WHERE 1=1 {type_filter} {search_filter}
             GROUP BY s.id, s.title, s.song_external_id, s.cover_image_url, a.name, a.artist_external_id
-            ORDER BY lyrics_count DESC, s.title ASC
+            ORDER BY last_updated DESC
             LIMIT %s OFFSET %s
         """
-        items = await self.db.fetch_all(query, (limit, offset))
+        items = await self.db.fetch_all(query, (*params, limit, offset))
 
         count_query = f"""
             SELECT COUNT(DISTINCT s.id) as total
             FROM songs s
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
-            WHERE 1=1 {type_filter}
+            LEFT JOIN artists a ON s.artist_id = a.id
+            WHERE 1=1 {type_filter} {search_filter}
         """
-        count_result = await self.db.fetch_one(count_query, ())
+        count_result = await self.db.fetch_one(count_query, (*params,) if params else ())
         total = count_result['total'] if count_result else 0
 
         return {

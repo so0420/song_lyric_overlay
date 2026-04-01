@@ -36,3 +36,8 @@ async def logout(request: Request):
 async def songs_page(request: Request, user=Depends(get_current_user)):
     """가사가 등록된 노래 목록 페이지"""
     return templates.TemplateResponse("pages/songs/index.html", {"request": request, "user": user})
+
+@router.get("/help", response_class=HTMLResponse)
+async def help_page(request: Request, user=Depends(get_current_user)):
+    """사용법 안내 페이지"""
+    return templates.TemplateResponse("pages/help/index.html", {"request": request, "user": user})

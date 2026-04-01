@@ -944,14 +944,6 @@
                 </svg>
                 다시 정렬
             </button>
-            <button onclick="cleanupLyrics()" class="btn btn-outline"
-                style="padding: 6px 12px; font-size: 0.75rem; font-weight: 700; border-radius: 8px;" title="가사 텍스트 정리">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                    style="margin-right: 4px;">
-                    <path d="M20 7l-8 8-4-4M4 12l4 4 8-8" />
-                </svg>
-                모양 정리
-            </button>
         </div>
         <div id="timeline" class="timeline-list">
             <!-- Timeline items JS -->
@@ -1081,6 +1073,7 @@
             placeholder="동해물과 백두산이 마르고 닳도록&#10;하느님이 보우하사 우리나라 만세"></textarea>
         <div style="display: flex; gap: 10px;">
             <button onclick="processBulkImport()" class="btn btn-primary" style="flex: 1;">적용하기</button>
+            <button onclick="cleanupLyrics()" class="btn btn-outline" style="flex: 1;">가사 정리</button>
             <button onclick="hideModals()" class="btn btn-outline" style="flex: 1;">취소</button>
         </div>
     </div>
@@ -1515,27 +1508,19 @@
     }
 
     function cleanupLyrics() {
-        if (segments.length === 0) return alert('정리할 가사가 없습니다.');
-        pushUndo();
-        let changed = 0;
-        segments.forEach(seg => {
-            const before = seg.text;
-            let t = seg.text;
-            // Zero-Width 및 보이지 않는 특수문자 제거
-            t = t.replace(/[\u200B\u200C\u200D\uFEFF\u00AD\u2060\u180E]/g, '');
-            // \\n\\n → \\n (중복 줄바꿈 정리)
-            t = t.replace(/\\n\\n+/g, '\\n');
-            // 앞뒤 \\n 제거
-            t = t.replace(/^(\\n)+|(\\n)+$/g, '');
-            // 각 줄 앞뒤 공백 제거
-            t = t.split('\\n').map(l => l.trim()).join('\\n');
-            // 전체 앞뒤 공백 제거
-            t = t.trim();
-            seg.text = t;
-            if (before !== t) changed++;
-        });
-        renderTimeline();
-        alert(`${changed}개의 가사가 정리되었습니다.`);
+        const textarea = document.getElementById('bulk-import-text');
+        if (!textarea || !textarea.value.trim()) return alert('정리할 가사가 없습니다.');
+        let t = textarea.value;
+        // Zero-Width 및 보이지 않는 특수문자 제거
+        t = t.replace(/[\u200B\u200C\u200D\uFEFF\u00AD\u2060\u180E]/g, '');
+        // 연속 줄바꿈 → 1줄로
+        t = t.replace(/\n{2,}/g, '\n');
+        // 각 줄 앞뒤 공백 제거
+        t = t.split('\n').map(l => l.trim()).join('\n');
+        // 전체 앞뒤 공백 제거
+        t = t.trim();
+        textarea.value = t;
+        alert('가사 텍스트가 정리되었습니다.');
     }
 
     function formatMs(ms) {

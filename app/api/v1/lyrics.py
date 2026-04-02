@@ -133,13 +133,15 @@ async def update_lyrics(
         if is_duplicate:
             raise HTTPException(status_code=400, detail="같은 노래에 동일한 제목의 가사가 이미 존재합니다.")
 
-    await repo.update_lyrics(
+    updated = await repo.update_lyrics(
         lyrics_id=lyrics_id,
         owner_id=owner_id,
         title=data.title,
         mr_youtube_video_id=data.mr_youtube_video_id,
         lyrics_data=data.lyrics_data
     )
+    if not updated:
+        raise HTTPException(status_code=404, detail="가사를 찾을 수 없거나 수정 권한이 없습니다.")
     return {"success": True}
 
 @router.delete("/{lyrics_id}", dependencies=[Depends(verify_csrf)])

@@ -126,14 +126,20 @@ class LyricsRepository:
                 SET title = %s, mr_youtube_video_id = %s, lyrics_data = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s AND owner_id IS NULL
             """
-            await self.db.execute_query(query, (title, mr_youtube_video_id, lyrics_data, lyrics_id))
+            params = (title, mr_youtube_video_id, lyrics_data, lyrics_id)
         else:
             query = """
                 UPDATE song_lyrics
                 SET title = %s, mr_youtube_video_id = %s, lyrics_data = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s AND owner_id = %s
             """
-            await self.db.execute_query(query, (title, mr_youtube_video_id, lyrics_data, lyrics_id, owner_id))
+            params = (title, mr_youtube_video_id, lyrics_data, lyrics_id, owner_id)
+
+        async with self.db.session() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(query, params)
+                if cursor.rowcount == 0:
+                    return False
         return True
 
     async def delete_lyrics(self, lyrics_id: int, owner_id: int) -> bool:

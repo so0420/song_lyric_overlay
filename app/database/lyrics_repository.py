@@ -419,5 +419,27 @@ class LyricsRepository:
         """
         return await self.db.fetch_all(query, tuple(params))
 
+    # 메모 관련 메서드
+    async def get_memo(self, user_id: int, lyrics_id: int) -> Optional[Dict[str, Any]]:
+        """가사에 대한 사용자 메모 조회"""
+        query = "SELECT memo, updated_at FROM user_lyrics_memos WHERE user_id = %s AND lyrics_id = %s"
+        return await self.db.fetch_one(query, (user_id, lyrics_id))
+
+    async def save_memo(self, user_id: int, lyrics_id: int, memo: str) -> bool:
+        """가사에 대한 사용자 메모 저장 (UPSERT)"""
+        query = """
+            INSERT INTO user_lyrics_memos (user_id, lyrics_id, memo)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE memo = VALUES(memo), updated_at = CURRENT_TIMESTAMP
+        """
+        await self.db.execute_query(query, (user_id, lyrics_id, memo))
+        return True
+
+    async def delete_memo(self, user_id: int, lyrics_id: int) -> bool:
+        """가사에 대한 사용자 메모 삭제"""
+        query = "DELETE FROM user_lyrics_memos WHERE user_id = %s AND lyrics_id = %s"
+        await self.db.execute_query(query, (user_id, lyrics_id))
+        return True
+
 def get_lyrics_repository():
     return LyricsRepository()

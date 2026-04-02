@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from app.core.auth import get_current_user_api, get_current_user
 from app.database.lyrics_repository import get_lyrics_repository, LyricsRepository
-from app.schemas.lyrics import LyricsCreateSchema, LyricsUpdateSchema
+from app.schemas.lyrics import LyricsCreateSchema, LyricsUpdateSchema, LyricsMemoSchema
 from app.schemas.common import IdResponse
 from app.utils.csrf import verify_csrf
 
@@ -173,6 +173,31 @@ async def remove_favorite(
 ):
     """가사 즐겨찾기 제거"""
     await repo.remove_favorite(user['id'], lyrics_id)
+    return {"success": True}
+
+# 메모 API
+@router.get("/{lyrics_id}/memo")
+async def get_memo(
+    lyrics_id: int,
+    user=Depends(get_current_user_api),
+    repo: LyricsRepository = Depends(get_lyrics_repository)
+):
+    """가사에 대한 내 메모 조회"""
+    memo = await repo.get_memo(user['id'], lyrics_id)
+    return {"memo": memo['memo'] if memo else "", "updated_at": memo['updated_at'] if memo else None}
+
+@router.put("/{lyrics_id}/memo", dependencies=[Depends(verify_csrf)])
+async def save_memo(
+    lyrics_id: int,
+    data: LyricsMemoSchema,
+    user=Depends(get_current_user_api),
+    repo: LyricsRepository = Depends(get_lyrics_repository)
+):
+    """가사에 대한 내 메모 저장"""
+    if data.memo.strip():
+        await repo.save_memo(user['id'], lyrics_id, data.memo.strip())
+    else:
+        await repo.delete_memo(user['id'], lyrics_id)
     return {"success": True}
 
 @router.get("/favorites/my")

@@ -199,6 +199,30 @@ CREATE INDEX idx_access_request_user_id ON overlay_access_requests(user_id);
 CREATE INDEX idx_access_request_status ON overlay_access_requests(status);
 
 -- -------------------------------------------------------------------------------------------------------------
+-- User Lyrics Memos (개인 메모)
+-- -------------------------------------------------------------------------------------------------------------
+
+-- 사용자 가사별 개인 메모 테이블 (노래 키 정보 등 개인 참고용)
+CREATE TABLE IF NOT EXISTS `user_lyrics_memos` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` BIGINT NOT NULL COMMENT 'users 테이블 참조 ID',
+    `lyrics_id` BIGINT NOT NULL COMMENT 'song_lyrics 테이블 참조 ID',
+    `memo` TEXT NOT NULL COMMENT '메모 내용',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    -- 유니크 키 설정: 같은 가사에 사용자당 하나의 메모만
+    UNIQUE KEY `unique_user_lyrics_memo` (`user_id`, `lyrics_id`),
+
+    -- 외래 키 설정
+    CONSTRAINT `fk_memo_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_memo_lyrics` FOREIGN KEY (`lyrics_id`) REFERENCES `song_lyrics` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_memo_user_id ON user_lyrics_memos(user_id);
+CREATE INDEX idx_memo_lyrics_id ON user_lyrics_memos(lyrics_id);
+
+-- -------------------------------------------------------------------------------------------------------------
 -- Audit Logs
 -- -------------------------------------------------------------------------------------------------------------
 

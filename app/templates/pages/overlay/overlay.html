@@ -291,6 +291,98 @@
         color: var(--text-main);
     }
 
+    /* Memo */
+    .memo-btn {
+        height: 36px;
+        padding: 0 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: 1px solid var(--border-color);
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        color: var(--text-sub);
+        flex-shrink: 0;
+    }
+
+    .memo-btn:hover {
+        background: #f8fafc;
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    .memo-btn.has-memo {
+        background: #eff6ff;
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    .memo-popover {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        z-index: 100;
+        width: 320px;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: var(--shadow-md);
+        padding: 16px;
+        margin-top: 8px;
+    }
+
+    .memo-popover.active {
+        display: block;
+    }
+
+    .memo-popover-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+
+    .memo-popover-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .memo-textarea {
+        width: 100%;
+        min-height: 80px;
+        max-height: 200px;
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.85rem;
+        resize: vertical;
+        outline: none;
+        transition: border-color 0.2s;
+        color: var(--text-main);
+        line-height: 1.5;
+    }
+
+    .memo-textarea:focus {
+        border-color: var(--accent);
+    }
+
+    .memo-textarea::placeholder {
+        color: var(--text-dim);
+    }
+
+    .memo-save-hint {
+        font-size: 0.75rem;
+        color: var(--text-dim);
+        margin-top: 8px;
+        text-align: right;
+    }
+
     /* Lyrics Display */
     .lyrics-display {
         padding: 40px 32px;
@@ -1535,7 +1627,7 @@
     <!-- Main Section -->
     <div class="main-section">
         <div class="video-card">
-            <div class="now-playing-info" id="nowPlayingInfo">
+            <div class="now-playing-info" id="nowPlayingInfo" style="position: relative;">
                 <div class="now-playing-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                         <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -1544,6 +1636,22 @@
                 <div class="now-playing-text">
                     <div class="now-playing-label">Now Playing</div>
                     <div class="now-playing-title" id="nowPlayingTitle">-</div>
+                </div>
+                <button class="memo-btn" id="memoBtn" title="메모">
+                    <span style="font-size: 0.8rem; font-weight: 600;">메모</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                </button>
+                <div class="memo-popover" id="memoPopover">
+                    <div class="memo-popover-header">
+                        <span class="memo-popover-title">메모</span>
+                    </div>
+                    <textarea class="memo-textarea" id="memoTextarea" placeholder="노래 키, 참고사항 등을 메모하세요..." maxlength="1000"></textarea>
+                    <div class="memo-save-hint">포커스를 벗어나면 자동 저장됩니다</div>
                 </div>
             </div>
             <div class="video-wrapper">
@@ -1815,7 +1923,11 @@
             currentSearchResults: [],
             // Offset settings (in milliseconds)
             localOffset: parseInt(localStorage.getItem('overlay_local_offset') || '0'),
-            obsOffset: parseInt(localStorage.getItem('overlay_obs_offset') || '0')
+            obsOffset: parseInt(localStorage.getItem('overlay_obs_offset') || '0'),
+            // Memo
+            currentMemo: '',
+            memoLyricsId: null,
+            memoSaveTimer: null
         };
 
         // DOM Elements
@@ -1857,7 +1969,11 @@
             obsOffsetMinus: $('#obsOffsetMinus'),
             obsOffsetPlus: $('#obsOffsetPlus'),
             obsOffsetValue: $('#obsOffsetValue'),
-            offsetReset: $('#offsetReset')
+            offsetReset: $('#offsetReset'),
+            // Memo
+            memoBtn: $('#memoBtn'),
+            memoPopover: $('#memoPopover'),
+            memoTextarea: $('#memoTextarea')
         };
 
         // Toast notifications
@@ -2673,6 +2789,11 @@
             `;
             }
 
+            // 메모 로드
+            const currentLyricsId = item.lyricsId || item.id;
+            elements.memoPopover.classList.remove('active');
+            loadMemo(currentLyricsId || null);
+
             // OBS에 전체 가사 + 곡 정보 동기화
             syncLyricsInit();
 
@@ -3045,6 +3166,59 @@
             }
         }
 
+        // Memo
+        function toggleMemoPopover() {
+            if (!state.memoLyricsId) return;
+            elements.memoPopover.classList.toggle('active');
+            if (elements.memoPopover.classList.contains('active')) {
+                elements.memoTextarea.focus();
+            }
+        }
+
+        async function loadMemo(lyricsId) {
+            state.memoLyricsId = lyricsId;
+            state.currentMemo = '';
+            elements.memoTextarea.value = '';
+            elements.memoBtn.classList.remove('has-memo');
+
+            if (!lyricsId) return;
+
+            try {
+                const response = await fetch(`/api/v1/lyrics/${lyricsId}/memo`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.memo) {
+                        state.currentMemo = data.memo;
+                        elements.memoTextarea.value = data.memo;
+                        elements.memoBtn.classList.add('has-memo');
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load memo:', error);
+            }
+        }
+
+        async function saveMemo() {
+            if (!state.memoLyricsId) return;
+
+            const memo = elements.memoTextarea.value.trim();
+            if (memo === state.currentMemo) return;
+
+            state.currentMemo = memo;
+            elements.memoBtn.classList.toggle('has-memo', memo.length > 0);
+
+            try {
+                await fetch(`/api/v1/lyrics/${state.memoLyricsId}/memo`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+                    body: JSON.stringify({ memo })
+                });
+            } catch (error) {
+                console.error('Failed to save memo:', error);
+                showToast('메모 저장에 실패했습니다', 'error');
+            }
+        }
+
         // Volume Control
         function updateVolume(value) {
             state.volume = value;
@@ -3295,6 +3469,29 @@
 
             // Initialize offset display
             updateOffsetDisplay();
+
+            // Memo
+            elements.memoBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleMemoPopover();
+            });
+            elements.memoPopover.addEventListener('click', (e) => e.stopPropagation());
+            elements.memoTextarea.addEventListener('blur', saveMemo);
+            elements.memoTextarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    saveMemo();
+                    elements.memoPopover.classList.remove('active');
+                }
+                e.stopPropagation(); // 단축키 충돌 방지
+            });
+            document.addEventListener('click', (e) => {
+                if (!elements.memoPopover.contains(e.target) && !elements.memoBtn.contains(e.target)) {
+                    if (elements.memoPopover.classList.contains('active')) {
+                        saveMemo();
+                        elements.memoPopover.classList.remove('active');
+                    }
+                }
+            });
 
             // Tabs
             $$('.tab-btn').forEach(btn => {

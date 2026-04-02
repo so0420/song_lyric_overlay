@@ -13,3 +13,7 @@ class LyricsUpdateSchema(BaseModel):
     title: Optional[str] = None
     mr_youtube_video_id: str
     lyrics_data: str
+
+
+class LyricsMemoSchema(BaseModel):
+    memo: str

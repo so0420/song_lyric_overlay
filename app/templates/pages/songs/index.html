@@ -468,6 +468,7 @@ async function loadSongs(append = false) {
     } finally {
         isLoading = false;
         scrollLoading.style.display = 'none';
+        setTimeout(checkSentinel, 100);
     }
 }
 
@@ -555,12 +556,22 @@ document.getElementById('songs-search').addEventListener('input', (e) => {
 });
 
 // Infinite scroll
+const sentinel = document.getElementById('scroll-sentinel');
 const observer = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting && !isLoading && hasMore) {
         loadSongs(true);
     }
 }, { rootMargin: '200px' });
-observer.observe(document.getElementById('scroll-sentinel'));
+observer.observe(sentinel);
+
+// 데이터 로드 후 sentinel이 여전히 뷰포트 안에 있으면 추가 로드
+function checkSentinel() {
+    if (!hasMore || isLoading) return;
+    const rect = sentinel.getBoundingClientRect();
+    if (rect.top < window.innerHeight + 200) {
+        loadSongs(true);
+    }
+}
 
 // Initial load
 loadSongs();

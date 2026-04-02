@@ -9,6 +9,9 @@ from app.schemas.access_request import (
     AccessRequestStatus
 )
 from app.utils.log import logger
+from app.utils.mailer import send_email
+from app.utils.email_templates import get_access_approved_email
+from app.utils.config import config
 
 router = APIRouter()
 
@@ -88,6 +91,18 @@ async def submit_access_request(
     auto_approve = await repo.get_auto_approve()
     if auto_approve:
         await repo.auto_approve_request(request_id, user['id'])
+        # 승인 알림 메일 발송
+        user_email = user.get('email')
+        user_name = user.get('name', '')
+        if user_email:
+            html_content, text_content = get_access_approved_email(user_name or user_email)
+            background_tasks.add_task(
+                send_email,
+                to_email=user_email,
+                subject=f"[{config.app_name}] 오버레이 사용 요청이 승인되었습니다",
+                html_content=html_content,
+                text_content=text_content
+            )
 
     request = await repo.get_request_by_id(request_id)
 

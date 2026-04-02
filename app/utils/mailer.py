@@ -42,7 +42,7 @@ def send_email(to_email: str, subject: str, html_content: str = None, text_conte
             server.starttls()
             server.login(my_email, password)
             server.sendmail(my_email, to_email, message.as_string())
-        logger.info(f'메일 전송 성공 - 수신자: {to_email}, 제목: {subject}, 내용: ' +text_content.replace("\n","\\n"))
+        logger.info(f'메일 전송 성공 - 수신자: {to_email}, 제목: {subject}')
         return True
     except Exception as e:
         logger.error(f'메일 전송 중 오류 발생: {e}')

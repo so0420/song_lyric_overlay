@@ -2387,10 +2387,6 @@
     }
 
     function selectVideo(videoId) {
-        // 영상 변경 시 가사 ID 초기화 (새 작업물로 인식)
-        if (currentVideoId && currentVideoId !== videoId) {
-            currentLyricsId = null;
-        }
         currentVideoId = videoId;
         initPlayer(videoId);
         hideModals();
@@ -2723,7 +2719,10 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) return res.json().then(err => { throw new Error(err.detail || '저장 실패'); });
+                return res.json();
+            })
             .then(data => {
                 if (data.id) currentLyricsId = data.id;
                 clearDraft();
@@ -2731,7 +2730,7 @@
             })
             .catch(err => {
                 console.error(err);
-                alert("저장 중 오류가 발생했습니다.");
+                alert(err.message || "저장 중 오류가 발생했습니다.");
             });
     }
 

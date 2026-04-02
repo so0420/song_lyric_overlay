@@ -143,6 +143,45 @@ def get_password_reset_email(user_name: str, code: str) -> tuple[str, str]:
     return html_content, text_content
 
 
+def get_access_approved_email(user_name: str) -> tuple[str, str]:
+    """
+    오버레이 사용 요청 승인 알림 이메일 템플릿
+
+    :return: (html_content, text_content)
+    """
+    content = f"""
+<p style="color: #374151; font-size: 16px; margin-bottom: 24px;">
+    안녕하세요, <strong>{user_name}</strong>님!<br>
+    오버레이 기능 사용 요청이 <strong style="color: #2563eb;">승인</strong>되었습니다.
+</p>
+<div style="background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%); padding: 24px; text-align: center; border-radius: 12px; margin: 24px 0; border: 1px solid #bfdbfe;">
+    <p style="margin: 0; font-size: 18px; font-weight: 700; color: #1e40af;">사용 승인 완료</p>
+    <p style="margin: 8px 0 0 0; font-size: 14px; color: #475569;">지금 바로 노래하기 페이지에서 오버레이 기능을 사용하실 수 있습니다.</p>
+</div>
+<div style="text-align: center; margin: 24px 0;">
+    <a href="{config.app_url}/overlay" style="display: inline-block; padding: 12px 32px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px;">노래하기 바로가기</a>
+</div>
+"""
+
+    html_content = _get_base_email_layout(
+        title="사용 요청 승인",
+        subtitle="오버레이 기능을 사용할 수 있습니다",
+        content=content
+    )
+
+    text_content = f"""안녕하세요, {user_name}님!
+
+오버레이 기능 사용 요청이 승인되었습니다.
+지금 바로 노래하기 페이지에서 오버레이 기능을 사용하실 수 있습니다.
+
+바로가기: {config.app_url}/overlay
+
+본 메일은 {config.app_name} 서비스에서 발송되었습니다.
+"""
+
+    return html_content, text_content
+
+
 def get_inquiry_reply_email(
     user_name: str,
     subject: str,

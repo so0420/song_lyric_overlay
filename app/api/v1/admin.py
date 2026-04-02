@@ -5,6 +5,9 @@ from app.database.mariadb import db_handler
 from app.database.access_request_repository import get_access_request_repository, AccessRequestRepository
 from app.schemas.access_request import AccessRequestRejectSchema, AccessRequestResponseSchema
 from app.utils.audit import log_audit, get_client_ip, AuditAction
+from app.utils.mailer import send_email
+from app.utils.email_templates import get_access_approved_email
+from app.utils.config import config
 from typing import List, Optional
 
 router = APIRouter()
@@ -183,6 +186,18 @@ async def approve_access_request(
         details={"request_id": request_id, "user_email": access_request.get('user_email')},
         ip_address=get_client_ip(request)
     )
+
+    # 승인 알림 메일 발송
+    user_email = access_request.get('user_email')
+    user_name = access_request.get('user_name', '')
+    if user_email:
+        html_content, text_content = get_access_approved_email(user_name or user_email)
+        send_email(
+            to_email=user_email,
+            subject=f"[{config.app_name}] 오버레이 사용 요청이 승인되었습니다",
+            html_content=html_content,
+            text_content=text_content
+        )
 
     return {"success": True, "message": "요청이 승인되었습니다"}
 

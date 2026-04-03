@@ -60,7 +60,7 @@ class OverlaySettingsSchema(BaseModel):
     artist_stroke: int = 2
     text_shadow: bool = True
     # 표시 옵션
-    animation_enabled: bool = True
+    animation_enabled: bool = False
     show_prev_line: bool = True
     show_next_line: bool = True
     # 외국어 가사 줄 표시 옵션 (\n으로 구분된 각 줄)

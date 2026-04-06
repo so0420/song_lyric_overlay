@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Form, Request
-from app.core.auth import get_current_user_api
+from app.core.auth import get_current_user, get_current_user_api
 from typing import Optional
 from app.services.song_service import SongService, get_song_service
 from app.integrations.itunes_search_api import itunes_api
@@ -91,13 +91,13 @@ async def register_custom_song(
     artist: str = Form(...),
     image: Optional[UploadFile] = File(None),
     service: SongService = Depends(get_song_service),
-    user=Depends(get_current_user_api)
+    user=Depends(get_current_user)
 ):
     return await service.create_custom_song(
         title=title,
         artist=artist,
         image=image,
-        owner_id=user['id']
+        owner_id=user['id'] if user else None
     )
 
 @router.get("/info")

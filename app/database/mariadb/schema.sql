@@ -53,7 +53,7 @@ CREATE INDEX `idx_social_user_id` ON `social_accounts`(`user_id`);
 CREATE TABLE IF NOT EXISTS `artists` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL COMMENT '가수 이름',
-    `artist_external_id` VARCHAR(255) NOT NULL COMMENT '가수 ID - 외부 서비스(itunes(줄여서 it) 등)it_id or custom_{id}',
+    `artist_external_id` VARCHAR(255) NOT NULL COMMENT '가수 ID - custom_{uuid}',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS `artists` (
 CREATE TABLE IF NOT EXISTS `songs` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
     `title` VARCHAR(255) NOT NULL COMMENT '노래 제목',
-    `song_external_id` VARCHAR(255) NULL COMMENT '노래 ID - 외부 서비스(itunes(줄여서 it) 등)it_id or custom_{id}',
+    `song_external_id` VARCHAR(255) NULL COMMENT '노래 ID - custom_{uuid}',
     `artist_id` BIGINT NULL COMMENT '아티스트 ID',
     `official_youtube_video_id` VARCHAR(255) NULL COMMENT '노래 기본 유튜브 영상 ID: mr 말고 공식 노래꺼 / 없으면 null',
     `cover_image_url` TEXT NULL COMMENT '노래 커버 이미지 URL. 저장은 하지만 사용하지 않음.(저작권 이슈)',

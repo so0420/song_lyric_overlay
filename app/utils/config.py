@@ -75,9 +75,6 @@ class Settings(BaseSettings):
 
 class CacheOptions(BaseModel):
     """캐시 관련 설정"""
-    # iTunes 캐시
-    itunes_ttl: int = 300  # 캐시 유효 시간 (초)
-    itunes_max_size: int = 100  # 최대 캐시 항목 수
     # YouTube 캐시
     youtube_ttl: int = 300
     youtube_max_size: int = 100

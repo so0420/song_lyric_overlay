@@ -260,11 +260,10 @@ class LyricsRepository:
     async def search_all_songs_with_lyrics(
         self, query_term: str, offset: int = 0, limit: int = 20
     ) -> Dict[str, Any]:
-        """공개된 가사가 있는 노래 검색 (음원 + 커스텀 분리 반환, 페이지네이션 지원)"""
+        """공개된 가사가 있는 노래 검색 (통합, 페이지네이션 지원)"""
         search_pattern = f"%{query_term}%"
 
-        # 음원 노래 검색 (song_external_id가 'it_'로 시작)
-        itunes_query = """
+        query = """
             SELECT
                 s.id as song_id,
                 s.title as track_name,
@@ -277,67 +276,25 @@ class LyricsRepository:
             FROM songs s
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
-            WHERE s.song_external_id LIKE 'it_%%'
-              AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
+            WHERE (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
             GROUP BY s.id, s.title, s.song_external_id, s.cover_image_url, a.name, a.artist_external_id
             ORDER BY last_updated DESC
             LIMIT %s OFFSET %s
         """
-        itunes_results = await self.db.fetch_all(itunes_query, (search_pattern, search_pattern, search_pattern, limit, offset))
+        results = await self.db.fetch_all(query, (search_pattern, search_pattern, search_pattern, limit, offset))
 
-        # 음원 전체 개수
-        itunes_count_query = """
+        count_query = """
             SELECT COUNT(DISTINCT s.id) as total
             FROM songs s
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
-            WHERE s.song_external_id LIKE 'it_%%'
-              AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
+            WHERE (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
         """
-        itunes_count = await self.db.fetch_one(itunes_count_query, (search_pattern, search_pattern, search_pattern))
-
-        # 커스텀 노래 검색 (song_external_id가 'custom_'로 시작)
-        custom_query = """
-            SELECT
-                s.id as song_id,
-                s.title as track_name,
-                s.song_external_id,
-                s.cover_image_url as artwork_url,
-                a.name as artist_name,
-                a.artist_external_id as artist_id,
-                COUNT(l.id) as lyrics_count,
-                MAX(l.updated_at) as last_updated
-            FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
-            LEFT JOIN artists a ON s.artist_id = a.id
-            WHERE s.song_external_id LIKE 'custom_%%'
-              AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
-            GROUP BY s.id, s.title, s.song_external_id, s.cover_image_url, a.name, a.artist_external_id
-            ORDER BY last_updated DESC
-            LIMIT %s OFFSET %s
-        """
-        custom_results = await self.db.fetch_all(custom_query, (search_pattern, search_pattern, search_pattern, limit, offset))
-
-        # 커스텀 전체 개수
-        custom_count_query = """
-            SELECT COUNT(DISTINCT s.id) as total
-            FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
-            LEFT JOIN artists a ON s.artist_id = a.id
-            WHERE s.song_external_id LIKE 'custom_%%'
-              AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
-        """
-        custom_count = await self.db.fetch_one(custom_count_query, (search_pattern, search_pattern, search_pattern))
+        count_result = await self.db.fetch_one(count_query, (search_pattern, search_pattern, search_pattern))
 
         return {
-            "itunes": {
-                "items": itunes_results,
-                "total": itunes_count['total'] if itunes_count else 0
-            },
-            "custom": {
-                "items": custom_results,
-                "total": custom_count['total'] if custom_count else 0
-            },
+            "items": results,
+            "total": count_result['total'] if count_result else 0,
             "offset": offset,
             "limit": limit
         }
@@ -347,10 +304,6 @@ class LyricsRepository:
     ) -> Dict[str, Any]:
         """공개된 가사가 있는 모든 노래 조회 (페이지네이션, 검색 지원)"""
         type_filter = ""
-        if song_type == "itunes":
-            type_filter = "AND s.song_external_id LIKE 'it_%%'"
-        elif song_type == "custom":
-            type_filter = "AND s.song_external_id LIKE 'custom_%%'"
 
         search_filter = ""
         params = []

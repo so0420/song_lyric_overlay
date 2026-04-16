@@ -28,8 +28,7 @@ class TestLyricsSearch:
 
         assert response.status_code == 200
         data = response.json()
-        assert "itunes" in data
-        assert "custom" in data
+        assert "items" in data
 
     @pytest.mark.asyncio
     async def test_search_lyrics_empty_query(self, async_client):

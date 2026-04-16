@@ -1902,11 +1902,13 @@ function updatePreview() {
     switch (settings.lyrics_position) {
         case 'bottom-left':
             previewLyrics.style.left = '24px';
+            previewLyrics.style.transform = 'none';
             previewLyrics.style.textAlign = 'left';
             break;
         case 'bottom-right':
             previewLyrics.style.left = 'auto';
             previewLyrics.style.right = '24px';
+            previewLyrics.style.transform = 'none';
             previewLyrics.style.textAlign = 'right';
             break;
         default: // bottom-center

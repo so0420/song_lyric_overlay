@@ -28,7 +28,6 @@ from app.utils.rate_limit import limiter, rate_limit_exceeded_handler
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from contextlib import asynccontextmanager
-from app.integrations.itunes_search_api import itunes_api
 from app.integrations.youtube_api import youtube_api
 from app.database.mariadb import db_handler
 from app.database.meilisearch.meilisearch import meilisearch_handler
@@ -40,7 +39,6 @@ from app.database.redis.redis import redis
 async def lifespan(app: FastAPI):
     # 시작 시 실행
     await db_handler.initialize()
-    await itunes_api.initialize()
     await youtube_api.initialize()
     await meilisearch_handler.initialize()
     await redis.initialize()
@@ -48,7 +46,6 @@ async def lifespan(app: FastAPI):
     yield
     # 종료 시 실행
     await db_handler.close()
-    await itunes_api.close()
     await youtube_api.close()
     await meilisearch_handler.close()
     await redis.close()
@@ -96,7 +93,7 @@ async def add_security_headers(request: Request, call_next):
         "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
         "img-src 'self' data: https: blob:",
         "frame-src 'self' https://www.youtube.com",
-        "connect-src 'self' ws: wss: https://itunes.apple.com https://www.googleapis.com",
+        "connect-src 'self' ws: wss: https://www.googleapis.com",
         "media-src 'self' https:",
         "object-src 'none'",
         "base-uri 'self'",

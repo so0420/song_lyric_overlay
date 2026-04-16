@@ -1596,13 +1596,9 @@
         </div>
         <!-- Search Results - inside input wrapper for proper positioning -->
         <div class="search-results" id="searchResults">
-            <div class="search-tabs">
-                <button class="search-tab-btn active" data-search-tab="itunes">음원</button>
-                <button class="search-tab-btn" data-search-tab="custom">커스텀</button>
-            </div>
             <div class="search-results-header" id="searchResultsHeader">검색 결과</div>
             <div id="searchResultsList"></div>
-            <div id="addCustomSongSection" class="add-custom-song-section" style="display: none;">
+            <div id="addCustomSongSection" class="add-custom-song-section">
                 <p style="color: var(--text-dim); margin-bottom: 12px; font-size: 0.9rem;">원하는 노래가 없나요?</p>
                 <button class="add-custom-song-btn" id="addCustomSongBtn">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1909,11 +1905,10 @@
             isPlaying: false,
             animationFrameId: null,
             searchCache: new Map(),
-            customSearchCache: new Map(),
             volume: parseInt(localStorage.getItem('overlay_volume') || '100'),
             isMuted: false,
             autoRemoveCompleted: localStorage.getItem('overlay_auto_remove') === 'true',
-            currentSearchTab: 'itunes',
+            currentSearchTab: 'all',
             lastSearchQuery: '',
             lastLyricsIndex: -2,  // -2로 초기화하여 첫 번째 업데이트가 항상 발생하도록
             // Pagination state
@@ -2100,26 +2095,16 @@
 
         // Search with debounce and cache
         let searchTimeout;
-        async function searchSongs(query) {
+        async function searchSongs(query, loadMore = false) {
             if (!query.trim()) {
                 elements.searchResults.classList.remove('active');
                 return;
             }
 
             state.lastSearchQuery = query;
-
-            if (state.currentSearchTab === 'itunes') {
-                await searchITunes(query);
-            } else {
-                await searchCustomSongs(query);
-            }
-        }
-
-        async function searchITunes(query, loadMore = false) {
             if (state.searchLoading) return;
 
             if (!loadMore) {
-                // Reset pagination for new search
                 state.searchOffset = 0;
                 state.currentSearchResults = [];
                 state.searchHasMore = false;
@@ -2127,7 +2112,6 @@
                 elements.searchLoading.classList.add('active');
                 renderSearchSkeleton();
                 elements.searchResults.classList.add('active');
-                $('#addCustomSongSection').style.display = 'none';
             }
 
             state.searchLoading = true;
@@ -2151,78 +2135,6 @@
                 state.searchLoading = false;
                 elements.searchLoading.classList.remove('active');
             }
-        }
-
-        async function searchCustomSongs(query, loadMore = false) {
-            if (state.searchLoading) return;
-
-            if (!loadMore) {
-                // Reset pagination for new search
-                state.searchOffset = 0;
-                state.currentSearchResults = [];
-                state.searchHasMore = false;
-
-                elements.searchLoading.classList.add('active');
-                renderSearchSkeleton();
-                elements.searchResults.classList.add('active');
-            }
-
-            state.searchLoading = true;
-
-            try {
-                const response = await fetch(`/api/v1/songs/search/custom?q=${encodeURIComponent(query)}&limit=20&offset=${state.searchOffset}`);
-                const data = await response.json();
-                const items = data.items || data;
-
-                state.currentSearchResults = loadMore ? [...state.currentSearchResults, ...items] : items;
-                state.searchHasMore = data.has_more || false;
-                state.searchOffset += items.length;
-
-                renderCustomSearchResults(state.currentSearchResults, data.total, query, loadMore);
-            } catch (error) {
-                console.error('Custom search error:', error);
-                if (!loadMore) {
-                    elements.searchResultsList.innerHTML = '<div style="padding: 24px; text-align: center; color: #dc2626;">검색 중 오류가 발생했습니다</div>';
-                }
-                $('#addCustomSongSection').style.display = 'block';
-            } finally {
-                state.searchLoading = false;
-                elements.searchLoading.classList.remove('active');
-            }
-        }
-
-        function renderCustomSearchResults(songs, total, query, loadMore = false) {
-            const count = total || songs.length;
-            elements.searchResultsHeader.textContent = songs.length > 0 ? `"${query}" 검색 결과 (${count}개)` : '검색 결과 없음';
-            $('#addCustomSongSection').style.display = 'block';
-
-            if (songs.length === 0) {
-                elements.searchResultsList.innerHTML = '<div style="padding: 32px; text-align: center; color: var(--text-dim);">등록된 커스텀 노래가 없습니다</div>';
-                return;
-            }
-
-            const songsHtml = songs.map(song => `
-            <div class="song-item" data-song='${JSON.stringify({ id: song.id, externalId: song.song_external_id, title: song.title, artist: song.artist_name || '', isCustom: true })}'>
-                <img class="song-cover" src="${song.cover_image_url || ''}" alt="" loading="lazy" onerror="this.style.background='linear-gradient(135deg,#10b981 0%,#059669 100%)';this.style.visibility='hidden'">
-                <div class="song-info">
-                    <div class="song-title">${escapeHtml(song.title)}</div>
-                    <div class="song-artist">${escapeHtml(song.artist_name || '알 수 없음')}</div>
-                </div>
-                <span style="font-size: 0.7rem; color: #059669; background: #d1fae5; padding: 4px 8px; border-radius: 12px; font-weight: 600;">커스텀</span>
-                ${song.lyrics_count ? `<span class="song-lyrics-count">가사 ${song.lyrics_count}개</span>` : ''}
-            </div>
-        `).join('');
-
-            const loadingIndicator = state.searchHasMore ? '<div class="search-load-more"><div class="spinner-small"></div></div>' : '';
-            elements.searchResultsList.innerHTML = songsHtml + loadingIndicator;
-
-            // Event delegation
-            elements.searchResultsList.querySelectorAll('.song-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const data = JSON.parse(item.dataset.song);
-                    showLyricsModal(data.externalId, data.title, data.artist);
-                });
-            });
         }
 
         function renderSearchSkeleton() {
@@ -3341,16 +3253,7 @@
                 showToast(`"${title}" 노래가 등록되었습니다`, 'success');
                 closeCustomSongModal();
 
-                // Clear custom search cache and re-search
-                state.customSearchCache.clear();
-                if (state.currentSearchTab === 'custom' && state.lastSearchQuery) {
-                    searchSongs(state.lastSearchQuery);
-                }
-
-                // Optionally, switch to custom tab and search for the new song
-                state.currentSearchTab = 'custom';
-                $$('[data-search-tab]').forEach(b => b.classList.remove('active'));
-                $('[data-search-tab="custom"]').classList.add('active');
+                // Search for the newly registered song
                 elements.searchInput.value = title;
                 state.lastSearchQuery = title;
                 searchSongs(title);
@@ -3416,11 +3319,7 @@
 
                 const { scrollTop, scrollHeight, clientHeight } = elements.searchResults;
                 if (scrollTop + clientHeight >= scrollHeight - 100) {
-                    if (state.currentSearchTab === 'itunes') {
-                        searchITunes(state.lastSearchQuery, true);
-                    } else {
-                        searchCustomSongs(state.lastSearchQuery, true);
-                    }
+                        searchSongs(state.lastSearchQuery, true);
                 }
             });
 
@@ -3526,20 +3425,6 @@
 
             // Clear Playlist
             elements.clearPlaylistBtn.addEventListener('click', clearPlaylist);
-
-            // Search Tabs
-            $$('[data-search-tab]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    $$('[data-search-tab]').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    state.currentSearchTab = btn.dataset.searchTab;
-
-                    // Re-search with the same query if there's one
-                    if (state.lastSearchQuery) {
-                        searchSongs(state.lastSearchQuery);
-                    }
-                });
-            });
 
             // Custom Song Modal
             $('#addCustomSongBtn').addEventListener('click', () => {

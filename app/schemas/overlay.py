@@ -59,6 +59,8 @@ class OverlaySettingsSchema(BaseModel):
     song_title_stroke: int = 3
     artist_stroke: int = 2
     text_shadow: bool = True
+    # 가사 위치
+    lyrics_position: str = "bottom-center"
     # 표시 옵션
     animation_enabled: bool = False
     show_prev_line: bool = True

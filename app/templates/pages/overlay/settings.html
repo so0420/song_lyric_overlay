@@ -931,7 +931,7 @@ input:checked + .toggle-slider:before {
             </div>
 
             <!-- 하단 중앙: 가사 -->
-            <div class="preview-lyrics">
+            <div class="preview-lyrics" id="previewLyrics">
                 <p class="preview-lyrics-line sub" id="previewPrev">이전 가사</p>
                 <p class="preview-lyrics-line current" id="previewCurrent">현재 가사 원문<br>발음 예시<br>해석 예시</p>
                 <p class="preview-lyrics-line sub" id="previewNext">다음 가사</p>
@@ -1090,6 +1090,15 @@ input:checked + .toggle-slider:before {
                             <input type="checkbox" id="textShadow" checked onchange="updatePreview()">
                             <span class="toggle-slider"></span>
                         </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">가사 위치</span>
+                        <select id="lyricsPosition" onchange="updatePreview()">
+                            <option value="bottom-left">좌측 하단</option>
+                            <option value="bottom-center">중앙 하단</option>
+                            <option value="bottom-right">우측 하단</option>
+                        </select>
                     </div>
 
                     <div class="setting-row">
@@ -1623,6 +1632,7 @@ const defaultSettings = {
     song_title_stroke: 3,
     artist_stroke: 2,
     text_shadow: true,
+    lyrics_position: "bottom-center",
     animation_enabled: false,
     show_prev_line: true,
     show_next_line: true,
@@ -1718,6 +1728,7 @@ function applySettingsToForm(settings) {
     document.getElementById('prevLineStroke').value = settings.prev_line_stroke ?? defaultSettings.prev_line_stroke;
     document.getElementById('nextLineStroke').value = settings.next_line_stroke ?? defaultSettings.next_line_stroke;
     document.getElementById('textShadow').checked = settings.text_shadow !== false;
+    document.getElementById('lyricsPosition').value = settings.lyrics_position || defaultSettings.lyrics_position;
     document.getElementById('animationEnabled').checked = settings.animation_enabled === true;
     document.getElementById('showPrevLine').checked = settings.show_prev_line !== false;
     document.getElementById('showNextLine').checked = settings.show_next_line !== false;
@@ -1777,6 +1788,7 @@ function getSettingsFromForm() {
         song_title_stroke: parseInt(document.getElementById('songTitleStroke').value),
         artist_stroke: parseInt(document.getElementById('artistStroke').value),
         text_shadow: document.getElementById('textShadow').checked,
+        lyrics_position: document.getElementById('lyricsPosition').value,
         animation_enabled: document.getElementById('animationEnabled').checked,
         show_prev_line: document.getElementById('showPrevLine').checked,
         show_next_line: document.getElementById('showNextLine').checked,
@@ -1879,6 +1891,29 @@ function updatePreview() {
     songTitle.style.display = settings.show_song_title ? 'inline' : 'none';
     artist.style.display = settings.show_artist ? 'inline' : 'none';
     songInfo.style.display = (settings.show_song_title || settings.show_artist) ? 'block' : 'none';
+
+    // Lyrics position
+    const previewLyrics = document.getElementById('previewLyrics');
+    previewLyrics.style.left = '';
+    previewLyrics.style.right = '';
+    previewLyrics.style.transform = '';
+    previewLyrics.style.textAlign = 'center';
+
+    switch (settings.lyrics_position) {
+        case 'bottom-left':
+            previewLyrics.style.left = '24px';
+            previewLyrics.style.textAlign = 'left';
+            break;
+        case 'bottom-right':
+            previewLyrics.style.left = 'auto';
+            previewLyrics.style.right = '24px';
+            previewLyrics.style.textAlign = 'right';
+            break;
+        default: // bottom-center
+            previewLyrics.style.left = '50%';
+            previewLyrics.style.transform = 'translateX(-50%)';
+            break;
+    }
 
     // Song info position
     songInfo.style.top = '';

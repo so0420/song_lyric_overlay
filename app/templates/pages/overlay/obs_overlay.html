@@ -108,7 +108,7 @@
             opacity: 0.9;
         }
 
-        /* 하단 중앙 - 가사 */
+        /* 하단 - 가사 */
         .lyrics-box {
             position: absolute;
             bottom: 60px;
@@ -117,6 +117,25 @@
             text-align: center;
             width: 90%;
             max-width: 1200px;
+        }
+
+        .lyrics-box.bottom-left {
+            left: 40px;
+            transform: none;
+            text-align: left;
+        }
+
+        .lyrics-box.bottom-center {
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+
+        .lyrics-box.bottom-right {
+            left: auto;
+            right: 40px;
+            transform: none;
+            text-align: right;
         }
 
         .lyrics-line {
@@ -402,7 +421,7 @@
             show_now_badge: true,
             song_title_size: 48,
             artist_size: 28,
-            lyrics_position: "bottom",
+            lyrics_position: "bottom-center",
             song_info_position: "top-left",
             // 재생목록 설정
             show_playlist: false,
@@ -507,6 +526,9 @@
             prevLine.style.display = settings.show_prev_line ? 'block' : 'none';
             nextLine.style.display = settings.show_next_line ? 'block' : 'none';
             nowBadge.style.display = settings.show_now_badge ? 'inline-block' : 'none';
+
+            // Lyrics position
+            applyLyricsPosition(settings.lyrics_position || 'bottom-center');
 
             // Song info position
             applySongInfoPosition(settings.song_info_position || 'top-left');
@@ -632,6 +654,11 @@
                 return visible.join('<br>');
             }
             return escapeHtml(text);
+        }
+
+        function applyLyricsPosition(position) {
+            lyricsBox.classList.remove('bottom-left', 'bottom-center', 'bottom-right');
+            lyricsBox.classList.add(position || 'bottom-center');
         }
 
         function applySongInfoPosition(position) {

@@ -312,9 +312,10 @@ class LyricsRepository:
         }
 
     async def get_all_songs_with_lyrics(
-        self, offset: int = 0, limit: int = 20, song_type: str = "all", search: str = None
+        self, offset: int = 0, limit: int = 20, song_type: str = "all", search: str = None,
+        sort: str = "recent"
     ) -> Dict[str, Any]:
-        """공개된 가사가 있는 모든 노래 조회 (페이지네이션, 검색 지원)"""
+        """공개된 가사가 있는 모든 노래 조회 (페이지네이션, 검색, 정렬 지원)"""
         type_filter = ""
 
         search_filter = ""
@@ -327,6 +328,15 @@ class LyricsRepository:
             pattern = f"%{search}%"
             nospace_pattern = f"%{search.replace(' ', '')}%"
             params = [pattern, pattern, pattern, nospace_pattern, nospace_pattern, nospace_pattern]
+
+        order_by_map = {
+            "recent": "last_updated DESC",
+            "title_asc": "s.title ASC",
+            "title_desc": "s.title DESC",
+            "artist_asc": "a.name ASC, s.title ASC",
+            "artist_desc": "a.name DESC, s.title ASC",
+        }
+        order_by = order_by_map.get(sort, "last_updated DESC")
 
         query = f"""
             SELECT
@@ -343,7 +353,7 @@ class LyricsRepository:
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE 1=1 {type_filter} {search_filter}
             GROUP BY s.id, s.title, s.song_external_id, s.cover_image_url, a.name, a.artist_external_id
-            ORDER BY last_updated DESC
+            ORDER BY {order_by}
             LIMIT %s OFFSET %s
         """
         items = await self.db.fetch_all(query, (*params, limit, offset))

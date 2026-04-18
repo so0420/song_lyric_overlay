@@ -336,7 +336,7 @@
 
     <div class="songs-stats" id="songs-stats"></div>
 
-    <div style="max-width: 500px; margin: 0 auto 24px;">
+    <div style="max-width: 500px; margin: 0 auto 16px;">
         <div style="display: flex; align-items: center; gap: 10px; background: white; border: 1px solid var(--border-color); border-radius: 100px; padding: 10px 20px;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="flex-shrink:0;">
                 <circle cx="11" cy="11" r="8"></circle>
@@ -344,6 +344,16 @@
             </svg>
             <input type="text" id="songs-search" placeholder="노래 제목, 가수, 가사 제목으로 검색..." style="flex:1; border:none; outline:none; font-size:0.95rem; background:transparent;">
         </div>
+    </div>
+
+    <div style="max-width: 500px; margin: 0 auto 24px; display: flex; justify-content: flex-end;">
+        <select id="songs-sort" style="padding: 8px 16px; border: 1px solid var(--border-color); border-radius: 100px; background: white; font-size: 0.9rem; cursor: pointer;">
+            <option value="recent">추가된 순서</option>
+            <option value="title_asc">이름 오름차순</option>
+            <option value="title_desc">이름 내림차순</option>
+            <option value="artist_asc">가수 오름차순</option>
+            <option value="artist_desc">가수 내림차순</option>
+        </select>
     </div>
 
     <div class="songs-grid" id="songs-grid">
@@ -391,6 +401,7 @@
 const LIMIT = 20;
 let currentType = 'all';
 let currentSearch = '';
+let currentSort = 'recent';
 let currentOffset = 0;
 let totalCount = 0;
 let isLoading = false;
@@ -420,7 +431,7 @@ async function loadSongs(append = false) {
     }
 
     try {
-        let url = `/api/v1/lyrics/songs?type=${currentType}&offset=${currentOffset}&limit=${LIMIT}`;
+        let url = `/api/v1/lyrics/songs?type=${currentType}&offset=${currentOffset}&limit=${LIMIT}&sort=${currentSort}`;
         if (currentSearch) url += `&q=${encodeURIComponent(currentSearch)}`;
         const res = await fetch(url);
         const data = await res.json();
@@ -551,6 +562,12 @@ document.getElementById('songs-search').addEventListener('input', (e) => {
         currentSearch = e.target.value.trim();
         loadSongs();
     }, 300);
+});
+
+// Sort
+document.getElementById('songs-sort').addEventListener('change', (e) => {
+    currentSort = e.target.value;
+    loadSongs();
 });
 
 // Infinite scroll

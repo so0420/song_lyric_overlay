@@ -17,10 +17,11 @@ async def get_songs_with_lyrics(
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     type: str = Query("all", pattern="^(all|custom)$"),
     q: str = Query(None),
+    sort: str = Query("recent", pattern="^(recent|title_asc|title_desc|artist_asc|artist_desc)$"),
     repo: LyricsRepository = Depends(get_lyrics_repository)
 ):
-    """공개된 가사가 있는 모든 노래 목록 조회 (페이지네이션, 검색 지원)"""
-    return await repo.get_all_songs_with_lyrics(offset=offset, limit=limit, song_type=type, search=q)
+    """공개된 가사가 있는 모든 노래 목록 조회 (페이지네이션, 검색, 정렬 지원)"""
+    return await repo.get_all_songs_with_lyrics(offset=offset, limit=limit, song_type=type, search=q, sort=sort)
 
 @router.get("/search")
 async def search_lyrics(

@@ -260,8 +260,9 @@ class LyricsRepository:
     async def search_all_songs_with_lyrics(
         self, query_term: str, offset: int = 0, limit: int = 20
     ) -> Dict[str, Any]:
-        """공개된 가사가 있는 노래 검색 (통합, 페이지네이션 지원)"""
+        """공개된 가사가 있는 노래 검색 (통합, 페이지네이션 지원). 공백 무시 매칭."""
         search_pattern = f"%{query_term}%"
+        nospace_pattern = f"%{query_term.replace(' ', '')}%"
 
         query = """
             SELECT
@@ -276,21 +277,32 @@ class LyricsRepository:
             FROM songs s
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
-            WHERE (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
+            WHERE (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s
+                   OR REPLACE(s.title, ' ', '') LIKE %s
+                   OR REPLACE(a.name, ' ', '') LIKE %s
+                   OR REPLACE(l.title, ' ', '') LIKE %s)
             GROUP BY s.id, s.title, s.song_external_id, s.cover_image_url, a.name, a.artist_external_id
             ORDER BY last_updated DESC
             LIMIT %s OFFSET %s
         """
-        results = await self.db.fetch_all(query, (search_pattern, search_pattern, search_pattern, limit, offset))
+        params = (search_pattern, search_pattern, search_pattern,
+                  nospace_pattern, nospace_pattern, nospace_pattern,
+                  limit, offset)
+        results = await self.db.fetch_all(query, params)
 
         count_query = """
             SELECT COUNT(DISTINCT s.id) as total
             FROM songs s
             JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
             LEFT JOIN artists a ON s.artist_id = a.id
-            WHERE (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
+            WHERE (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s
+                   OR REPLACE(s.title, ' ', '') LIKE %s
+                   OR REPLACE(a.name, ' ', '') LIKE %s
+                   OR REPLACE(l.title, ' ', '') LIKE %s)
         """
-        count_result = await self.db.fetch_one(count_query, (search_pattern, search_pattern, search_pattern))
+        count_params = (search_pattern, search_pattern, search_pattern,
+                        nospace_pattern, nospace_pattern, nospace_pattern)
+        count_result = await self.db.fetch_one(count_query, count_params)
 
         return {
             "items": results,
@@ -308,9 +320,13 @@ class LyricsRepository:
         search_filter = ""
         params = []
         if search:
-            search_filter = "AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)"
+            search_filter = """AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s
+                                    OR REPLACE(s.title, ' ', '') LIKE %s
+                                    OR REPLACE(a.name, ' ', '') LIKE %s
+                                    OR REPLACE(l.title, ' ', '') LIKE %s)"""
             pattern = f"%{search}%"
-            params = [pattern, pattern, pattern]
+            nospace_pattern = f"%{search.replace(' ', '')}%"
+            params = [pattern, pattern, pattern, nospace_pattern, nospace_pattern, nospace_pattern]
 
         query = f"""
             SELECT
@@ -353,9 +369,10 @@ class LyricsRepository:
     async def find_songs_by_lyrics_title(self, query_term: str, song_type_prefix: str = None, limit: int = 100) -> List[Dict[str, Any]]:
         """가사 버전 제목으로 노래 검색 (공개 가사의 제목과 매칭되는 노래 반환)"""
         search_pattern = f"%{query_term}%"
+        nospace_pattern = f"%{query_term.replace(' ', '')}%"
 
         type_filter = ""
-        params = [search_pattern]
+        params = [search_pattern, nospace_pattern]
         if song_type_prefix:
             type_filter = "AND s.song_external_id LIKE %s"
             params.append(f"{song_type_prefix}%")
@@ -372,7 +389,7 @@ class LyricsRepository:
             FROM songs s
             JOIN song_lyrics l ON s.id = l.song_id AND l.deleted_at IS NULL AND l.is_public = 1
             LEFT JOIN artists a ON s.artist_id = a.id
-            WHERE l.title LIKE %s {type_filter}
+            WHERE (l.title LIKE %s OR REPLACE(l.title, ' ', '') LIKE %s) {type_filter}
             ORDER BY s.title ASC
             LIMIT %s
         """

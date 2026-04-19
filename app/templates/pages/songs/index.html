@@ -336,18 +336,15 @@
 
     <div class="songs-stats" id="songs-stats"></div>
 
-    <div style="max-width: 500px; margin: 0 auto 16px;">
-        <div style="display: flex; align-items: center; gap: 10px; background: white; border: 1px solid var(--border-color); border-radius: 100px; padding: 10px 20px;">
+    <div style="max-width: 700px; margin: 0 auto 24px; display: flex; gap: 10px; align-items: center;">
+        <div style="flex: 1; display: flex; align-items: center; gap: 10px; background: white; border: 1px solid var(--border-color); border-radius: 100px; padding: 10px 20px;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="flex-shrink:0;">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
             <input type="text" id="songs-search" placeholder="노래 제목, 가수, 가사 제목으로 검색..." style="flex:1; border:none; outline:none; font-size:0.95rem; background:transparent;">
         </div>
-    </div>
-
-    <div style="max-width: 500px; margin: 0 auto 24px; display: flex; justify-content: flex-end;">
-        <select id="songs-sort" style="padding: 8px 16px; border: 1px solid var(--border-color); border-radius: 100px; background: white; font-size: 0.9rem; cursor: pointer;">
+        <select id="songs-sort" style="flex-shrink: 0; padding: 10px 16px; border: 1px solid var(--border-color); border-radius: 100px; background: white; font-size: 0.9rem; cursor: pointer;">
             <option value="recent">추가된 순서</option>
             <option value="title_asc">이름 오름차순</option>
             <option value="title_desc">이름 내림차순</option>

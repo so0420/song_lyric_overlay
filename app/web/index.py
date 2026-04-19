@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from app.utils.templates import templates
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_admin_user
 
 router = APIRouter()
 
@@ -33,9 +33,9 @@ async def logout(request: Request):
     return RedirectResponse(url='/')
 
 @router.get("/songs", response_class=HTMLResponse)
-async def songs_page(request: Request, user=Depends(get_current_user)):
+async def songs_page(request: Request, user=Depends(get_current_user), admin=Depends(get_admin_user)):
     """가사가 등록된 노래 목록 페이지"""
-    return templates.TemplateResponse("pages/songs/index.html", {"request": request, "user": user})
+    return templates.TemplateResponse("pages/songs/index.html", {"request": request, "user": user, "is_admin": admin is not None})
 
 @router.get("/help", response_class=HTMLResponse)
 async def help_page(request: Request, user=Depends(get_current_user)):

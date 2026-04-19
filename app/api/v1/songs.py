@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Form, Request
-from app.core.auth import get_current_user, get_current_user_api
+from pydantic import BaseModel
+from app.core.auth import get_current_user, get_current_user_api, require_admin
 from typing import Optional
 from app.services.song_service import SongService, get_song_service
 from app.database.mariadb import db_handler
@@ -10,55 +11,72 @@ from app.utils.csrf import verify_csrf
 from app.utils.rate_limit import limiter, RATE_LIMITS
 from app.utils.log import logger
 
+
+class SongUpdateSchema(BaseModel):
+    title: Optional[str] = None
+    artist: Optional[str] = None
+    cover_image_url: Optional[str] = None
+
 router = APIRouter()
 
 
 async def _register_itunes_results(itunes_results: list) -> list:
-    """iTunes 검색 결과를 커스텀 노래로 DB/Meilisearch에 등록하고 포맷된 결과 반환"""
+    """iTunes 검색 결과를 커스텀 노래로 DB/Meilisearch에 등록하고 포맷된 결과 반환.
+    기존에 관리자가 수정한 제목/가수명은 덮어쓰지 않도록 보존한다."""
     formatted = []
     meilisearch_docs = []
 
     for item in itunes_results:
-        artist_name = item["artist_name"]
+        itunes_artist = item["artist_name"]
+        itunes_title = item["track_name"]
         artist_ext_id = f"custom_it_{item['artist_id']}"
         song_ext_id = f"custom_it_{item['track_id']}"
 
         try:
-            # 아티스트 등록 (이미 있으면 무시)
+            # 아티스트: 신규일 때만 이름 삽입. 이미 있으면 기존 이름(수정본 포함) 보존
             await db_handler.execute_query(
                 """INSERT INTO artists (name, artist_external_id)
                    VALUES (%s, %s)
-                   ON DUPLICATE KEY UPDATE name = VALUES(name)""",
-                (artist_name, artist_ext_id),
+                   ON DUPLICATE KEY UPDATE id = id""",
+                (itunes_artist, artist_ext_id),
             )
             artist_row = await db_handler.fetch_one(
-                "SELECT id FROM artists WHERE artist_external_id = %s",
+                "SELECT id, name FROM artists WHERE artist_external_id = %s",
                 (artist_ext_id,),
             )
             if not artist_row:
                 continue
+            current_artist_name = artist_row["name"]
 
-            # 노래 등록 (이미 있으면 커버 이미지만 갱신)
+            # 노래: 신규일 때만 제목/이미지 삽입. 이미 있으면 기존 값 보존
             await db_handler.execute_query(
                 """INSERT INTO songs (title, song_external_id, artist_id, cover_image_url)
                    VALUES (%s, %s, %s, %s)
-                   ON DUPLICATE KEY UPDATE cover_image_url = VALUES(cover_image_url)""",
-                (item["track_name"], song_ext_id, artist_row["id"], item["artwork_url"]),
+                   ON DUPLICATE KEY UPDATE id = id""",
+                (itunes_title, song_ext_id, artist_row["id"], item["artwork_url"]),
             )
+            song_row = await db_handler.fetch_one(
+                "SELECT title, cover_image_url FROM songs WHERE song_external_id = %s",
+                (song_ext_id,),
+            )
+            if not song_row:
+                continue
+            current_title = song_row["title"]
+            current_cover = song_row["cover_image_url"]
 
             formatted.append({
                 "id": song_ext_id,
                 "song_external_id": song_ext_id,
-                "title": item["track_name"],
-                "artist_name": artist_name,
-                "cover_image_url": item["artwork_url"],
+                "title": current_title,
+                "artist_name": current_artist_name,
+                "cover_image_url": current_cover,
             })
 
             meilisearch_docs.append({
                 "id": song_ext_id,
-                "title": item["track_name"],
-                "singer": artist_name,
-                "image_url": item["artwork_url"],
+                "title": current_title,
+                "singer": current_artist_name,
+                "image_url": current_cover,
                 "owner_id": None,
             })
         except Exception as e:
@@ -249,3 +267,105 @@ async def get_song_info(
     if song:
         return song
     raise HTTPException(status_code=404, detail="Song not found")
+
+
+async def _reindex_songs_in_meilisearch(song_ids: list):
+    """주어진 song.id 목록에 대해 Meilisearch 문서 재인덱싱"""
+    if not song_ids:
+        return
+    placeholders = ",".join(["%s"] * len(song_ids))
+    rows = await db_handler.fetch_all(
+        f"""SELECT s.song_external_id as id, s.title, a.name as singer,
+                   s.cover_image_url as image_url, s.owner_id
+            FROM songs s
+            LEFT JOIN artists a ON s.artist_id = a.id
+            WHERE s.id IN ({placeholders})""",
+        tuple(song_ids),
+    )
+    if not rows:
+        return
+    docs = [
+        {
+            "id": r["id"],
+            "title": r["title"] or "",
+            "singer": r["singer"] or "",
+            "image_url": r["image_url"],
+            "owner_id": r["owner_id"],
+        }
+        for r in rows
+        if r["id"]
+    ]
+    if docs:
+        try:
+            await meilisearch_handler.add_documents(docs)
+        except Exception as e:
+            logger.warning(f"Meilisearch reindex error: {e}")
+
+
+@router.patch("/{external_id}", dependencies=[Depends(verify_csrf)])
+async def update_song(
+    external_id: str,
+    payload: SongUpdateSchema,
+    admin=Depends(require_admin),
+):
+    """노래 제목/가수명 수정 (관리자 전용).
+    가수명 변경 시 같은 아티스트의 모든 노래가 영향을 받는다."""
+    song_row = await db_handler.fetch_one(
+        "SELECT id, artist_id FROM songs WHERE song_external_id = %s",
+        (external_id,),
+    )
+    if not song_row:
+        raise HTTPException(status_code=404, detail="Song not found")
+
+    affected_song_ids = [song_row["id"]]
+
+    # 제목 수정
+    if payload.title is not None:
+        new_title = payload.title.strip()
+        if not new_title:
+            raise HTTPException(status_code=400, detail="제목은 비워둘 수 없습니다.")
+        await db_handler.execute_query(
+            "UPDATE songs SET title = %s WHERE id = %s",
+            (new_title, song_row["id"]),
+        )
+
+    # 커버 이미지 URL 수정 (빈 문자열이면 NULL로 저장)
+    if payload.cover_image_url is not None:
+        new_cover = payload.cover_image_url.strip()
+        await db_handler.execute_query(
+            "UPDATE songs SET cover_image_url = %s WHERE id = %s",
+            (new_cover if new_cover else None, song_row["id"]),
+        )
+
+    # 가수명 수정 (아티스트 이름 변경 — 같은 아티스트의 모든 노래 영향)
+    if payload.artist is not None and song_row["artist_id"]:
+        new_artist = payload.artist.strip()
+        if not new_artist:
+            raise HTTPException(status_code=400, detail="가수명은 비워둘 수 없습니다.")
+        await db_handler.execute_query(
+            "UPDATE artists SET name = %s WHERE id = %s",
+            (new_artist, song_row["artist_id"]),
+        )
+        # 같은 아티스트의 모든 노래 재인덱싱 대상에 포함
+        sibling_rows = await db_handler.fetch_all(
+            "SELECT id FROM songs WHERE artist_id = %s",
+            (song_row["artist_id"],),
+        )
+        affected_song_ids = list({r["id"] for r in sibling_rows} | {song_row["id"]})
+
+    # Meilisearch 재인덱싱
+    await _reindex_songs_in_meilisearch(affected_song_ids)
+
+    # 업데이트된 현재 상태 반환
+    updated = await db_handler.fetch_one(
+        """SELECT s.song_external_id, s.title, a.name as artist_name, s.cover_image_url
+           FROM songs s LEFT JOIN artists a ON s.artist_id = a.id
+           WHERE s.id = %s""",
+        (song_row["id"],),
+    )
+    return {
+        "song_external_id": updated["song_external_id"],
+        "title": updated["title"],
+        "artist_name": updated["artist_name"],
+        "cover_image_url": updated["cover_image_url"],
+    }

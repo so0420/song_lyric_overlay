@@ -2001,7 +2001,8 @@
                     'playsinline': 1,
                     'rel': 0,
                     'modestbranding': 1,
-                    'enablejsapi': 1
+                    'enablejsapi': 1,
+                    'origin': window.location.origin
                 },
                 events: {
                     'onReady': onPlayerReady,
@@ -2729,7 +2730,7 @@
             }, 15000);
 
             function syncFrame() {
-                if (!state.ytPlayer || !state.isPlaying) return;
+                if (!state.isPlayerReady || !state.isPlaying) return;
 
                 const currentTime = state.ytPlayer.getCurrentTime() * 1000;
                 const duration = state.ytPlayer.getDuration();
@@ -2787,7 +2788,7 @@
         // 시간 이동 시 가사 강제 업데이트
         function forceUpdateLyrics() {
             state.lastLyricsIndex = -2;  // 강제 업데이트를 위해 유효하지 않은 값으로 설정
-            if (state.currentLyrics?.parsedLyrics && state.ytPlayer) {
+            if (state.currentLyrics?.parsedLyrics && state.isPlayerReady) {
                 const currentTime = state.ytPlayer.getCurrentTime() * 1000;
                 const lyrics = state.currentLyrics.parsedLyrics;
 
@@ -2940,7 +2941,7 @@
 
         // OBS에 전체 가사 + 곡 정보 + 현재 시간 전송
         function syncLyricsInit() {
-            const currentTime = state.ytPlayer ? state.ytPlayer.getCurrentTime() * 1000 : 0;
+            const currentTime = state.isPlayerReady ? state.ytPlayer.getCurrentTime() * 1000 : 0;
             const obsTime = currentTime + state.obsOffset;
             const lyrics = state.currentLyrics?.parsedLyrics || null;
 
@@ -2971,7 +2972,7 @@
             if (now - lastTimeSyncSent < 500) return;
             lastTimeSyncSent = now;
 
-            if (!state.ytPlayer) return;
+            if (!state.isPlayerReady) return;
             const currentTime = state.ytPlayer.getCurrentTime() * 1000;
             const obsTime = currentTime + state.obsOffset;
 
@@ -2996,7 +2997,7 @@
         function syncTimeToOBS_force(playing) {
             lastTimeSyncSent = performance.now();
 
-            const currentTime = state.ytPlayer ? state.ytPlayer.getCurrentTime() * 1000 : 0;
+            const currentTime = state.isPlayerReady ? state.ytPlayer.getCurrentTime() * 1000 : 0;
             const obsTime = currentTime + state.obsOffset;
 
             const message = {

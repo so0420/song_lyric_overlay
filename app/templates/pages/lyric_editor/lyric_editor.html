@@ -2161,6 +2161,32 @@
     let videoSearchQuery = '';
     let videoSearchLoading = false;
 
+    // URL에서 유튜브 비디오 ID 추출 (watch, youtu.be, embed, shorts 지원)
+    function extractYouTubeVideoId(text) {
+        if (!text) return null;
+        // 간단한 URL 형식 검사
+        if (!/^https?:\/\//i.test(text)) return null;
+        try {
+            const url = new URL(text);
+            const host = url.hostname.replace(/^www\./, '').replace(/^m\./, '');
+            if (host === 'youtu.be') {
+                const id = url.pathname.slice(1);
+                return /^[\w-]{11}$/.test(id) ? id : null;
+            }
+            if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+                if (url.pathname === '/watch') {
+                    const id = url.searchParams.get('v');
+                    return id && /^[\w-]{11}$/.test(id) ? id : null;
+                }
+                const match = url.pathname.match(/^\/(embed|shorts|v)\/([\w-]{11})/);
+                if (match) return match[2];
+            }
+        } catch (e) {
+            return null;
+        }
+        return null;
+    }
+
     async function searchVideos(loadMore = false) {
         console.log("searchVideos: starting...", loadMore ? "(load more)" : "");
         const qInput = document.getElementById('video-search-input');
@@ -2172,6 +2198,15 @@
         const q = loadMore ? videoSearchQuery : qInput.value.trim();
         console.log("searchVideos: query is", q);
         if (!q) return;
+
+        // URL이면 비디오 ID 추출해서 바로 선택 (첫 검색일 때만)
+        if (!loadMore) {
+            const videoId = extractYouTubeVideoId(q);
+            if (videoId) {
+                selectVideo(videoId);
+                return;
+            }
+        }
 
         if (videoSearchLoading) return;
         videoSearchLoading = true;

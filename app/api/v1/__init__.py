@@ -9,6 +9,7 @@ from .overlay import router as overlay_router
 from .auth import router as auth_router
 from .health import router as health_router
 from .admin import router as admin_router
+from .admin_lyrics import router as admin_lyrics_router
 from .access import router as access_router
 
 router = APIRouter()
@@ -21,6 +22,7 @@ router.include_router(overlay_router, prefix="/overlay", tags=["overlay"])
 router.include_router(auth_router, prefix="/auth", tags=["auth"])
 router.include_router(health_router, tags=["health"])
 router.include_router(admin_router, prefix="/admin", tags=["admin"])
+router.include_router(admin_lyrics_router, prefix="/admin", tags=["admin-lyrics"])
 router.include_router(access_router, prefix="/access", tags=["access"])
 
 __all__ = ["router"]

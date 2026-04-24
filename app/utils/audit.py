@@ -25,6 +25,8 @@ class AuditAction:
     LYRICS_CREATE = "lyrics_create"
     LYRICS_UPDATE = "lyrics_update"
     LYRICS_DELETE = "lyrics_delete"
+    LYRICS_VISIBILITY_CHANGE = "lyrics_visibility_change"
+    LYRICS_WHITELIST_CHANGE = "lyrics_whitelist_change"
 
     # 관리자 작업
     ADMIN_BROADCAST = "admin_broadcast"

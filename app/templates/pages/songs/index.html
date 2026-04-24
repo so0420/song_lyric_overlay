@@ -427,6 +427,30 @@
     </div>
 </div>
 
+{% if is_admin %}
+<!-- 공개 범위 편집 모달 (관리자) -->
+<div class="modal-overlay" id="visibility-modal">
+    <div class="modal-content" style="max-width: 520px;">
+        <div class="modal-header" style="justify-content: space-between;">
+            <div class="modal-song-info" style="flex: 1;">
+                <div class="modal-song-title" style="font-size: 1.1rem;">공개 범위 설정</div>
+                <div class="modal-song-artist" id="ve-modal-subtitle" style="font-size: 0.85rem;"></div>
+            </div>
+            <button class="modal-close" onclick="closeVisibilityModal()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div id="ve-panel-host"></div>
+        </div>
+    </div>
+</div>
+<script src="/static/js/visibility_editor.js"></script>
+{% endif %}
+
 <script>
 const LIMIT = 20;
 let currentType = 'all';
@@ -543,13 +567,28 @@ async function openLyricsModal(songDataEncoded) {
             return;
         }
 
+        const visibilityBadge = (v) => {
+            if (v === 'private') return '<span style="padding:2px 8px; border-radius:999px; background:#e2e8f0; color:#475569; font-size:0.7rem; font-weight:500;">비공개</span>';
+            if (v === 'whitelist') return '<span style="padding:2px 8px; border-radius:999px; background:#ffedd5; color:#9a3412; font-size:0.7rem; font-weight:500;">화이트리스트</span>';
+            return '';  // public 은 배지 표시 안 함 (기본값이라 노이즈만 됨)
+        };
+        {% if is_admin %}
+        const adminEditBtn = (id) => `<button type="button" onclick="event.stopPropagation(); openVisibilityModal(${id})" title="공개 범위 편집" style="background:none; border:1px solid #cbd5e1; cursor:pointer; padding:4px 8px; border-radius:6px; font-size:0.75rem; color:#475569;">공개 범위</button>`;
+        {% else %}
+        const adminEditBtn = () => '';
+        {% endif %}
+
         lyricsList.innerHTML = lyrics.map(l => `
             <div class="lyrics-item" onclick="selectLyrics(${l.id})">
                 <div class="lyrics-item-info">
                     <div class="lyrics-item-title">${escapeHtml(l.title || '제목 없음')}</div>
                     <div class="lyrics-item-meta">by ${escapeHtml(l.owner_name || '익명')} · ${new Date(l.created_at).toLocaleDateString()}</div>
                 </div>
-                ${l.is_verified ? '<span class="lyrics-item-badge verified">검증됨</span>' : ''}
+                <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                    ${visibilityBadge(l.visibility)}
+                    ${l.is_verified ? '<span class="lyrics-item-badge verified">검증됨</span>' : ''}
+                    ${adminEditBtn(l.id)}
+                </div>
             </div>
         `).join('');
     } catch (e) {
@@ -768,6 +807,72 @@ function selectLyrics(lyricsId) {
     // 노래하기 페이지로 이동하면서 가사 ID 전달
     window.location.href = `/overlay?lyrics_id=${lyricsId}`;
 }
+
+{% if is_admin %}
+function openVisibilityModal(lyricsId) {
+    const modal = document.getElementById('visibility-modal');
+    const host = document.getElementById('ve-panel-host');
+    const subtitle = document.getElementById('ve-modal-subtitle');
+    if (currentSong) {
+        subtitle.textContent = `${currentSong.track_name || ''} — ${currentSong.artist_name || ''}`;
+    } else {
+        subtitle.textContent = '';
+    }
+    host.innerHTML = '';
+    modal.classList.add('active');
+    if (typeof mountVisibilityPanel === 'function') {
+        mountVisibilityPanel(host, lyricsId, {
+            onSaved: () => {
+                // 현재 가사 목록을 다시 불러와서 배지 갱신
+                if (currentSong) {
+                    const list = document.getElementById('lyrics-list');
+                    list.innerHTML = `<div class="lyrics-loading"><div class="spinner"></div><p>갱신 중...</p></div>`;
+                    fetch(`/api/v1/lyrics/?song_external_id=${encodeURIComponent(currentSong.song_external_id)}`)
+                        .then(r => r.json())
+                        .then(reloadLyrics)
+                        .catch(() => {});
+                }
+            },
+        });
+    }
+}
+
+function closeVisibilityModal() {
+    document.getElementById('visibility-modal').classList.remove('active');
+    document.getElementById('ve-panel-host').innerHTML = '';
+}
+
+function reloadLyrics(lyrics) {
+    const lyricsList = document.getElementById('lyrics-list');
+    if (!lyrics || !lyrics.length) {
+        lyricsList.innerHTML = `<div class="lyrics-loading">등록된 가사가 없습니다.</div>`;
+        return;
+    }
+    const visibilityBadge = (v) => {
+        if (v === 'private') return '<span style="padding:2px 8px; border-radius:999px; background:#e2e8f0; color:#475569; font-size:0.7rem; font-weight:500;">비공개</span>';
+        if (v === 'whitelist') return '<span style="padding:2px 8px; border-radius:999px; background:#ffedd5; color:#9a3412; font-size:0.7rem; font-weight:500;">화이트리스트</span>';
+        return '';
+    };
+    const adminEditBtn = (id) => `<button type="button" onclick="event.stopPropagation(); openVisibilityModal(${id})" title="공개 범위 편집" style="background:none; border:1px solid #cbd5e1; cursor:pointer; padding:4px 8px; border-radius:6px; font-size:0.75rem; color:#475569;">공개 범위</button>`;
+    lyricsList.innerHTML = lyrics.map(l => `
+        <div class="lyrics-item" onclick="selectLyrics(${l.id})">
+            <div class="lyrics-item-info">
+                <div class="lyrics-item-title">${escapeHtml(l.title || '제목 없음')}</div>
+                <div class="lyrics-item-meta">by ${escapeHtml(l.owner_name || '익명')} · ${new Date(l.created_at).toLocaleDateString()}</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                ${visibilityBadge(l.visibility)}
+                ${l.is_verified ? '<span class="lyrics-item-badge verified">검증됨</span>' : ''}
+                ${adminEditBtn(l.id)}
+            </div>
+        </div>
+    `).join('');
+}
+
+document.getElementById('visibility-modal').addEventListener('mousedown', (e) => {
+    if (e.target.id === 'visibility-modal') closeVisibilityModal();
+});
+{% endif %}
 
 // 모달 외부 마우스다운 시 닫기 (클릭 대신 mousedown으로 변경 — 드래그 중 오닫힘 방지)
 document.getElementById('lyrics-modal').addEventListener('mousedown', (e) => {

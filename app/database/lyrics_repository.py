@@ -6,8 +6,44 @@ class LyricsRepository:
     def __init__(self, db=db_handler):
         self.db = db
 
-    async def get_lyrics_by_song_id(self, song_id: int) -> List[Dict[str, Any]]:
-        query = """
+    # ---------------------------------------------------------------
+    # Visibility helper
+    # ---------------------------------------------------------------
+    @staticmethod
+    def visibility_where(user_id: Optional[int], is_admin: bool, alias: str = "l") -> Tuple[str, list]:
+        """
+        리스트 쿼리용 WHERE 조각을 돌려준다.
+
+        Args:
+            user_id: 로그인 사용자 ID (익명이면 None)
+            is_admin: 관리자 여부
+            alias: song_lyrics 테이블의 alias (없으면 "" 전달)
+
+        Returns:
+            (sql_fragment, params) — params 는 기존 쿼리 params 에 splice
+        """
+        prefix = f"{alias}." if alias else ""
+        if is_admin:
+            return "1=1", []
+        if user_id is None:
+            return f"{prefix}visibility='public'", []
+        sql = (
+            f"({prefix}visibility='public' "
+            f" OR ({prefix}visibility IN ('private','whitelist') AND {prefix}owner_id=%s) "
+            f" OR ({prefix}visibility='whitelist' "
+            f"     AND EXISTS (SELECT 1 FROM lyrics_whitelist w "
+            f"                 WHERE w.lyrics_id={prefix}id AND w.user_id=%s)))"
+        )
+        return sql, [user_id, user_id]
+
+    # ---------------------------------------------------------------
+    # Read
+    # ---------------------------------------------------------------
+    async def get_lyrics_by_song_id(
+        self, song_id: int, user_id: Optional[int] = None, is_admin: bool = False
+    ) -> List[Dict[str, Any]]:
+        vis_where, vis_params = self.visibility_where(user_id, is_admin)
+        query = f"""
             SELECT
                 l.id,
                 l.owner_id,
@@ -15,19 +51,22 @@ class LyricsRepository:
                 l.title,
                 l.mr_youtube_video_id,
                 l.is_verified,
+                l.visibility,
                 l.likes_count,
                 l.created_at
             FROM song_lyrics l
             LEFT JOIN users u ON l.owner_id = u.id
-            WHERE l.song_id = %s AND l.is_public = 1 AND l.deleted_at IS NULL
+            WHERE l.song_id = %s AND l.deleted_at IS NULL AND {vis_where}
             ORDER BY l.is_verified DESC, l.likes_count DESC, l.created_at DESC
         """
-        return await self.db.fetch_all(query, (song_id,))
+        return await self.db.fetch_all(query, (song_id, *vis_params))
 
-    async def get_lyrics_by_song_id_with_favorites(self, song_id: int, user_id: int) -> List[Dict[str, Any]]:
+    async def get_lyrics_by_song_id_with_favorites(
+        self, song_id: int, user_id: int, is_admin: bool = False
+    ) -> List[Dict[str, Any]]:
         """특정 노래의 가사 목록 조회 (즐겨찾기 정보 포함)"""
-        # N+1 쿼리 개선: 서브쿼리 대신 JOIN + GROUP BY 사용
-        query = """
+        vis_where, vis_params = self.visibility_where(user_id, is_admin)
+        query = f"""
             SELECT
                 l.id,
                 l.owner_id,
@@ -35,6 +74,7 @@ class LyricsRepository:
                 l.title,
                 l.mr_youtube_video_id,
                 l.is_verified,
+                l.visibility,
                 l.likes_count,
                 l.created_at,
                 l.updated_at,
@@ -44,23 +84,28 @@ class LyricsRepository:
             LEFT JOIN users u ON l.owner_id = u.id
             LEFT JOIN user_lyrics_favorites fav ON l.id = fav.lyrics_id
             LEFT JOIN user_lyrics_favorites ulf ON l.id = ulf.lyrics_id AND ulf.user_id = %s
-            WHERE l.song_id = %s AND l.is_public = 1 AND l.deleted_at IS NULL
+            WHERE l.song_id = %s AND l.deleted_at IS NULL AND {vis_where}
             GROUP BY l.id, l.owner_id, u.name, l.title, l.mr_youtube_video_id,
-                     l.is_verified, l.likes_count, l.created_at, l.updated_at
+                     l.is_verified, l.visibility, l.likes_count, l.created_at, l.updated_at
             ORDER BY l.is_verified DESC, l.likes_count DESC, l.created_at DESC
         """
-        return await self.db.fetch_all(query, (user_id, song_id))
+        return await self.db.fetch_all(query, (user_id, song_id, *vis_params))
 
-    async def get_lyrics_by_external_id(self, song_external_id: str) -> List[Dict[str, Any]]:
-        # First get song_id
+    async def get_lyrics_by_external_id(
+        self, song_external_id: str, user_id: Optional[int] = None, is_admin: bool = False
+    ) -> List[Dict[str, Any]]:
         song = await self.db.fetch_one("SELECT id FROM songs WHERE song_external_id = %s", (song_external_id,))
         if not song:
             return []
-        return await self.get_lyrics_by_song_id(song['id'])
+        return await self.get_lyrics_by_song_id(song['id'], user_id=user_id, is_admin=is_admin)
 
     async def get_lyrics_by_id(self, lyrics_id: int) -> Optional[Dict[str, Any]]:
+        """단일 가사 조회 (visibility 필터 없음 — 호출 측에서 can_view_lyrics 로 검사).
+        반환 row 에 visibility, owner_id 포함되므로 접근 판정 가능.
+        """
         query = """
-            SELECT l.*, s.title as song_title, s.song_external_id, a.name as artist_name
+            SELECT l.*, s.title as song_title, s.song_external_id, s.cover_image_url,
+                   a.name as artist_name
             FROM song_lyrics l
             JOIN songs s ON l.song_id = s.id
             LEFT JOIN artists a ON s.artist_id = a.id
@@ -69,7 +114,7 @@ class LyricsRepository:
         return await self.db.fetch_one(query, (lyrics_id,))
 
     async def get_my_lyrics(self, owner_id: int, offset: int = 0, limit: int = 50) -> Tuple[List[Dict[str, Any]], int]:
-        """자신이 작성한 가사 목록 조회 (페이지네이션 지원)"""
+        """자신이 작성한 가사 목록 조회 (visibility 무관, 본인 것 전부)"""
         query = """
             SELECT l.*, s.title as song_title, s.song_external_id, s.cover_image_url, a.name as artist_name
             FROM song_lyrics l
@@ -81,7 +126,6 @@ class LyricsRepository:
         """
         items = await self.db.fetch_all(query, (owner_id, limit, offset))
 
-        # 전체 개수 조회
         count_query = "SELECT COUNT(*) as total FROM song_lyrics WHERE owner_id = %s AND deleted_at IS NULL"
         count_result = await self.db.fetch_one(count_query, (owner_id,))
         total = count_result['total'] if count_result else 0
@@ -91,14 +135,12 @@ class LyricsRepository:
     async def check_title_duplicate(self, owner_id: int, song_id: Optional[int], title: str, exclude_id: int = None) -> bool:
         """가사 제목 중복 체크 (내 가사들 중에서)"""
         if song_id:
-            # 새로 생성할 때
             query = """
                 SELECT id FROM song_lyrics
                 WHERE owner_id = %s AND song_id = %s AND title = %s AND deleted_at IS NULL
             """
             params = (owner_id, song_id, title)
         else:
-            # 수정할 때 (song_id 없이)
             query = """
                 SELECT id FROM song_lyrics
                 WHERE owner_id = %s AND title = %s AND deleted_at IS NULL
@@ -112,12 +154,25 @@ class LyricsRepository:
         result = await self.db.fetch_one(query, params)
         return result is not None
 
-    async def create_lyrics(self, owner_id, song_id: int, mr_youtube_video_id: str, lyrics_data: str, title: str = None) -> int:
+    # ---------------------------------------------------------------
+    # Write
+    # ---------------------------------------------------------------
+    async def create_lyrics(
+        self,
+        owner_id,
+        song_id: int,
+        mr_youtube_video_id: str,
+        lyrics_data: str,
+        title: str = None,
+        visibility: str = "public",
+    ) -> int:
         query = """
-            INSERT INTO song_lyrics (owner_id, song_id, title, mr_youtube_video_id, lyrics_data)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO song_lyrics (owner_id, song_id, title, mr_youtube_video_id, lyrics_data, visibility)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """
-        return await self.db.execute_query(query, (owner_id, song_id, title, mr_youtube_video_id, lyrics_data))
+        return await self.db.execute_query(
+            query, (owner_id, song_id, title, mr_youtube_video_id, lyrics_data, visibility)
+        )
 
     async def update_lyrics(self, lyrics_id: int, owner_id, mr_youtube_video_id: str, lyrics_data: str, title: str = None) -> bool:
         if owner_id is None:
@@ -148,96 +203,48 @@ class LyricsRepository:
         await self.db.execute_query(query, (lyrics_id, owner_id))
         return True
 
-    async def get_lyrics_counts(self, external_ids: List[str]) -> Dict[str, int]:
+    async def update_visibility(self, lyrics_id: int, visibility: str) -> bool:
+        """관리자 전용: 가사 visibility 변경"""
+        if visibility not in ("public", "private", "whitelist"):
+            raise ValueError(f"invalid visibility: {visibility}")
+        query = """
+            UPDATE song_lyrics
+            SET visibility = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s AND deleted_at IS NULL
+        """
+        async with self.db.session() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(query, (visibility, lyrics_id))
+                return cursor.rowcount > 0
+
+    # ---------------------------------------------------------------
+    # Song list / search (visibility-aware)
+    # ---------------------------------------------------------------
+    async def get_lyrics_counts(
+        self, external_ids: List[str], user_id: Optional[int] = None, is_admin: bool = False
+    ) -> Dict[str, int]:
         if not external_ids:
             return {}
 
+        vis_where, vis_params = self.visibility_where(user_id, is_admin)
         format_strings = ','.join(['%s'] * len(external_ids))
         query = f"""
             SELECT s.song_external_id, COUNT(l.id) as count
             FROM songs s
             JOIN song_lyrics l ON s.id = l.song_id
-            WHERE s.song_external_id IN ({format_strings}) AND l.is_public = 1 AND l.deleted_at IS NULL
+            WHERE s.song_external_id IN ({format_strings}) AND l.deleted_at IS NULL AND {vis_where}
             GROUP BY s.song_external_id
         """
-        results = await self.db.fetch_all(query, tuple(external_ids))
+        results = await self.db.fetch_all(query, (*external_ids, *vis_params))
         return {r['song_external_id']: r['count'] for r in results}
 
-    # 즐겨찾기 관련 메서드
-    async def add_favorite(self, user_id: int, lyrics_id: int) -> bool:
-        """가사 즐겨찾기 추가"""
-        try:
-            query = "INSERT INTO user_lyrics_favorites (user_id, lyrics_id) VALUES (%s, %s)"
-            await self.db.execute_query(query, (user_id, lyrics_id))
-            return True
-        except Exception as e:
-            error_str = str(e).lower()
-            if "duplicate" not in error_str and "unique" not in error_str:
-                logger.error(f"Favorite add error for user {user_id}, lyrics {lyrics_id}: {e}")
-            return False
-
-    async def remove_favorite(self, user_id: int, lyrics_id: int) -> bool:
-        """가사 즐겨찾기 제거"""
-        query = "DELETE FROM user_lyrics_favorites WHERE user_id = %s AND lyrics_id = %s"
-        await self.db.execute_query(query, (user_id, lyrics_id))
-        return True
-
-    async def get_my_favorites(self, user_id: int, offset: int = 0, limit: int = 50) -> Tuple[List[Dict[str, Any]], int]:
-        """내 즐겨찾기 가사 목록 조회 (페이지네이션 지원)"""
-        # N+1 쿼리 개선: 서브쿼리 대신 JOIN + GROUP BY 사용
-        query = """
-            SELECT
-                l.id,
-                l.owner_id,
-                u.name as owner_name,
-                l.song_id,
-                s.title as song_title,
-                s.song_external_id,
-                a.name as artist_name,
-                l.title,
-                l.mr_youtube_video_id,
-                l.is_verified,
-                l.likes_count,
-                l.updated_at,
-                ulf.created_at as favorited_at,
-                COUNT(DISTINCT fav.id) as favorites_count
-            FROM user_lyrics_favorites ulf
-            JOIN song_lyrics l ON ulf.lyrics_id = l.id
-            JOIN songs s ON l.song_id = s.id
-            LEFT JOIN artists a ON s.artist_id = a.id
-            LEFT JOIN users u ON l.owner_id = u.id
-            LEFT JOIN user_lyrics_favorites fav ON l.id = fav.lyrics_id
-            WHERE ulf.user_id = %s AND l.is_public = 1 AND l.deleted_at IS NULL
-            GROUP BY l.id, l.owner_id, u.name, l.song_id, s.title, s.song_external_id,
-                     a.name, l.title, l.mr_youtube_video_id, l.is_verified,
-                     l.likes_count, l.updated_at, ulf.created_at
-            ORDER BY ulf.created_at DESC
-            LIMIT %s OFFSET %s
-        """
-        items = await self.db.fetch_all(query, (user_id, limit, offset))
-
-        # 전체 개수 조회
-        count_query = """
-            SELECT COUNT(*) as total
-            FROM user_lyrics_favorites ulf
-            JOIN song_lyrics l ON ulf.lyrics_id = l.id
-            WHERE ulf.user_id = %s AND l.is_public = 1 AND l.deleted_at IS NULL
-        """
-        count_result = await self.db.fetch_one(count_query, (user_id,))
-        total = count_result['total'] if count_result else 0
-
-        return items, total
-
-    async def is_favorited(self, user_id: int, lyrics_id: int) -> bool:
-        """즐겨찾기 여부 확인"""
-        query = "SELECT id FROM user_lyrics_favorites WHERE user_id = %s AND lyrics_id = %s"
-        result = await self.db.fetch_one(query, (user_id, lyrics_id))
-        return result is not None
-
-    async def search_songs_with_lyrics(self, query_term: str, limit: int = 20) -> List[Dict[str, Any]]:
-        """공개된 가사가 있는 노래 검색"""
+    async def search_songs_with_lyrics(
+        self, query_term: str, user_id: Optional[int] = None, is_admin: bool = False, limit: int = 20
+    ) -> List[Dict[str, Any]]:
+        """공개 가능한 가사가 있는 노래 검색"""
+        vis_where, vis_params = self.visibility_where(user_id, is_admin)
         search_pattern = f"%{query_term}%"
-        query = """
+        query = f"""
             SELECT
                 s.id as song_id,
                 s.title as track_name,
@@ -248,23 +255,25 @@ class LyricsRepository:
                 COUNT(l.id) as lyrics_count,
                 MAX(l.updated_at) as last_updated
             FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
+            JOIN song_lyrics l ON s.id = l.song_id AND l.deleted_at IS NULL AND {vis_where}
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s)
             GROUP BY s.id
             ORDER BY last_updated DESC
             LIMIT %s
         """
-        return await self.db.fetch_all(query, (search_pattern, search_pattern, search_pattern, limit))
+        return await self.db.fetch_all(query, (*vis_params, search_pattern, search_pattern, search_pattern, limit))
 
     async def search_all_songs_with_lyrics(
-        self, query_term: str, offset: int = 0, limit: int = 20
+        self, query_term: str, user_id: Optional[int] = None, is_admin: bool = False,
+        offset: int = 0, limit: int = 20
     ) -> Dict[str, Any]:
-        """공개된 가사가 있는 노래 검색 (통합, 페이지네이션 지원). 공백 무시 매칭."""
+        """공개 가능한 가사가 있는 노래 검색 (페이지네이션). 공백 무시 매칭."""
+        vis_where, vis_params = self.visibility_where(user_id, is_admin)
         search_pattern = f"%{query_term}%"
         nospace_pattern = f"%{query_term.replace(' ', '')}%"
 
-        query = """
+        query = f"""
             SELECT
                 s.id as song_id,
                 s.title as track_name,
@@ -275,7 +284,7 @@ class LyricsRepository:
                 COUNT(l.id) as lyrics_count,
                 MAX(l.updated_at) as last_updated
             FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
+            JOIN song_lyrics l ON s.id = l.song_id AND l.deleted_at IS NULL AND {vis_where}
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s
                    OR REPLACE(s.title, ' ', '') LIKE %s
@@ -285,23 +294,29 @@ class LyricsRepository:
             ORDER BY last_updated DESC
             LIMIT %s OFFSET %s
         """
-        params = (search_pattern, search_pattern, search_pattern,
-                  nospace_pattern, nospace_pattern, nospace_pattern,
-                  limit, offset)
+        params = (
+            *vis_params,
+            search_pattern, search_pattern, search_pattern,
+            nospace_pattern, nospace_pattern, nospace_pattern,
+            limit, offset,
+        )
         results = await self.db.fetch_all(query, params)
 
-        count_query = """
+        count_query = f"""
             SELECT COUNT(DISTINCT s.id) as total
             FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
+            JOIN song_lyrics l ON s.id = l.song_id AND l.deleted_at IS NULL AND {vis_where}
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s
                    OR REPLACE(s.title, ' ', '') LIKE %s
                    OR REPLACE(a.name, ' ', '') LIKE %s
                    OR REPLACE(l.title, ' ', '') LIKE %s)
         """
-        count_params = (search_pattern, search_pattern, search_pattern,
-                        nospace_pattern, nospace_pattern, nospace_pattern)
+        count_params = (
+            *vis_params,
+            search_pattern, search_pattern, search_pattern,
+            nospace_pattern, nospace_pattern, nospace_pattern,
+        )
         count_result = await self.db.fetch_one(count_query, count_params)
 
         return {
@@ -312,14 +327,16 @@ class LyricsRepository:
         }
 
     async def get_all_songs_with_lyrics(
-        self, offset: int = 0, limit: int = 20, song_type: str = "all", search: str = None,
+        self, user_id: Optional[int] = None, is_admin: bool = False,
+        offset: int = 0, limit: int = 20, song_type: str = "all", search: str = None,
         sort: str = "recent"
     ) -> Dict[str, Any]:
-        """공개된 가사가 있는 모든 노래 조회 (페이지네이션, 검색, 정렬 지원)"""
+        """공개 가능한 가사가 있는 모든 노래 조회 (페이지네이션, 검색, 정렬 지원)"""
+        vis_where, vis_params = self.visibility_where(user_id, is_admin)
         type_filter = ""
 
         search_filter = ""
-        params = []
+        params: list = []
         if search:
             search_filter = """AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s
                                     OR REPLACE(s.title, ' ', '') LIKE %s
@@ -349,23 +366,23 @@ class LyricsRepository:
                 COUNT(l.id) as lyrics_count,
                 MAX(l.updated_at) as last_updated
             FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
+            JOIN song_lyrics l ON s.id = l.song_id AND l.deleted_at IS NULL AND {vis_where}
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE 1=1 {type_filter} {search_filter}
             GROUP BY s.id, s.title, s.song_external_id, s.cover_image_url, a.name, a.artist_external_id
             ORDER BY {order_by}
             LIMIT %s OFFSET %s
         """
-        items = await self.db.fetch_all(query, (*params, limit, offset))
+        items = await self.db.fetch_all(query, (*vis_params, *params, limit, offset))
 
         count_query = f"""
             SELECT COUNT(DISTINCT s.id) as total
             FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.is_public = 1 AND l.deleted_at IS NULL
+            JOIN song_lyrics l ON s.id = l.song_id AND l.deleted_at IS NULL AND {vis_where}
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE 1=1 {type_filter} {search_filter}
         """
-        count_result = await self.db.fetch_one(count_query, (*params,) if params else ())
+        count_result = await self.db.fetch_one(count_query, (*vis_params, *params))
         total = count_result['total'] if count_result else 0
 
         return {
@@ -376,13 +393,17 @@ class LyricsRepository:
             "has_more": offset + len(items) < total
         }
 
-    async def find_songs_by_lyrics_title(self, query_term: str, song_type_prefix: str = None, limit: int = 100) -> List[Dict[str, Any]]:
-        """가사 버전 제목으로 노래 검색 (공개 가사의 제목과 매칭되는 노래 반환)"""
+    async def find_songs_by_lyrics_title(
+        self, query_term: str, user_id: Optional[int] = None, is_admin: bool = False,
+        song_type_prefix: str = None, limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """가사 버전 제목으로 노래 검색"""
+        vis_where, vis_params = self.visibility_where(user_id, is_admin)
         search_pattern = f"%{query_term}%"
         nospace_pattern = f"%{query_term.replace(' ', '')}%"
 
         type_filter = ""
-        params = [search_pattern, nospace_pattern]
+        params = [*vis_params, search_pattern, nospace_pattern]
         if song_type_prefix:
             type_filter = "AND s.song_external_id LIKE %s"
             params.append(f"{song_type_prefix}%")
@@ -397,7 +418,7 @@ class LyricsRepository:
                 s.cover_image_url,
                 a.name as artist_name
             FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id AND l.deleted_at IS NULL AND l.is_public = 1
+            JOIN song_lyrics l ON s.id = l.song_id AND l.deleted_at IS NULL AND {vis_where}
             LEFT JOIN artists a ON s.artist_id = a.id
             WHERE (l.title LIKE %s OR REPLACE(l.title, ' ', '') LIKE %s) {type_filter}
             ORDER BY s.title ASC
@@ -405,14 +426,89 @@ class LyricsRepository:
         """
         return await self.db.fetch_all(query, tuple(params))
 
-    # 메모 관련 메서드
+    # ---------------------------------------------------------------
+    # Favorites
+    # ---------------------------------------------------------------
+    async def add_favorite(self, user_id: int, lyrics_id: int) -> bool:
+        """가사 즐겨찾기 추가"""
+        try:
+            query = "INSERT INTO user_lyrics_favorites (user_id, lyrics_id) VALUES (%s, %s)"
+            await self.db.execute_query(query, (user_id, lyrics_id))
+            return True
+        except Exception as e:
+            error_str = str(e).lower()
+            if "duplicate" not in error_str and "unique" not in error_str:
+                logger.error(f"Favorite add error for user {user_id}, lyrics {lyrics_id}: {e}")
+            return False
+
+    async def remove_favorite(self, user_id: int, lyrics_id: int) -> bool:
+        """가사 즐겨찾기 제거"""
+        query = "DELETE FROM user_lyrics_favorites WHERE user_id = %s AND lyrics_id = %s"
+        await self.db.execute_query(query, (user_id, lyrics_id))
+        return True
+
+    async def get_my_favorites(
+        self, user_id: int, is_admin: bool = False, offset: int = 0, limit: int = 50
+    ) -> Tuple[List[Dict[str, Any]], int]:
+        """내 즐겨찾기 가사 목록 조회 (현재 접근 가능한 가사만)"""
+        vis_where, vis_params = self.visibility_where(user_id, is_admin)
+        query = f"""
+            SELECT
+                l.id,
+                l.owner_id,
+                u.name as owner_name,
+                l.song_id,
+                s.title as song_title,
+                s.song_external_id,
+                a.name as artist_name,
+                l.title,
+                l.mr_youtube_video_id,
+                l.is_verified,
+                l.visibility,
+                l.likes_count,
+                l.updated_at,
+                ulf.created_at as favorited_at,
+                COUNT(DISTINCT fav.id) as favorites_count
+            FROM user_lyrics_favorites ulf
+            JOIN song_lyrics l ON ulf.lyrics_id = l.id
+            JOIN songs s ON l.song_id = s.id
+            LEFT JOIN artists a ON s.artist_id = a.id
+            LEFT JOIN users u ON l.owner_id = u.id
+            LEFT JOIN user_lyrics_favorites fav ON l.id = fav.lyrics_id
+            WHERE ulf.user_id = %s AND l.deleted_at IS NULL AND {vis_where}
+            GROUP BY l.id, l.owner_id, u.name, l.song_id, s.title, s.song_external_id,
+                     a.name, l.title, l.mr_youtube_video_id, l.is_verified, l.visibility,
+                     l.likes_count, l.updated_at, ulf.created_at
+            ORDER BY ulf.created_at DESC
+            LIMIT %s OFFSET %s
+        """
+        items = await self.db.fetch_all(query, (user_id, *vis_params, limit, offset))
+
+        count_query = f"""
+            SELECT COUNT(*) as total
+            FROM user_lyrics_favorites ulf
+            JOIN song_lyrics l ON ulf.lyrics_id = l.id
+            WHERE ulf.user_id = %s AND l.deleted_at IS NULL AND {vis_where}
+        """
+        count_result = await self.db.fetch_one(count_query, (user_id, *vis_params))
+        total = count_result['total'] if count_result else 0
+
+        return items, total
+
+    async def is_favorited(self, user_id: int, lyrics_id: int) -> bool:
+        """즐겨찾기 여부 확인"""
+        query = "SELECT id FROM user_lyrics_favorites WHERE user_id = %s AND lyrics_id = %s"
+        result = await self.db.fetch_one(query, (user_id, lyrics_id))
+        return result is not None
+
+    # ---------------------------------------------------------------
+    # Memo
+    # ---------------------------------------------------------------
     async def get_memo(self, user_id: int, lyrics_id: int) -> Optional[Dict[str, Any]]:
-        """가사에 대한 사용자 메모 조회"""
         query = "SELECT memo, updated_at FROM user_lyrics_memos WHERE user_id = %s AND lyrics_id = %s"
         return await self.db.fetch_one(query, (user_id, lyrics_id))
 
     async def save_memo(self, user_id: int, lyrics_id: int, memo: str) -> bool:
-        """가사에 대한 사용자 메모 저장 (UPSERT)"""
         query = """
             INSERT INTO user_lyrics_memos (user_id, lyrics_id, memo)
             VALUES (%s, %s, %s)
@@ -422,10 +518,81 @@ class LyricsRepository:
         return True
 
     async def delete_memo(self, user_id: int, lyrics_id: int) -> bool:
-        """가사에 대한 사용자 메모 삭제"""
         query = "DELETE FROM user_lyrics_memos WHERE user_id = %s AND lyrics_id = %s"
         await self.db.execute_query(query, (user_id, lyrics_id))
         return True
+
+    # ---------------------------------------------------------------
+    # Whitelist
+    # ---------------------------------------------------------------
+    async def is_whitelisted(self, lyrics_id: int, user_id: int) -> bool:
+        query = "SELECT 1 FROM lyrics_whitelist WHERE lyrics_id = %s AND user_id = %s LIMIT 1"
+        result = await self.db.fetch_one(query, (lyrics_id, user_id))
+        return result is not None
+
+    async def get_whitelist(self, lyrics_id: int) -> List[Dict[str, Any]]:
+        """가사의 화이트리스트 유저 목록 (관리자 화면용)"""
+        query = """
+            SELECT u.id, u.name, u.email, w.granted_at
+            FROM lyrics_whitelist w
+            JOIN users u ON w.user_id = u.id
+            WHERE w.lyrics_id = %s
+            ORDER BY w.granted_at DESC
+        """
+        return await self.db.fetch_all(query, (lyrics_id,))
+
+    async def replace_whitelist(
+        self, lyrics_id: int, user_ids: List[int], granted_by: int
+    ) -> Dict[str, List[int]]:
+        """화이트리스트 전체 교체 (트랜잭션). 변경 diff 반환."""
+        # 현재 목록 조회
+        existing_rows = await self.db.fetch_all(
+            "SELECT user_id FROM lyrics_whitelist WHERE lyrics_id = %s", (lyrics_id,)
+        )
+        existing = {r['user_id'] for r in existing_rows}
+        requested = set(user_ids)
+
+        added = sorted(requested - existing)
+        removed = sorted(existing - requested)
+
+        if not added and not removed:
+            return {"added": [], "removed": []}
+
+        async with self.db.transaction() as tx:
+            if removed:
+                placeholders = ",".join(["%s"] * len(removed))
+                await tx.execute_query(
+                    f"DELETE FROM lyrics_whitelist WHERE lyrics_id = %s AND user_id IN ({placeholders})",
+                    (lyrics_id, *removed),
+                )
+            if added:
+                values_sql = ",".join(["(%s, %s, %s)"] * len(added))
+                params: list = []
+                for uid in added:
+                    params.extend([lyrics_id, uid, granted_by])
+                await tx.execute_query(
+                    f"INSERT INTO lyrics_whitelist (lyrics_id, user_id, granted_by) VALUES {values_sql}",
+                    tuple(params),
+                )
+
+        return {"added": added, "removed": removed}
+
+    # ---------------------------------------------------------------
+    # Admin user search (for whitelist picker autocomplete)
+    # ---------------------------------------------------------------
+    async def search_users(self, q: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """이름/이메일 LIKE 검색. 활성 사용자만. 관리자 UI 자동완성용."""
+        pattern = f"%{q}%"
+        query = """
+            SELECT id, name, email
+            FROM users
+            WHERE deleted_at IS NULL AND is_active = 1
+              AND (name LIKE %s OR email LIKE %s)
+            ORDER BY name ASC
+            LIMIT %s
+        """
+        return await self.db.fetch_all(query, (pattern, pattern, limit))
+
 
 def get_lyrics_repository():
     return LyricsRepository()

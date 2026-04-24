@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS `song_lyrics` (
     `mr_youtube_video_id` VARCHAR(255) NULL COMMENT '음악 영상 ID: mr영상꺼',
     `lyrics_data` TEXT NULL COMMENT '노래 가사: [{"start": 0, "end": 1000, "text": "가사"}] 형식',
     `is_verified` TINYINT(1) DEFAULT 0 COMMENT '가사 검증 여부 (1: 검증됨, 0: 검증되지 않음)',
-    `is_public` TINYINT(1) DEFAULT 1 COMMENT '공개 여부 (1: 공개, 0: 비공개)',
+    `visibility` ENUM('public','private','whitelist') NOT NULL DEFAULT 'public' COMMENT '공개 범위: public=전체공개, private=본인+관리자, whitelist=본인+관리자+허용된 유저',
     `likes_count` INT DEFAULT 0 COMMENT '좋아요 수',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -104,6 +104,21 @@ CREATE TABLE IF NOT EXISTS `song_lyrics` (
     CONSTRAINT `fk_lyrics_owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     -- 외래 키 설정: 노래 삭제 시 삭제
     CONSTRAINT `fk_lyrics_song` FOREIGN KEY (`song_id`) REFERENCES `songs` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Lyrics whitelist: visibility='whitelist'인 가사에 대해 허용된 유저 목록
+CREATE TABLE IF NOT EXISTS `lyrics_whitelist` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `lyrics_id` BIGINT NOT NULL COMMENT 'song_lyrics 테이블 참조 ID',
+    `user_id` BIGINT NOT NULL COMMENT 'users 테이블 참조 ID',
+    `granted_by` BIGINT NULL COMMENT '화이트리스트에 추가한 관리자 ID',
+    `granted_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE KEY `uq_lyrics_user` (`lyrics_id`, `user_id`),
+
+    CONSTRAINT `fk_wl_lyrics`  FOREIGN KEY (`lyrics_id`)  REFERENCES `song_lyrics`(`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_wl_user`    FOREIGN KEY (`user_id`)    REFERENCES `users`(`id`)       ON DELETE CASCADE,
+    CONSTRAINT `fk_wl_grantor` FOREIGN KEY (`granted_by`) REFERENCES `users`(`id`)       ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------------------------------------------------------
@@ -149,6 +164,8 @@ CREATE INDEX idx_songs_artist_id ON songs(artist_id);
 CREATE INDEX idx_songs_owner_id ON songs(owner_id);
 CREATE INDEX idx_lyrics_song_id ON song_lyrics(song_id);
 CREATE INDEX idx_lyrics_owner_id ON song_lyrics(owner_id);
+CREATE INDEX idx_lyrics_visibility ON song_lyrics(visibility);
+CREATE INDEX idx_wl_user_id ON lyrics_whitelist(user_id);
 CREATE INDEX idx_favorites_user_id ON user_lyrics_favorites(user_id);
 CREATE INDEX idx_favorites_lyrics_id ON user_lyrics_favorites(lyrics_id);
 CREATE INDEX idx_overlay_user_id ON user_overlay_settings(user_id);

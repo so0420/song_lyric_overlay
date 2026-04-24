@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Request, Depends, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Request, Depends
+from fastapi.responses import HTMLResponse, RedirectResponse
 from app.utils.templates import templates
 from app.database.song_repository import get_song_repository
 from app.database.lyrics_repository import get_lyrics_repository
-from app.core.auth import get_current_user_api, get_current_user
+from app.core.auth import get_current_user
+from app.core.lyrics_access import can_view_lyrics
 
 router = APIRouter()
 
@@ -16,7 +17,7 @@ async def lyric_editor_page(
     external_id: str = None,
     user=Depends(get_current_user),
     song_repo=Depends(get_song_repository),
-    lyrics_repo=Depends(get_lyrics_repository)
+    lyrics_repo=Depends(get_lyrics_repository),
 ):
 
     song_info = None
@@ -34,10 +35,19 @@ async def lyric_editor_page(
             song_id = lyrics_info['song_id']
             song_info = await song_repo.get_song_with_artist(song_id=song_id)
 
+        # visibility 접근 권한 체크
+        if lyrics_info and not await can_view_lyrics(lyrics_info, user, lyrics_repo):
+            return RedirectResponse(url="/songs?error=forbidden", status_code=303)
+
+    is_admin = bool(user and user.get('is_admin'))
+    is_owner = bool(user and lyrics_info and lyrics_info.get('owner_id') == user['id'])
+
     return templates.TemplateResponse("pages/lyric_editor/lyric_editor.html", {
         "request": request,
         "user": user,
         "song": song_info,
         "lyrics": lyrics_info,
-        "default_mr_video_id": None
+        "default_mr_video_id": None,
+        "is_admin": is_admin,
+        "is_owner": is_owner,
     })

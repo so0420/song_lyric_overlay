@@ -2161,7 +2161,7 @@
             }
 
             const songsHtml = songs.map(song => `
-            <div class="song-item" data-song='${JSON.stringify({ id: song.id, externalId: song.song_external_id, title: song.title, artist: song.artist_name || '' })}'>
+            <div class="song-item" data-song='${JSON.stringify({ id: song.id, externalId: song.song_external_id, title: song.title, artist: song.artist_name || '', coverImageUrl: song.cover_image_url || '' })}'>
                 <img class="song-cover" src="${song.cover_image_url || ''}" alt="" loading="lazy" onerror="this.style.background='linear-gradient(135deg,#667eea 0%,#764ba2 100%)';this.style.visibility='hidden'">
                 <div class="song-info">
                     <div class="song-title">${escapeHtml(song.title)}</div>
@@ -2178,26 +2178,26 @@
             elements.searchResultsList.querySelectorAll('.song-item').forEach(item => {
                 item.addEventListener('click', () => {
                     const data = JSON.parse(item.dataset.song);
-                    showLyricsModal(data.externalId, data.title, data.artist);
+                    showLyricsModal(data.externalId, data.title, data.artist, data.coverImageUrl || '');
                 });
             });
         }
 
         // Lyrics Modal
-        async function showLyricsModal(songExternalId, songTitle, artistName) {
+        async function showLyricsModal(songExternalId, songTitle, artistName, coverImageUrl) {
             elements.modalSongTitle.textContent = artistName ? `${songTitle} - ${artistName}` : songTitle;
             elements.lyricsModal.classList.add('active');
             elements.lyricsListContainer.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
             // 현재 모달에서 사용할 곡 정보 저장
-            state.currentModalSong = { songExternalId, songTitle, artistName };
+            state.currentModalSong = { songExternalId, songTitle, artistName, coverImageUrl: coverImageUrl || '' };
 
             try {
                 const response = await fetch(`/api/v1/lyrics/?song_external_id=${encodeURIComponent(songExternalId)}`);
                 const lyrics = await response.json();
 
                 if (lyrics.length > 0) {
-                    renderLyricsList(lyrics, songExternalId, songTitle, artistName);
+                    renderLyricsList(lyrics, songExternalId, songTitle, artistName, coverImageUrl || '');
                 } else {
                     renderNoLyricsOption(songExternalId, songTitle, artistName);
                 }
@@ -2347,13 +2347,13 @@
 
         // 영상 선택 및 추가
         function selectVideoAndAdd(videoId, videoTitle, channelTitle, thumbnailUrl) {
-            const { songExternalId, songTitle, artistName } = state.currentModalSong;
+            const { songExternalId, songTitle, artistName, coverImageUrl } = state.currentModalSong;
 
             // 선택한 영상 저장
             saveVideoSelection(songExternalId, videoId, videoTitle, channelTitle, thumbnailUrl);
 
-            // 재생목록에 추가
-            addToPlaylist(null, songExternalId, songTitle, artistName, videoId, null);
+            // 재생목록에 추가 (앨범 커버 우선, 없으면 유튜브 썸네일)
+            addToPlaylist(null, songExternalId, songTitle, artistName, videoId, null, coverImageUrl || '');
 
             // 영상 모달 닫기
             closeVideoModal();
@@ -2374,7 +2374,8 @@
             $('#playerContainer').style.display = 'none';
         }
 
-        function renderLyricsList(lyrics, songExternalId, songTitle, artistName) {
+        function renderLyricsList(lyrics, songExternalId, songTitle, artistName, coverImageUrl) {
+            const coverUrl = coverImageUrl || '';
             let html = lyrics.map(l => `
             <div class="lyrics-list-item" data-lyrics='${JSON.stringify({
                 id: l.id,
@@ -2382,9 +2383,10 @@
                 songTitle: songTitle,
                 artistName: artistName,
                 videoId: l.mr_youtube_video_id,
-                title: l.title || ''
+                title: l.title || '',
+                coverImageUrl: coverUrl
             })}'>
-                <img class="lyrics-thumbnail" src="https://img.youtube.com/vi/${l.mr_youtube_video_id}/mqdefault.jpg" alt="" loading="lazy" onerror="this.style.background='#e2e8f0'">
+                <img class="lyrics-thumbnail" src="${coverUrl || `https://img.youtube.com/vi/${l.mr_youtube_video_id}/mqdefault.jpg`}" alt="" loading="lazy" onerror="this.style.background='#e2e8f0'">
                 <div class="lyrics-info">
                     <div class="lyrics-title">${escapeHtml(l.title || '제목 없음')}</div>
                     <div class="lyrics-meta">
@@ -2436,7 +2438,7 @@
 
                 item.querySelector('[data-add]').addEventListener('click', (e) => {
                     e.stopPropagation();
-                    addToPlaylist(data.id, data.songExternalId, data.songTitle, data.artistName, data.videoId, data.title);
+                    addToPlaylist(data.id, data.songExternalId, data.songTitle, data.artistName, data.videoId, data.title, data.coverImageUrl || '');
                 });
 
                 item.querySelector('[data-favorite]').addEventListener('click', (e) => {
@@ -2452,7 +2454,7 @@
         }
 
         // Playlist Management
-        function addToPlaylist(lyricsId, songId, songTitle, artistName, videoId, lyricsTitle) {
+        function addToPlaylist(lyricsId, songId, songTitle, artistName, videoId, lyricsTitle, coverImageUrl) {
             // 중복 체크: lyricsId가 있으면 lyricsId로, 없으면 songId+videoId로 체크
             const isDuplicate = state.playlist.some(item => {
                 if (lyricsId && item.lyricsId) {
@@ -2466,7 +2468,7 @@
                 return;
             }
 
-            state.playlist.push({ lyricsId, songId, songTitle, artistName, videoId, lyricsTitle });
+            state.playlist.push({ lyricsId, songId, songTitle, artistName, videoId, lyricsTitle, coverImageUrl: coverImageUrl || '' });
             savePlaylist();
             renderPlaylist();
             closeModal();
@@ -2542,7 +2544,7 @@
                         </svg>
                     </div>
                     ` : ''}
-                    <img class="playlist-item-thumb" src="https://img.youtube.com/vi/${videoId}/default.jpg" alt="" loading="lazy">
+                    <img class="playlist-item-thumb" src="${item.coverImageUrl || `https://img.youtube.com/vi/${videoId}/default.jpg`}" alt="" loading="lazy" onerror="this.src='https://img.youtube.com/vi/${videoId}/default.jpg'">
                     <div class="playlist-item-info">
                         <div class="playlist-item-title">${escapeHtml(item.songTitle || item.song_title)}</div>
                         <div class="playlist-item-artist">${escapeHtml(item.artistName || item.artist_name || '')}</div>
@@ -3563,7 +3565,8 @@
                         lyrics.song_title,
                         lyrics.artist_name,
                         lyrics.mr_youtube_video_id,
-                        lyrics.title
+                        lyrics.title,
+                        lyrics.cover_image_url || ''
                     );
                 } catch (e) {
                     console.error('Failed to add lyrics from URL:', e);

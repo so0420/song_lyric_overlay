@@ -165,7 +165,7 @@ if __name__ == "__main__":
     environment = settings.environment
     if environment == "production":
         logger.info('Server Starting in production...')
-        uvicorn.run("song_lyric:app", host=host, port=port)
+        uvicorn.run(app, host=host, port=port)
     elif environment == "local":
         logger.info('Server Starting in local...')
-        uvicorn.run("song_lyric:app", host=host, port=port, reload=False)
+        uvicorn.run(app, host=host, port=port)

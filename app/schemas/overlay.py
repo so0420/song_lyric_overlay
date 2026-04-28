@@ -63,8 +63,8 @@ class OverlaySettingsSchema(BaseModel):
     lyrics_position: str = "bottom-center"
     # 표시 옵션
     animation_enabled: bool = False
-    show_prev_line: bool = True
-    show_next_line: bool = True
+    show_prev_line: bool = False
+    show_next_line: bool = False
     # 외국어 가사 줄 표시 옵션 (\n으로 구분된 각 줄)
     show_lyrics_line1: bool = True   # 원문 (1번째 줄)
     show_lyrics_line2: bool = True   # 발음 (2번째 줄)

@@ -1617,6 +1617,11 @@
         if (!player || activeIndex === -1) return;
         const time = Math.floor(player.getCurrentTime() * 1000);
         segments[activeIndex][field] = time;
+        if (field === 'start' && activeIndex > 0) {
+            segments[activeIndex - 1].end = time;
+        } else if (field === 'end' && activeIndex < segments.length - 1) {
+            segments[activeIndex + 1].start = time;
+        }
         renderTimeline();
         // 타임라인 재생성 후 다시 active 상태 표시 (스크롤은 하지 않음)
         setActive(activeIndex, false);

@@ -2120,13 +2120,22 @@
             state.searchLoading = true;
 
             try {
-                const response = await fetch(`/api/v1/songs/search?q=${encodeURIComponent(query)}&limit=20&offset=${state.searchOffset}`);
+                // 가사가 등록된 노래만 검색 (가사 목록/편집 페이지의 공개 가사 검색과 동일 동작)
+                const response = await fetch(`/api/v1/lyrics/search?q=${encodeURIComponent(query)}&limit=20&offset=${state.searchOffset}`);
                 const data = await response.json();
-                const items = data.items || data;
+                const rawItems = data.items || [];
+                const items = rawItems.map(item => ({
+                    id: item.song_id,
+                    song_external_id: item.song_external_id,
+                    title: item.track_name,
+                    artist_name: item.artist_name,
+                    cover_image_url: item.artwork_url,
+                    lyrics_count: item.lyrics_count,
+                }));
 
                 state.currentSearchResults = loadMore ? [...state.currentSearchResults, ...items] : items;
-                state.searchHasMore = data.has_more || false;
                 state.searchOffset += items.length;
+                state.searchHasMore = state.searchOffset < (data.total || 0);
 
                 renderSearchResults(state.currentSearchResults, data.total, query, loadMore);
             } catch (error) {

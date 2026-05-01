@@ -2065,8 +2065,7 @@
                         // 재생목록이 비었으면 초기화
                         state.currentPlayingIndex = -1;
                         showPlaceholder();
-                        elements.lyricsDisplay.innerHTML = '<p class="lyrics-display-empty">가사가 여기에 표시됩니다</p>';
-                        elements.nowPlayingInfo.classList.remove('active');
+                        clearLyricsDisplay();
                         updateControlButtons();
                     }
                 }
@@ -2075,6 +2074,9 @@
                 const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
                 if (state.currentPlayingIndex < items.length - 1) {
                     playItem(state.currentPlayingIndex + 1);
+                } else {
+                    // 마지막 곡 종료: 가사 비우기
+                    clearLyricsDisplay();
                 }
             }
         }
@@ -2482,7 +2484,7 @@
 
             if (state.currentPlayingIndex === index) {
                 state.currentPlayingIndex = -1;
-                elements.nowPlayingInfo.classList.remove('active');
+                clearLyricsDisplay();
             } else if (state.currentPlayingIndex > index) {
                 state.currentPlayingIndex--;
             }
@@ -2497,7 +2499,7 @@
             if (!confirm('재생 목록을 모두 삭제하시겠습니까?')) return;
             state.playlist = [];
             state.currentPlayingIndex = -1;
-            elements.nowPlayingInfo.classList.remove('active');
+            clearLyricsDisplay();
             savePlaylist();
             renderPlaylist();
             updateControlButtons();
@@ -2930,8 +2932,32 @@
         // 페이지 로드 시 WebSocket 연결
         connectOverlayWs();
 
-        // 페이지 종료 시 정리
-        window.addEventListener('beforeunload', () => {
+        // 페이지 종료(탭 닫기/새로고침/이동) 시 OBS 가사 정리 및 정리 작업
+        // pagehide 는 WS 단순 단절(네트워크 블립)에는 발생하지 않으므로 명시적 페이지 이탈만 잡힘
+        window.addEventListener('pagehide', () => {
+            const clearData = {
+                songTitle: '',
+                artist: '',
+                lyrics: null,
+                currentTime: 0,
+                isPlaying: false,
+            };
+            let sentViaWs = false;
+            if (overlayWs && overlayWs.readyState === WebSocket.OPEN) {
+                try {
+                    overlayWs.send(JSON.stringify({ type: 'lyrics_init', data: clearData }));
+                    sentViaWs = true;
+                } catch {}
+            }
+            // WS 가 닫혀 있거나 송신 실패 시 sendBeacon 으로 폴백 (페이지 종료 중에도 안정적)
+            if (!sentViaWs && navigator.sendBeacon) {
+                try {
+                    navigator.sendBeacon(
+                        '/api/v1/overlay/sync-init',
+                        new Blob([JSON.stringify(clearData)], { type: 'application/json' })
+                    );
+                } catch {}
+            }
             if (overlayWsReconnectTimer) clearTimeout(overlayWsReconnectTimer);
             if (overlayWs) {
                 overlayWs.onclose = null;
@@ -2940,6 +2966,16 @@
         });
 
         // ===== OBS 동기화 함수 =====
+
+        // 가사/곡 정보 초기화 후 OBS에도 빈 상태 전송
+        function clearLyricsDisplay() {
+            state.currentLyrics = null;
+            state.currentSongTitle = '';
+            state.currentArtist = '';
+            elements.lyricsDisplay.innerHTML = '<p class="lyrics-display-empty">가사가 여기에 표시됩니다</p>';
+            elements.nowPlayingInfo.classList.remove('active');
+            syncLyricsInit();
+        }
 
         // OBS에 전체 가사 + 곡 정보 + 현재 시간 전송
         function syncLyricsInit() {

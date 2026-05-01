@@ -78,6 +78,9 @@ class CacheOptions(BaseModel):
     # YouTube 캐시
     youtube_ttl: int = 300
     youtube_max_size: int = 100
+    # iTunes 캐시
+    itunes_ttl: int = 300
+    itunes_max_size: int = 100
 
 
 class AppConfig(BaseModel):

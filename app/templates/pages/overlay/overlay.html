@@ -2098,14 +2098,16 @@
 
         // Search with debounce and cache
         let searchTimeout;
+        let searchRequestId = 0;
         async function searchSongs(query, loadMore = false) {
             if (!query.trim()) {
                 elements.searchResults.classList.remove('active');
                 return;
             }
 
+            // 새 검색마다 ID 증가 — 늦게 도착한 stale 응답은 무시
+            const requestId = ++searchRequestId;
             state.lastSearchQuery = query;
-            if (state.searchLoading) return;
 
             if (!loadMore) {
                 state.searchOffset = 0;
@@ -2123,6 +2125,7 @@
                 // 가사가 등록된 노래만 검색 (가사 목록/편집 페이지의 공개 가사 검색과 동일 동작)
                 const response = await fetch(`/api/v1/lyrics/search?q=${encodeURIComponent(query)}&limit=20&offset=${state.searchOffset}`);
                 const data = await response.json();
+                if (requestId !== searchRequestId) return; // 더 새로운 검색이 있으면 결과 폐기
                 const rawItems = data.items || [];
                 const items = rawItems.map(item => ({
                     id: item.song_id,
@@ -2139,13 +2142,16 @@
 
                 renderSearchResults(state.currentSearchResults, data.total, query, loadMore);
             } catch (error) {
+                if (requestId !== searchRequestId) return;
                 console.error('Search error:', error);
                 if (!loadMore) {
                     elements.searchResultsList.innerHTML = '<div style="padding: 24px; text-align: center; color: #dc2626;">검색 중 오류가 발생했습니다</div>';
                 }
             } finally {
-                state.searchLoading = false;
-                elements.searchLoading.classList.remove('active');
+                if (requestId === searchRequestId) {
+                    state.searchLoading = false;
+                    elements.searchLoading.classList.remove('active');
+                }
             }
         }
 

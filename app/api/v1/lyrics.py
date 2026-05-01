@@ -2,9 +2,13 @@ from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from app.core.auth import get_current_user_api, get_current_user
 from app.core.lyrics_access import can_view_lyrics
 from app.database.lyrics_repository import get_lyrics_repository, LyricsRepository
+from app.database.meilisearch.meilisearch import meilisearch_handler
+from app.integrations.itunes_search import search_itunes_cached
+from app.api.v1.songs import register_itunes_results
 from app.schemas.lyrics import LyricsCreateSchema, LyricsUpdateSchema, LyricsMemoSchema
 from app.schemas.common import IdResponse
 from app.utils.csrf import verify_csrf
+from app.utils.log import logger
 
 router = APIRouter()
 
@@ -20,6 +24,48 @@ def _user_ctx(user):
     return user.get("id"), bool(user.get("is_admin"))
 
 
+async def _collect_search_candidate_ids(q: str) -> list:
+    """iTunes + Meilisearch 검색으로 후보 song_external_id 수집 (중복 제거, 입력 순서 유지).
+
+    iTunes 는 항상 호출(캐시되어 있음)해서 페이지네이션 사이에 후보가 달라지지 않게 한다.
+    DB/Meilisearch 등록은 캐시 미스(=라이브 호출) 일 때만 한 번 수행한다.
+    """
+    candidate_ids: list[str] = []
+    seen: set[str] = set()
+
+    def add(eid):
+        if eid and eid not in seen:
+            candidate_ids.append(eid)
+            seen.add(eid)
+
+    try:
+        itunes_results, from_cache = await search_itunes_cached(term=q, limit=100)
+        if itunes_results:
+            if not from_cache:
+                await register_itunes_results(itunes_results)
+            for r in itunes_results:
+                add(f"custom_it_{r['track_id']}")
+    except Exception as e:
+        logger.warning(f"iTunes search failed: {e}")
+
+    try:
+        ms_results = await meilisearch_handler.search(
+            query=q, offset=0, limit=200,
+            attributes_to_search_on=["title", "singer"],
+        )
+        if not ms_results.get("hits") and " " in q:
+            ms_results = await meilisearch_handler.search(
+                query=q.replace(" ", ""), offset=0, limit=200,
+                attributes_to_search_on=["title", "singer"],
+            )
+        for hit in ms_results.get("hits", []):
+            add(hit.get("id"))
+    except Exception as e:
+        logger.warning(f"Meilisearch failed: {e}")
+
+    return candidate_ids
+
+
 @router.get("/songs")
 async def get_songs_with_lyrics(
     offset: int = Query(0, ge=0),
@@ -30,11 +76,18 @@ async def get_songs_with_lyrics(
     user=Depends(get_current_user),
     repo: LyricsRepository = Depends(get_lyrics_repository)
 ):
-    """접근 가능한 가사가 있는 모든 노래 목록 조회 (페이지네이션, 검색, 정렬 지원)"""
+    """접근 가능한 가사가 있는 모든 노래 목록 조회 (페이지네이션, 검색, 정렬 지원).
+
+    검색어(q)가 있으면 iTunes/Meilisearch 로 후보를 보강해 DB LIKE 가 놓치는 곡도 잡는다.
+    """
     user_id, is_admin = _user_ctx(user)
+    extra_ids: list[str] = []
+    if q:
+        extra_ids = await _collect_search_candidate_ids(q)
     return await repo.get_all_songs_with_lyrics(
         user_id=user_id, is_admin=is_admin,
         offset=offset, limit=limit, song_type=type, search=q, sort=sort,
+        extra_external_ids=extra_ids or None,
     )
 
 
@@ -46,10 +99,17 @@ async def search_lyrics(
     user=Depends(get_current_user),
     repo: LyricsRepository = Depends(get_lyrics_repository)
 ):
-    """접근 가능한 가사가 있는 노래 검색 (페이지네이션 지원)"""
+    """접근 가능한 가사가 있는 노래 검색 (iTunes/Meilisearch 보강).
+
+    /lyrics/songs 와 동일한 경로(get_all_songs_with_lyrics + extra_external_ids)를 사용해
+    SQL 단계에서 정렬·페이지네이션이 일어나 결과가 결정적이 되도록 한다.
+    """
     user_id, is_admin = _user_ctx(user)
-    return await repo.search_all_songs_with_lyrics(
-        q, user_id=user_id, is_admin=is_admin, offset=offset, limit=limit,
+    extra_ids = await _collect_search_candidate_ids(q)
+    return await repo.get_all_songs_with_lyrics(
+        user_id=user_id, is_admin=is_admin,
+        offset=offset, limit=limit, search=q, sort="recent",
+        extra_external_ids=extra_ids or None,
     )
 
 

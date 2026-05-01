@@ -470,8 +470,10 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
+let loadSongsRequestId = 0;
 async function loadSongs(append = false) {
-    if (isLoading) return;
+    // 새 요청마다 ID 증가 — 늦게 도착한 stale 응답 무시
+    const requestId = ++loadSongsRequestId;
     isLoading = true;
 
     const grid = document.getElementById('songs-grid');
@@ -489,6 +491,7 @@ async function loadSongs(append = false) {
         if (currentSearch) url += `&q=${encodeURIComponent(currentSearch)}`;
         const res = await fetch(url);
         const data = await res.json();
+        if (requestId !== loadSongsRequestId) return; // 더 새로운 요청이 있으면 폐기
 
         totalCount = data.total;
         hasMore = data.has_more;
@@ -524,14 +527,17 @@ async function loadSongs(append = false) {
 
         currentOffset += data.items.length;
     } catch (e) {
+        if (requestId !== loadSongsRequestId) return;
         console.error(e);
         if (!append) {
             grid.innerHTML = `<div class="songs-empty" style="grid-column: 1/-1;">불러오기 실패</div>`;
         }
     } finally {
-        isLoading = false;
-        scrollLoading.style.display = 'none';
-        setTimeout(checkSentinel, 100);
+        if (requestId === loadSongsRequestId) {
+            isLoading = false;
+            scrollLoading.style.display = 'none';
+            setTimeout(checkSentinel, 100);
+        }
     }
 }
 

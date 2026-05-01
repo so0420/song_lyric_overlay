@@ -20,7 +20,7 @@ class SongUpdateSchema(BaseModel):
 router = APIRouter()
 
 
-async def _register_itunes_results(itunes_results: list) -> list:
+async def register_itunes_results(itunes_results: list) -> list:
     """iTunes 검색 결과를 커스텀 노래로 DB/Meilisearch에 등록하고 포맷된 결과 반환.
     기존에 관리자가 수정한 제목/가수명은 덮어쓰지 않도록 보존한다."""
     formatted = []
@@ -108,7 +108,7 @@ async def search_songs(request: Request, q: str, offset: int = 0, limit: int = 2
     if offset == 0:
         itunes_results = await search_itunes(term=q, limit=100)
         if itunes_results:
-            itunes_formatted = await _register_itunes_results(itunes_results)
+            itunes_formatted = await register_itunes_results(itunes_results)
 
     # 2단계: Meilisearch/DB 검색
     formatted_results = []

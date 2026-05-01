@@ -238,6 +238,36 @@ class LyricsRepository:
         results = await self.db.fetch_all(query, (*external_ids, *vis_params))
         return {r['song_external_id']: r['count'] for r in results}
 
+    async def get_songs_meta_by_external_ids(
+        self, external_ids: List[str], user_id: Optional[int] = None, is_admin: bool = False
+    ) -> List[Dict[str, Any]]:
+        """주어진 song_external_id 들 중 visibility 적용한 가사를 가진 노래의 메타데이터를 반환.
+
+        반환 형식은 search_all_songs_with_lyrics 와 동일.
+        가사가 없는(또는 접근 불가한) 노래는 결과에서 제외된다.
+        """
+        if not external_ids:
+            return []
+        vis_where, vis_params = self.visibility_where(user_id, is_admin)
+        placeholders = ','.join(['%s'] * len(external_ids))
+        query = f"""
+            SELECT
+                s.id as song_id,
+                s.title as track_name,
+                s.song_external_id,
+                s.cover_image_url as artwork_url,
+                a.name as artist_name,
+                a.artist_external_id as artist_id,
+                COUNT(l.id) as lyrics_count,
+                MAX(l.updated_at) as last_updated
+            FROM songs s
+            JOIN song_lyrics l ON s.id = l.song_id AND l.deleted_at IS NULL AND {vis_where}
+            LEFT JOIN artists a ON s.artist_id = a.id
+            WHERE s.song_external_id IN ({placeholders})
+            GROUP BY s.id, s.title, s.song_external_id, s.cover_image_url, a.name, a.artist_external_id
+        """
+        return await self.db.fetch_all(query, (*vis_params, *external_ids))
+
     async def search_songs_with_lyrics(
         self, query_term: str, user_id: Optional[int] = None, is_admin: bool = False, limit: int = 20
     ) -> List[Dict[str, Any]]:
@@ -329,22 +359,38 @@ class LyricsRepository:
     async def get_all_songs_with_lyrics(
         self, user_id: Optional[int] = None, is_admin: bool = False,
         offset: int = 0, limit: int = 20, song_type: str = "all", search: str = None,
-        sort: str = "recent"
+        sort: str = "recent",
+        extra_external_ids: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
-        """공개 가능한 가사가 있는 모든 노래 조회 (페이지네이션, 검색, 정렬 지원)"""
+        """공개 가능한 가사가 있는 모든 노래 조회 (페이지네이션, 검색, 정렬 지원).
+
+        extra_external_ids 가 주어지면 LIKE 매칭과 별개로 해당 song_external_id 들도 결과에 포함한다.
+        (iTunes/Meilisearch 외부 검색이 발견한 후보를 DB LIKE 검색에 추가하기 위함)
+        """
         vis_where, vis_params = self.visibility_where(user_id, is_admin)
         type_filter = ""
 
         search_filter = ""
         params: list = []
         if search:
-            search_filter = """AND (s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s
-                                    OR REPLACE(s.title, ' ', '') LIKE %s
-                                    OR REPLACE(a.name, ' ', '') LIKE %s
-                                    OR REPLACE(l.title, ' ', '') LIKE %s)"""
+            like_clause = """(s.title LIKE %s OR a.name LIKE %s OR l.title LIKE %s
+                              OR REPLACE(s.title, ' ', '') LIKE %s
+                              OR REPLACE(a.name, ' ', '') LIKE %s
+                              OR REPLACE(l.title, ' ', '') LIKE %s)"""
             pattern = f"%{search}%"
             nospace_pattern = f"%{search.replace(' ', '')}%"
-            params = [pattern, pattern, pattern, nospace_pattern, nospace_pattern, nospace_pattern]
+            like_params = [pattern, pattern, pattern, nospace_pattern, nospace_pattern, nospace_pattern]
+            if extra_external_ids:
+                placeholders = ','.join(['%s'] * len(extra_external_ids))
+                search_filter = f"AND ({like_clause} OR s.song_external_id IN ({placeholders}))"
+                params = like_params + list(extra_external_ids)
+            else:
+                search_filter = f"AND {like_clause}"
+                params = like_params
+        elif extra_external_ids:
+            placeholders = ','.join(['%s'] * len(extra_external_ids))
+            search_filter = f"AND s.song_external_id IN ({placeholders})"
+            params = list(extra_external_ids)
 
         order_by_map = {
             "recent": "last_updated DESC",

@@ -2932,6 +2932,19 @@
         // 페이지 로드 시 WebSocket 연결
         connectOverlayWs();
 
+        // bfcache 로 페이지 복원 시 WS 재연결 + 현재 상태 OBS 재송출
+        // (pagehide 에서 WS 를 닫고 OBS 가사를 비웠기 때문에 그대로 두면 다음 재생 시 OBS 가 비어 보임)
+        window.addEventListener('pageshow', (e) => {
+            if (!e.persisted) return;
+            connectOverlayWs();
+            if (state.currentLyrics || state.currentPlayingIndex >= 0) {
+                syncLyricsInit();
+            }
+            if (state.playlist.length > 0) {
+                syncPlaylistToOBS();
+            }
+        });
+
         // 페이지 종료(탭 닫기/새로고침/이동) 시 OBS 가사 정리 및 정리 작업
         // pagehide 는 WS 단순 단절(네트워크 블립)에는 발생하지 않으므로 명시적 페이지 이탈만 잡힘
         window.addEventListener('pagehide', () => {

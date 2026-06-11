@@ -1726,6 +1726,25 @@
 
     <!-- Right Panel - Playlist -->
     <div class="playlist-panel">
+        <style>
+            .request-remote {
+                border: 1px solid var(--border-color, #e2e8f0);
+                border-radius: 10px;
+                padding: 12px 14px;
+                margin-bottom: 12px;
+                background: #f8fafc;
+            }
+            .rr-main { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+            .rr-title { font-weight: 700; font-size: 0.95rem; }
+            .rr-subs { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
+            .rr-subs.dim { opacity: 0.45; }
+            .rr-empty { font-size: 0.85rem; color: var(--text-sub, #475569); }
+            .rr-empty a { color: var(--accent, #2563eb); font-weight: 600; }
+            .rr-status { font-size: 0.78rem; font-weight: 600; }
+            .rr-status.on { color: #059669; }
+            .rr-status.off { color: #94a3b8; }
+        </style>
+        <div class="request-remote" id="requestRemote" style="display:none;"></div>
         <div class="playlist-header">
             <span class="playlist-title">재생 목록</span>
             <div class="playlist-actions">
@@ -2269,12 +2288,58 @@
             return savedVideoSelections[songExternalId] || null;
         }
 
+        // 재생목록 곡의 영상만 다른 유튜브 영상으로 교체 (가사 연결 곡 포함)
+        function openVideoReplace(index) {
+            const item = state.playlist[index];
+            if (!item) return;
+            const songTitle = item.songTitle || item.song_title || '';
+            const artistName = item.artistName || item.artist_name || '';
+            state.videoModalMode = 'replace';
+            state.replaceTargetIndex = index;
+            // saveVideoSelection 키로 쓰기 위해 songExternalId 보관
+            state.currentModalSong = { songExternalId: item.songId, songTitle, artistName };
+
+            $('#videoModalTitle').textContent = `영상 변경 - ${songTitle}`;
+            $('#videoSearchInput').value = `${songTitle} ${artistName || ''}`.trim();
+            $('#videoModal').classList.add('active');
+            searchVideosForSelection();
+        }
+
+        // 교체 모드: 기존 재생목록 항목의 영상만 바꾼다
+        function replaceItemVideo(videoId, videoTitle, channelTitle, thumbnailUrl) {
+            const index = state.replaceTargetIndex;
+            const item = state.playlist[index];
+            if (!item) { closeVideoModal(); return; }
+
+            // 선택 기억 (다음에 같은 곡 검색 시 맨 위 노출)
+            if (item.songId) saveVideoSelection(item.songId, videoId, videoTitle, channelTitle, thumbnailUrl);
+
+            item.videoId = videoId;
+            savePlaylist();
+            renderPlaylist();
+
+            // 현재 재생 중인 곡이면 즉시 새 영상으로 큐
+            if (index === state.currentPlayingIndex) {
+                if (state.isPlayerReady && state.ytPlayer && state.ytPlayer.cueVideoById) {
+                    state.ytPlayer.cueVideoById(videoId);
+                    showPlayer();
+                } else {
+                    state.pendingVideoId = videoId;
+                }
+            }
+
+            showToast('재생 영상을 변경했습니다', 'success');
+            state.videoModalMode = 'add';
+            closeVideoModal();
+        }
+
         // 가사 없이 추가 - 영상 선택 모달 표시
         async function addWithoutLyrics(songExternalId, songTitle, artistName) {
             // 가사 모달 닫기
             closeModal();
 
-            // 영상 선택 모달 열기
+            // 영상 선택 모달 열기 (신규 추가 모드)
+            state.videoModalMode = 'add';
             state.currentModalSong = { songExternalId, songTitle, artistName };
             const videoModal = $('#videoModal');
             const videoModalTitle = $('#videoModalTitle');
@@ -2352,7 +2417,12 @@
                         const channelTitle = item.dataset.channelTitle;
                         const thumbnailUrl = item.dataset.thumbnailUrl;
 
-                        selectVideoAndAdd(videoId, videoTitle, channelTitle, thumbnailUrl);
+                        // 모드에 따라 분기: 'replace'면 기존 곡 영상 교체, 아니면 신규 추가
+                        if (state.videoModalMode === 'replace') {
+                            replaceItemVideo(videoId, videoTitle, channelTitle, thumbnailUrl);
+                        } else {
+                            selectVideoAndAdd(videoId, videoTitle, channelTitle, thumbnailUrl);
+                        }
                     });
                 });
 
@@ -2378,6 +2448,7 @@
 
         function closeVideoModal() {
             $('#videoModal').classList.remove('active');
+            state.videoModalMode = 'add';  // 다음 열림을 위해 기본 모드로 복귀
         }
 
         // 플레이어 표시 제어
@@ -2574,6 +2645,12 @@
                         <div class="playlist-item-artist">${escapeHtml(item.artistName || item.artist_name || '')}</div>
                     </div>
                     ${state.currentTab === 'playlist' ? `
+                    <button class="playlist-item-remove" data-swap="${index}" title="재생 영상 변경">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="23 7 16 12 23 17 23 7"/>
+                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                        </svg>
+                    </button>
                     <button class="playlist-item-remove" data-remove="${index}" title="삭제">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M18 6 6 18M6 6l12 12"/>
@@ -2594,7 +2671,15 @@
                     }
                 });
 
-                const removeBtn = item.querySelector('.playlist-item-remove');
+                const swapBtn = item.querySelector('[data-swap]');
+                if (swapBtn) {
+                    swapBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        openVideoReplace(parseInt(e.currentTarget.dataset.swap));
+                    });
+                }
+
+                const removeBtn = item.querySelector('[data-remove]');
                 if (removeBtn) {
                     removeBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
@@ -3012,6 +3097,94 @@
             } finally {
                 _syncingPending = false;
             }
+        }
+
+        // ===== 노래 신청 리모컨 (노래하기 페이지에서 신청 on/off) =====
+        let _remoteProfile = null;
+
+        async function loadRequestRemote() {
+            const box = $('#requestRemote');
+            try {
+                const res = await fetch('/api/v1/streamers/me');
+                if (!res.ok) return; // 미로그인 등은 조용히 무시
+                const data = await res.json();
+                if (!data.has_profile) {
+                    _remoteProfile = null;
+                    box.innerHTML = '<div class="rr-empty">노래책을 만들면 여기서 신청을 켜고 끌 수 있어요 · <a href="/songbook">노래책 만들기</a></div>';
+                    box.style.display = 'block';
+                    return;
+                }
+                _remoteProfile = data.profile;
+                renderRequestRemote();
+                box.style.display = 'block';
+            } catch (e) {
+                // 무시
+            }
+        }
+
+        function renderRequestRemote() {
+            const p = _remoteProfile;
+            if (!p) return;
+            const box = $('#requestRemote');
+            const on = !!p.request_enabled;
+            box.innerHTML = `
+                <div class="rr-main">
+                    <span class="rr-title">📢 노래 신청 받기 <span class="rr-status ${on ? 'on' : 'off'}" id="rrStatus">${on ? '받는 중' : '꺼짐'}</span></span>
+                    <label class="auto-remove-switch" title="신청 받기 전체 켜기/끄기">
+                        <input type="checkbox" id="rrEnabled" ${on ? 'checked' : ''}>
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+                <div class="rr-subs ${on ? '' : 'dim'}" id="rrSubs">
+                    <label class="auto-remove-switch" title="공개 노래책 페이지 신청">
+                        <span class="switch-label">웹</span>
+                        <input type="checkbox" id="rrWeb" ${p.request_web_enabled ? 'checked' : ''}>
+                        <span class="switch-slider"></span>
+                    </label>
+                    <label class="auto-remove-switch" title="치지직 채팅 !신청">
+                        <span class="switch-label">채팅</span>
+                        <input type="checkbox" id="rrChat" ${p.request_chat_enabled ? 'checked' : ''}>
+                        <span class="switch-slider"></span>
+                    </label>
+                    <label class="auto-remove-switch" title="치지직 후원 !신청">
+                        <span class="switch-label">후원</span>
+                        <input type="checkbox" id="rrDonation" ${p.request_donation_enabled ? 'checked' : ''}>
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+            `;
+            $('#rrEnabled').addEventListener('change', (e) => updateRequestSetting('request_enabled', e.target.checked, e.target));
+            $('#rrWeb').addEventListener('change', (e) => updateRequestSetting('request_web_enabled', e.target.checked, e.target));
+            $('#rrChat').addEventListener('change', (e) => updateRequestSetting('request_chat_enabled', e.target.checked, e.target));
+            $('#rrDonation').addEventListener('change', (e) => updateRequestSetting('request_donation_enabled', e.target.checked, e.target));
+        }
+
+        async function updateRequestSetting(field, value, inputEl) {
+            const prev = _remoteProfile ? _remoteProfile[field] : undefined;
+            inputEl.disabled = true;
+            try {
+                const res = await fetch('/api/v1/streamers/me', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+                    body: JSON.stringify({ [field]: value })
+                });
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.detail || '변경에 실패했습니다');
+                }
+                if (_remoteProfile) _remoteProfile[field] = value;
+                if (field === 'request_enabled') {
+                    renderRequestRemote(); // 상태 라벨/하위 토글 흐림 갱신
+                    showToast(value ? '노래 신청을 켰습니다' : '노래 신청을 껐습니다', 'success');
+                }
+            } catch (e) {
+                // 실패 시 토글 원복
+                inputEl.checked = !!prev;
+                inputEl.disabled = false;
+                showToast(typeof e.message === 'string' ? e.message : '변경에 실패했습니다', 'error');
+                return;
+            }
+            inputEl.disabled = false;
         }
 
         // 신청 곡 전달 완료 마킹 (실패해도 addToPlaylist 중복 체크가 안전망)
@@ -3691,6 +3864,9 @@
 
             // 미전달 신청 곡 동기화
             syncPendingRequests();
+
+            // 노래 신청 리모컨 로드
+            loadRequestRemote();
         }
 
         async function handleUrlParams() {

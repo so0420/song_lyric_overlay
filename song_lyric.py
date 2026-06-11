@@ -170,17 +170,29 @@ def error_500(request: Request):
 app.include_router(api_router, prefix="/api")
 app.include_router(web_router)
 
-if __name__ == "__main__":
+def _run_server(host, port):
+    """uvicorn 실행 + 종료(Ctrl+C) 시 발생하는 무해한 노이즈를 정리한다."""
     import uvicorn
-    # setup_uvicorn_logging() # 이미 위에서 호출됨
+    try:
+        uvicorn.run(app, host=host, port=port)
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    except RuntimeError as e:
+        # uvicorn 종료 중 이벤트 루프 정리 과정에서 나는 알려진 무해한 예외
+        if "Event loop stopped before Future completed" in str(e):
+            logger.info("서버가 종료되었습니다.")
+        else:
+            raise
 
+
+if __name__ == "__main__":
     host = settings.server_host
     port = settings.server_port
 
     environment = settings.environment
     if environment == "production":
         logger.info('Server Starting in production...')
-        uvicorn.run(app, host=host, port=port)
+        _run_server(host, port)
     elif environment == "local":
         logger.info('Server Starting in local...')
-        uvicorn.run(app, host=host, port=port)
+        _run_server(host, port)

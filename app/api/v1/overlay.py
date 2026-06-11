@@ -321,9 +321,15 @@ async def overlay_websocket(
 
     except WebSocketDisconnect:
         pass
+    except asyncio.CancelledError:
+        # 서버 종료 등으로 태스크가 취소된 경우 — 조용히 정리
+        pass
     except Exception:
         pass
     finally:
         if ping_task:
             ping_task.cancel()
-        await overlay_manager.disconnect(websocket, verified_user_id, connection_type)
+        try:
+            await overlay_manager.disconnect(websocket, verified_user_id, connection_type)
+        except Exception:
+            pass

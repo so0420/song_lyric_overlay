@@ -166,10 +166,15 @@ logger = get_logger()
 def handle_exception(exc_type, exc_value, exc_traceback):
     """
     처리되지 않은 예외를 캐치하여 로거에 기록합니다.
-    (KeyboardInterrupt는 제외하여 정상 종료 방해하지 않음)
+    (정상 종료/이벤트 루프 정리 과정의 무해한 예외는 제외)
     """
-    if issubclass(exc_type, KeyboardInterrupt):
+    # 정상 종료 신호는 기본 처리에 위임
+    if issubclass(exc_type, (KeyboardInterrupt, SystemExit, GeneratorExit)):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    # 서버 종료 시 uvicorn/asyncio 가 내는 알려진 무해한 종료 예외는 무시
+    if issubclass(exc_type, RuntimeError) and "Event loop stopped before Future completed" in str(exc_value):
         return
 
     logger.critical("Unhandled exception occurred!", exc_info=(exc_type, exc_value, exc_traceback))

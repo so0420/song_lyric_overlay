@@ -98,24 +98,41 @@ class ChzzkConnectionClient:
             return
         self._running = True
         url = settings.chzzk_relay_url
-        while self._running:
-            if not self.sio.connected:
-                try:
-                    logger.info(f"[ChzzkRelay] 릴레이 연결 시도: {url}")
-                    await self.sio.connect(url, transports=["websocket", "polling"])
-                except Exception as e:
-                    logger.error(f"[ChzzkRelay] 연결 실패: {e}")
-                    await asyncio.sleep(5)
-                    continue
-            # 주기적으로 구독 목록 동기화 (새 연동/해제 반영)
-            await asyncio.sleep(_REFRESH_INTERVAL)
-            await self._sync_subscriptions()
+        try:
+            while self._running:
+                if not self.sio.connected:
+                    try:
+                        logger.info(f"[ChzzkRelay] 릴레이 연결 시도: {url}")
+                        await self.sio.connect(url, transports=["websocket", "polling"])
+                    except Exception as e:
+                        logger.error(f"[ChzzkRelay] 연결 실패: {e}")
+                        await asyncio.sleep(5)
+                        continue
+                # 주기적으로 구독 목록 동기화 (새 연동/해제 반영)
+                await asyncio.sleep(_REFRESH_INTERVAL)
+                await self._sync_subscriptions()
+        except asyncio.CancelledError:
+            pass  # 서버 종료 — finally 에서 정리
+        finally:
+            await self.disconnect()
 
     async def disconnect(self):
+        """릴레이 연결 해제 + 소켓 세션 정리 (Unclosed session 방지)"""
         self._running = False
-        if self.sio.connected:
-            await self.sio.disconnect()
-            logger.info("[ChzzkRelay] 연결 해제됨")
+        try:
+            if self.sio.connected:
+                await self.sio.disconnect()
+                logger.info("[ChzzkRelay] 연결 해제됨")
+        except Exception:
+            pass
+        # engineio 의 aiohttp 세션이 남아있으면 닫는다
+        try:
+            eio = getattr(self.sio, "eio", None)
+            session = getattr(eio, "http", None) if eio else None
+            if session is not None and not session.closed:
+                await session.close()
+        except Exception:
+            pass
 
 
 # 싱글톤 인스턴스

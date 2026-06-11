@@ -19,8 +19,12 @@ _SONGBOOK_SELECT = """
 """
 
 
-def _build_filters(q: Optional[str], tags: Optional[List[str]]):
-    """검색어/태그 필터 SQL 조각과 파라미터를 생성한다."""
+def _build_filters(q: Optional[str], tags: Optional[List[str]], has_lyrics: Optional[bool] = None):
+    """검색어/태그/가사보유 필터 SQL 조각과 파라미터를 생성한다.
+
+    has_lyrics: True=가사 있는 곡만, False=가사 없는 곡만, None=전체
+    (가사 보유 판정은 LEFT JOIN 된 song_lyrics l.id 기준 — 호출 쿼리에 해당 JOIN 필요)
+    """
     sql = ""
     params: list = []
     if q:
@@ -31,6 +35,10 @@ def _build_filters(q: Optional[str], tags: Optional[List[str]]):
         for tag in tags:
             sql += " AND JSON_CONTAINS(sb.tags, %s)"
             params.append(json.dumps(tag, ensure_ascii=False))
+    if has_lyrics is True:
+        sql += " AND l.id IS NOT NULL"
+    elif has_lyrics is False:
+        sql += " AND l.id IS NULL"
     return sql, params
 
 
@@ -48,9 +56,10 @@ class SongbookRepository:
         tags: Optional[List[str]] = None,
         limit: int = 500,
         offset: int = 0,
+        has_lyrics: Optional[bool] = None,
     ) -> List[Dict[str, Any]]:
-        """노래책 수록곡 목록 조회 (검색어/태그 필터, 페이지네이션)"""
-        filter_sql, filter_params = _build_filters(q, tags)
+        """노래책 수록곡 목록 조회 (검색어/태그/가사보유 필터, 페이지네이션)"""
+        filter_sql, filter_params = _build_filters(q, tags, has_lyrics)
         query = (
             _SONGBOOK_SELECT
             + " WHERE sb.streamer_id = %s"
@@ -71,15 +80,17 @@ class SongbookRepository:
         streamer_internal_id: int,
         q: Optional[str] = None,
         tags: Optional[List[str]] = None,
+        has_lyrics: Optional[bool] = None,
     ) -> int:
         """노래책 수록곡 총 개수 (get_songbook 과 동일 필터)"""
-        filter_sql, filter_params = _build_filters(q, tags)
+        filter_sql, filter_params = _build_filters(q, tags, has_lyrics)
         query = (
             """
             SELECT COUNT(*) AS total
             FROM streamer_songbooks sb
             JOIN songs s ON sb.song_id = s.id
             LEFT JOIN artists a ON s.artist_id = a.id
+            LEFT JOIN song_lyrics l ON sb.lyrics_id = l.id AND l.deleted_at IS NULL
             WHERE sb.streamer_id = %s
             """
             + filter_sql

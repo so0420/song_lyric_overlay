@@ -627,6 +627,7 @@ const NICKNAME_STORAGE_KEY = 'songbook_requester_name';
 
 let allSongs = [];          // 전체 수록곡 (서버 정렬 순서 유지)
 let activeTag = null;       // 선택된 태그 필터 (null = 전체)
+let lyricsFilter = null;    // 가사 보유 필터 (null=전체, true=있음, false=없음)
 let searchQuery = '';
 let canRequest = false;     // request_enabled && request_web_enabled
 let selectedSong = null;    // 신청 모달에 띄운 곡
@@ -678,6 +679,7 @@ async function loadSongbook(reset = true) {
         const params = new URLSearchParams({ limit: String(SB_PAGE), offset: String(sbOffset) });
         if (searchQuery) params.set('q', searchQuery);
         if (activeTag) params.set('tags', activeTag);
+        if (lyricsFilter !== null) params.set('has_lyrics', String(lyricsFilter));
         const res = await fetch(`/api/v1/songbook/${encodeURIComponent(STREAMER.id)}?${params.toString()}`);
         if (!res.ok) throw new Error(`load failed (${res.status})`);
         const data = await res.json();
@@ -698,7 +700,7 @@ async function loadSongbook(reset = true) {
         sbHasMore = sbOffset < (data.total || 0) && items.length > 0;
 
         const total = data.total || 0;
-        document.getElementById('sbStats').textContent = (searchQuery || activeTag) ? `${total}곡` : `총 ${total}곡`;
+        document.getElementById('sbStats').textContent = (searchQuery || activeTag || lyricsFilter !== null) ? `${total}곡` : `총 ${total}곡`;
         renderSongsAppend(items, reset);
         requestAnimationFrame(maybeLoadMore);
     } catch (e) {
@@ -718,44 +720,45 @@ function maybeLoadMore() {
     if (s && s.getBoundingClientRect().top < window.innerHeight + 200) loadSongbook(false);
 }
 
-// ===== 태그 필터 칩 렌더 =====
+// ===== 필터 칩 렌더 (가사 보유 + 태그) =====
 function renderTagFilters() {
     const wrap = document.getElementById('sbTagFilters');
-    const tags = Array.isArray(STREAMER.tags) ? STREAMER.tags : [];
-    if (tags.length === 0) {
-        wrap.style.display = 'none';
-        return;
-    }
-
+    wrap.style.display = 'flex';
     wrap.innerHTML = '';
-    const allChip = document.createElement('button');
-    allChip.type = 'button';
-    allChip.className = 'sb-tag-chip' + (activeTag === null ? ' active' : '');
-    allChip.textContent = '전체';
-    allChip.addEventListener('click', () => { activeTag = null; renderTagFilters(); loadSongbook(true); });
-    wrap.appendChild(allChip);
 
-    tags.forEach(tag => {
-        const name = tag && tag.name ? tag.name : '';
-        if (!name) return;
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'sb-tag-chip' + (activeTag === name ? ' active' : '');
-        chip.textContent = name;
-        if (tag.color && activeTag !== name) {
-            chip.style.borderColor = tag.color;
-            chip.style.color = tag.color;
-        } else if (tag.color && activeTag === name) {
-            chip.style.background = tag.color;
-            chip.style.borderColor = tag.color;
-        }
-        chip.addEventListener('click', () => {
-            activeTag = (activeTag === name) ? null : name;
-            renderTagFilters();
-            loadSongbook(true);
+    const chip = (label, active, onClick, color) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'sb-tag-chip' + (active ? ' active' : '');
+        b.textContent = label;
+        if (color && !active) { b.style.borderColor = color; b.style.color = color; }
+        else if (color && active) { b.style.background = color; b.style.borderColor = color; }
+        b.addEventListener('click', onClick);
+        return b;
+    };
+
+    // 가사 보유 필터 (항상 표시)
+    wrap.appendChild(chip('가사 있음', lyricsFilter === true, () => {
+        lyricsFilter = (lyricsFilter === true) ? null : true; renderTagFilters(); loadSongbook(true);
+    }));
+    wrap.appendChild(chip('가사 없음', lyricsFilter === false, () => {
+        lyricsFilter = (lyricsFilter === false) ? null : false; renderTagFilters(); loadSongbook(true);
+    }));
+
+    // 태그 필터 (스트리머가 태그를 만든 경우)
+    const tags = Array.isArray(STREAMER.tags) ? STREAMER.tags : [];
+    if (tags.length) {
+        const sep = document.createElement('span');
+        sep.style.cssText = 'width:1px;background:#e2e8f0;align-self:stretch;margin:2px;';
+        wrap.appendChild(sep);
+        tags.forEach(tag => {
+            const name = tag && tag.name ? tag.name : '';
+            if (!name) return;
+            wrap.appendChild(chip(name, activeTag === name, () => {
+                activeTag = (activeTag === name) ? null : name; renderTagFilters(); loadSongbook(true);
+            }, tag.color));
         });
-        wrap.appendChild(chip);
-    });
+    }
 }
 
 // ===== 곡 카드 렌더 =====
@@ -810,8 +813,8 @@ function renderSongCard(s) {
 function renderSongsAppend(items, reset) {
     const grid = document.getElementById('sbSongGrid');
     if (reset && items.length === 0) {
-        grid.innerHTML = (searchQuery || activeTag)
-            ? `<div class="sb-empty">검색 결과가 없습니다.</div>`
+        grid.innerHTML = (searchQuery || activeTag || lyricsFilter !== null)
+            ? `<div class="sb-empty">검색/필터 결과가 없습니다.</div>`
             : `<div class="sb-empty">아직 등록된 노래가 없습니다.</div>`;
         return;
     }

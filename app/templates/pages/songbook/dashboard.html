@@ -1296,10 +1296,11 @@ document.querySelectorAll('.tab-nav-btn').forEach(btn => {
 // ============================================================
 let songbookSearchDebounce = null;
 
-// 노래책 무한 스크롤 + 검색/태그 필터 상태
+// 노래책 무한 스크롤 + 검색/태그/가사 필터 상태
 const SB_PAGE = 50;
 let sbQ = '';
 let sbTag = null;
+let sbHasLyrics = null;   // null=전체, true=가사 있음, false=가사 없음
 let sbOffset = 0;
 let sbLoading = false;
 let sbHasMore = true;
@@ -1310,28 +1311,40 @@ document.getElementById('songbookSearch').addEventListener('input', (e) => {
     songbookSearchDebounce = setTimeout(() => { sbQ = e.target.value.trim(); loadSongbook(true); }, 300);
 });
 
-// 태그 필터 칩 (내 streamers.tags 기반)
+// 필터 칩: 가사 보유(항상) + 태그(있을 때)
 function renderSongbookTagFilters() {
     const wrap = document.getElementById('songbookTagFilters');
-    const tags = (profile && Array.isArray(profile.tags)) ? profile.tags : [];
-    if (!tags.length) { wrap.style.display = 'none'; return; }
     wrap.style.display = 'flex';
     wrap.innerHTML = '';
-    const mkChip = (label, val, color) => {
+    const chip = (label, active, onClick, color) => {
         const b = document.createElement('button');
         b.type = 'button';
-        b.className = 'sb-filter-chip' + (sbTag === val ? ' active' : '');
+        b.className = 'sb-filter-chip' + (active ? ' active' : '');
         b.textContent = label;
-        if (color && sbTag !== val) { b.style.borderColor = color; b.style.color = color; }
-        b.addEventListener('click', () => {
-            sbTag = (sbTag === val) ? null : val;
-            renderSongbookTagFilters();
-            loadSongbook(true);
-        });
+        if (color && !active) { b.style.borderColor = color; b.style.color = color; }
+        b.addEventListener('click', onClick);
         return b;
     };
-    wrap.appendChild(mkChip('전체', null, null));
-    tags.forEach(t => { if (t && t.name) wrap.appendChild(mkChip(t.name, t.name, t.color)); });
+    // 가사 보유 필터 (태그가 없어도 항상 표시)
+    wrap.appendChild(chip('가사 있음', sbHasLyrics === true, () => {
+        sbHasLyrics = (sbHasLyrics === true) ? null : true; renderSongbookTagFilters(); loadSongbook(true);
+    }));
+    wrap.appendChild(chip('가사 없음', sbHasLyrics === false, () => {
+        sbHasLyrics = (sbHasLyrics === false) ? null : false; renderSongbookTagFilters(); loadSongbook(true);
+    }));
+    // 태그 필터 (내 streamers.tags 가 있을 때)
+    const tags = (profile && Array.isArray(profile.tags)) ? profile.tags : [];
+    if (tags.length) {
+        const sep = document.createElement('span');
+        sep.style.cssText = 'width:1px;background:var(--border-color);align-self:stretch;margin:0 2px;';
+        wrap.appendChild(sep);
+        tags.forEach(t => {
+            if (!t || !t.name) return;
+            wrap.appendChild(chip(t.name, sbTag === t.name, () => {
+                sbTag = (sbTag === t.name) ? null : t.name; renderSongbookTagFilters(); loadSongbook(true);
+            }, t.color));
+        });
+    }
 }
 
 async function loadSongbook(reset = true) {
@@ -1351,6 +1364,7 @@ async function loadSongbook(reset = true) {
         const params = new URLSearchParams({ limit: String(SB_PAGE), offset: String(sbOffset) });
         if (sbQ) params.set('q', sbQ);
         if (sbTag) params.set('tags', sbTag);
+        if (sbHasLyrics !== null) params.set('has_lyrics', String(sbHasLyrics));
         const data = await api(`/api/v1/songbook/${encodeURIComponent(myStreamerId)}?${params.toString()}`);
         if (reqId !== sbReqId) return; // 더 새로운 요청이 있으면 폐기
         const items = data.items || [];
@@ -1359,7 +1373,7 @@ async function loadSongbook(reset = true) {
         items.forEach(it => songbookExtIds.add(it.song_external_id)); // '추가됨' 배지/프리필용 누적
         sbOffset += items.length;
         sbHasMore = sbOffset < (data.total || 0) && items.length > 0;
-        const filtered = !!(sbQ || sbTag);
+        const filtered = !!(sbQ || sbTag || sbHasLyrics !== null);
         document.getElementById('songbookStats').textContent = filtered ? `${data.total}곡 (필터)` : `총 ${data.total}곡`;
         renderSongbookAppend(items, reset);
         // 화면이 짧아 센티넬이 계속 보이면 다음 페이지도 이어서 로드
@@ -1426,7 +1440,7 @@ function songbookRowHtml(item) {
 function renderSongbookAppend(items, reset) {
     const list = document.getElementById('songbookList');
     if (reset && (!items || items.length === 0)) {
-        list.innerHTML = (sbQ || sbTag)
+        list.innerHTML = (sbQ || sbTag || sbHasLyrics !== null)
             ? '<div class="sb-empty">검색/필터 결과가 없습니다.</div>'
             : '<div class="sb-empty">아직 등록된 곡이 없어요.<br>"곡 추가" 버튼으로 첫 곡을 등록해보세요!</div>';
         return;

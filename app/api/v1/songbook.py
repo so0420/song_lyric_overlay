@@ -74,6 +74,7 @@ async def get_public_songbook(
     streamer_id: str,
     q: Optional[str] = Query(None, max_length=100, description="검색어 (제목/아티스트)"),
     tags: Optional[str] = Query(None, description="쉼표로 구분된 태그 이름 필터"),
+    has_lyrics: Optional[bool] = Query(None, description="가사 보유 필터 (true=있음, false=없음)"),
     limit: int = Query(500, ge=1, le=500),
     offset: int = Query(0, ge=0),
     streamer_repo: StreamerRepository = Depends(get_streamer_repository),
@@ -86,9 +87,9 @@ async def get_public_songbook(
 
     tag_list = _parse_tags_param(tags)
     rows = await songbook_repo.get_songbook(
-        streamer["id"], q=q, tags=tag_list, limit=limit, offset=offset
+        streamer["id"], q=q, tags=tag_list, limit=limit, offset=offset, has_lyrics=has_lyrics
     )
-    total = await songbook_repo.count_songbook(streamer["id"], q=q, tags=tag_list)
+    total = await songbook_repo.count_songbook(streamer["id"], q=q, tags=tag_list, has_lyrics=has_lyrics)
 
     return {
         "items": [_serialize_entry(row) for row in rows],

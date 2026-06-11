@@ -378,26 +378,43 @@
     word-break: break-word;
 }
 
-.sb-modal-mr {
+/* 모달 내 보조 버튼(MR, 가사 만들기) — 동일한 스택 간격 */
+.sb-modal-mr,
+.sb-modal-action {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
     width: 100%;
-    padding: 11px;
+    padding: 12px;
     border: 1px solid var(--border-color);
     border-radius: 12px;
     background: #f8fafc;
     color: var(--text-main);
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     font-weight: 600;
-    margin-bottom: 16px;
     transition: all 0.2s;
 }
+
+.sb-modal-mr { margin-bottom: 10px; }
+.sb-modal-action { margin-bottom: 10px; }
 
 .sb-modal-mr:hover {
     border-color: #ff0000;
     background: #fff5f5;
+}
+
+.sb-modal-action:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+/* 신청 폼 영역 — 보조 버튼들과 시각적으로 분리 */
+.sb-request-area {
+    margin-top: 16px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border-color);
 }
 
 .sb-modal-label {
@@ -415,7 +432,7 @@
     border-radius: 12px;
     font-size: 0.95rem;
     outline: none;
-    margin-bottom: 20px;
+    margin-bottom: 0;
     transition: border-color 0.2s;
 }
 
@@ -426,6 +443,7 @@
 .sb-modal-actions {
     display: flex;
     gap: 8px;
+    margin-top: 18px;
 }
 
 /* ===== 토스트 ===== */
@@ -579,11 +597,10 @@
         </a>
 
         {% if user %}
-        <a class="btn btn-outline" id="sbModalLyricsBtn" href="#"
-           style="width: 100%; justify-content: center; margin-top: 8px;">✏️ 이 곡 가사 만들기</a>
+        <a class="sb-modal-action" id="sbModalLyricsBtn" href="#">✏️ 이 곡 가사 만들기</a>
         {% endif %}
 
-        <div id="sbRequestArea">
+        <div id="sbRequestArea" class="sb-request-area">
             <label class="sb-modal-label" for="sbRequesterName">신청자 닉네임</label>
             <input type="text" id="sbRequesterName" class="sb-modal-input" maxlength="30" placeholder="닉네임을 입력해 주세요.">
         </div>

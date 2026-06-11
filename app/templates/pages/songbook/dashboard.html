@@ -1049,6 +1049,16 @@ input:checked + .toggle-slider:before { transform: translateX(22px); }
                         <button class="btn btn-outline btn-sm" id="directAddBtn">신청 추가</button>
                     </div>
                 </div>
+                <!-- 커스텀 노래 등록 (곡 추가 모드 전용) -->
+                <div id="customSongRegister" style="display: none;">
+                    <div class="modal-body-title">검색에 없나요? 직접 등록</div>
+                    <div class="manage-add-row">
+                        <input type="text" id="customTitleInput" class="form-input" maxlength="255" placeholder="곡 제목 (필수)">
+                        <input type="text" id="customArtistInput" class="form-input" maxlength="255" placeholder="가수 (필수)">
+                        <button class="btn btn-outline btn-sm" id="customRegisterBtn">커스텀 등록</button>
+                    </div>
+                    <p class="settings-desc" style="margin-top: 6px;">등록하면 검색에 추가되고, 바로 상세 입력 단계로 넘어갑니다.</p>
+                </div>
             </div>
 
             <!-- 2단계: 상세 입력 -->
@@ -1375,6 +1385,7 @@ function openSongModal(mode) {
     document.getElementById('searchStep').style.display = 'block';
     document.getElementById('detailStep').style.display = 'none';
     document.getElementById('manualDirectInput').style.display = mode === 'manual' ? 'block' : 'none';
+    document.getElementById('customSongRegister').style.display = mode === 'add' ? 'block' : 'none';
     document.getElementById('songSearchInput').value = '';
     document.getElementById('songSearchResults').innerHTML =
         '<div class="sb-empty" style="padding: 30px 10px;">검색어를 입력해주세요.</div>';
@@ -1386,6 +1397,8 @@ function openSongModal(mode) {
     } else {
         titleEl.textContent = '곡 추가';
         subEl.textContent = '노래책에 넣을 곡을 검색해주세요.';
+        document.getElementById('customTitleInput').value = '';
+        document.getElementById('customArtistInput').value = '';
     }
     modal.classList.add('active');
     document.getElementById('songSearchInput').focus();
@@ -1500,6 +1513,45 @@ document.getElementById('directAddBtn').addEventListener('click', async () => {
         return;
     }
     await postManualRequest({ title, artist: artist || null });
+});
+
+// --- 커스텀 노래 등록 (곡 추가 전용) ---
+document.getElementById('customRegisterBtn').addEventListener('click', async () => {
+    const title = document.getElementById('customTitleInput').value.trim();
+    const artist = document.getElementById('customArtistInput').value.trim();
+    if (!title || !artist) {
+        showToast('곡 제목과 가수를 모두 입력해주세요.', 'error');
+        return;
+    }
+    const btn = document.getElementById('customRegisterBtn');
+    btn.disabled = true;
+    try {
+        const fd = new FormData();
+        fd.append('title', title);
+        fd.append('artist', artist);
+        const res = await fetch('/api/v1/songs/custom', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': CSRF_TOKEN },
+            body: fd,
+        });
+        if (!res.ok) {
+            const d = await res.json().catch(() => ({}));
+            throw new Error(typeof d.detail === 'string' ? d.detail : '노래 등록에 실패했습니다.');
+        }
+        const r = await res.json();
+        showToast(`"${r.title}" 등록 완료`, 'success');
+        // 검색 결과 선택과 동일하게 상세 입력 단계로 진입
+        await selectSearchResult({
+            song_external_id: r.song_external_id,
+            title: r.title,
+            artist_name: r.artist,
+            cover_image_url: r.image_url || null,
+        });
+    } catch (e) {
+        showToast(e.message, 'error');
+    } finally {
+        btn.disabled = false;
+    }
 });
 
 async function submitManualRequest(song) {

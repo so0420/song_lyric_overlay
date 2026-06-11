@@ -26,13 +26,21 @@
         padding: 12px 14px; border: 1px solid var(--border-color);
         border-radius: 12px; background: var(--bg-card, #fff);
     }
+    .se-thumb-wrap { position: relative; width: 52px; height: 52px; flex-shrink: 0; }
     .se-thumb {
         width: 52px; height: 52px; border-radius: 8px; object-fit: cover;
-        background: #eef2f7; flex-shrink: 0;
+        background: #eef2f7; display: block;
     }
     .se-thumb--empty {
         display: flex; align-items: center; justify-content: center; color: #94a3b8;
     }
+    .se-cover-btn {
+        position: absolute; right: -6px; bottom: -6px;
+        background: var(--bg-card, #fff); border: 1px solid var(--border-color);
+        border-radius: 50%; padding: 3px; cursor: pointer; color: #475569;
+        display: flex; box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+    }
+    .se-cover-btn:hover { color: var(--accent, #6366f1); }
     .se-info { flex: 1; min-width: 0; }
 
     .se-field { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -68,13 +76,7 @@
     .se-badge--none { color: #94a3b8; background: #f1f5f9; }
 
     .se-state { text-align: center; padding: 40px 0; color: var(--text-dim); font-size: 0.9rem; }
-    .se-more {
-        display: block; margin: 16px auto 0; padding: 10px 20px;
-        border: 1px solid var(--border-color); border-radius: 10px;
-        background: var(--bg-card, #fff); color: var(--text-sub);
-        font-weight: 700; cursor: pointer; font-size: 0.85rem;
-    }
-    .se-more:hover { border-color: var(--accent, #6366f1); color: var(--accent, #6366f1); }
+    #seMoreLoading { padding: 16px 0; }
     .spinner-sm {
         width: 20px; height: 20px; border: 2px solid var(--border-color);
         border-top-color: var(--accent, #6366f1); border-radius: 50%;
@@ -100,6 +102,8 @@
 
     <div class="se-total" id="seTotal"></div>
     <div class="se-list" id="seList"></div>
+    <div class="se-state" id="seMoreLoading" style="display:none;"><div class="spinner-sm"></div></div>
+    <div id="seSentinel" style="height:1px;"></div>
     <div class="se-state" id="seState" style="display:none;"></div>
 </div>
 {% endblock %}
@@ -117,6 +121,7 @@
     let offset = 0;
     let total = 0;
     let loading = false;
+    let hasMore = false;
 
     function esc(s) {
         return (s || '').replace(/[&<>"']/g, c => (
@@ -124,12 +129,19 @@
         ));
     }
 
-    function thumbHtml(item) {
-        if (item.cover_image_url) {
-            return `<img class="se-thumb" src="${esc(item.cover_image_url)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`;
+    function thumbInner(url) {
+        if (url) {
+            return `<img class="se-thumb" src="${esc(url)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`;
         }
         return `<div class="se-thumb se-thumb--empty">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </div>`;
+    }
+
+    function thumbHtml(item) {
+        return `<div class="se-thumb-wrap">
+            ${thumbInner(item.cover_image_url)}
+            <button class="se-cover-btn" title="커버 이미지 주소 수정" onclick="editCover(this)">${PENCIL}</button>
         </div>`;
     }
 
@@ -146,7 +158,7 @@
     function rowHtml(item) {
         const eid = esc(item.song_external_id);
         return `
-        <div class="se-row" data-eid="${eid}">
+        <div class="se-row" data-eid="${eid}" data-cover="${esc(item.cover_image_url || '')}">
             ${thumbHtml(item)}
             <div class="se-info">
                 <div class="se-field" data-field="title">
@@ -182,6 +194,36 @@
             if (e.key === 'Enter') saveEdit(fieldEl, field, input.value);
             else if (e.key === 'Escape') fieldEl.innerHTML = fieldEl.dataset.orig;
         };
+    }
+
+    // 커버 이미지 주소 수정 (빈 값이면 제거)
+    async function editCover(btn) {
+        const wrap = btn.closest('.se-thumb-wrap');
+        const row = btn.closest('.se-row');
+        const eid = row.dataset.eid;
+        const cur = row.dataset.cover || '';
+        const url = prompt('커버 이미지 주소를 입력하세요. (비우면 제거)', cur);
+        if (url === null) return;  // 취소
+        const val = url.trim();
+        try {
+            const res = await fetch(`/api/v1/songs/${encodeURIComponent(eid)}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+                body: JSON.stringify({ cover_image_url: val }),
+            });
+            if (!res.ok) {
+                const d = await res.json().catch(() => ({}));
+                alert(typeof d.detail === 'string' ? d.detail : '수정에 실패했습니다.');
+                return;
+            }
+            const updated = await res.json();
+            const newUrl = updated.cover_image_url || '';
+            row.dataset.cover = newUrl;
+            wrap.innerHTML = `${thumbInner(newUrl)}
+                <button class="se-cover-btn" title="커버 이미지 주소 수정" onclick="editCover(this)">${PENCIL}</button>`;
+        } catch (e) {
+            alert('오류가 발생했습니다.');
+        }
     }
 
     async function saveEdit(fieldEl, field, value) {
@@ -227,16 +269,21 @@
         }
     }
 
+    const moreLoadingEl = document.getElementById('seMoreLoading');
+
     async function load(reset) {
         if (loading) return;
+        if (!reset && !hasMore) return;
         loading = true;
         if (reset) {
             offset = 0;
+            hasMore = false;
             listEl.innerHTML = '';
             totalEl.textContent = '';
-            removeMore();
             stateEl.style.display = 'block';
             stateEl.innerHTML = '<div class="spinner-sm"></div>';
+        } else {
+            moreLoadingEl.style.display = 'block';
         }
         try {
             const url = `/api/v1/songs/admin/search?offset=${offset}&limit=${PAGE}`
@@ -248,6 +295,7 @@
             stateEl.style.display = 'none';
 
             if (reset && data.items.length === 0) {
+                hasMore = false;
                 stateEl.style.display = 'block';
                 stateEl.textContent = curQuery ? '검색 결과가 없습니다.' : '편집할 곡이 없습니다.';
                 totalEl.textContent = '';
@@ -256,26 +304,31 @@
             totalEl.textContent = `총 ${total}곡`;
             listEl.insertAdjacentHTML('beforeend', data.items.map(rowHtml).join(''));
             offset += data.items.length;
-            removeMore();
-            if (data.has_more) {
-                const btn = document.createElement('button');
-                btn.className = 'se-more';
-                btn.id = 'seMore';
-                btn.textContent = '더 보기';
-                btn.onclick = () => load(false);
-                listEl.after(btn);
-            }
+            hasMore = data.has_more;
         } catch (e) {
-            stateEl.style.display = 'block';
-            stateEl.textContent = '불러오기에 실패했습니다.';
+            hasMore = false;
+            if (reset) {
+                stateEl.style.display = 'block';
+                stateEl.textContent = '불러오기에 실패했습니다.';
+            }
         } finally {
+            moreLoadingEl.style.display = 'none';
             loading = false;
+            // 화면이 짧아 sentinel 이 계속 보이면 이어서 로드
+            if (hasMore && !loading) maybeLoadMore();
         }
     }
 
-    function removeMore() {
-        const m = document.getElementById('seMore');
-        if (m) m.remove();
+    // 무한 스크롤: sentinel 이 보이면 다음 페이지 로드
+    const sentinel = document.getElementById('seSentinel');
+    const io = new IntersectionObserver((entries) => {
+        if (entries.some(e => e.isIntersecting) && hasMore && !loading) load(false);
+    }, { rootMargin: '300px' });
+    io.observe(sentinel);
+
+    function maybeLoadMore() {
+        const r = sentinel.getBoundingClientRect();
+        if (r.top <= window.innerHeight + 300) load(false);
     }
 
     let debounce;

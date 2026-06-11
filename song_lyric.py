@@ -220,34 +220,62 @@ def _run_server(host, port):
 
     - asyncio.run(=Runner)을 쓰지 않는다: Runner 의 SIGINT 처리는 메인 태스크를
       즉시 취소해 lifespan 이 athrow 로 끊긴다.
-    - 커스텀 시그널 핸들러도 달지 않는다: uvicorn 자체 시그널 처리(should_exit)와
-      충돌해 한쪽이 덮어써진다. uvicorn 의 기본 동작이 이미 graceful 이다.
-    - 그래도 KeyboardInterrupt 가 루프 밖으로 새어 나오면(시그널 타이밍 경합 등)
-      should_exit 를 세우고 serve() 를 끝까지 재개시켜 lifespan 종료(리소스
-      정리)까지 완주시킨다.
+    - SIGINT/SIGTERM 은 프로세스 레벨(signal.signal)에서 선점해 플래그만 세운다.
+      uvicorn(capture_signals)은 serve 동안 자체 핸들러로 덮었다가 종료 시
+      '원래 핸들러 복원 + 잡아둔 시그널 재발생'을 하는데, 원래 핸들러가 Python
+      기본(KeyboardInterrupt)이면 거기서 루프가 끊겨 traceback 이 났다.
+      우리 핸들러가 '원래 핸들러'가 되면 재발생 시그널도 플래그로 끝난다.
+    - 그래도 KeyboardInterrupt/루프 중단이 새어 나오면 should_exit 를 세우고
+      serve() 를 끝까지 재개시켜 lifespan 종료(리소스 정리)까지 완주시킨다.
     - 루프를 닫기 전에 남은 태스크를 취소·회수한다 ('Task was destroyed but it
       is pending!' / 'coroutine ignored GeneratorExit' 방지).
     """
+    import signal
     import uvicorn
 
     config = uvicorn.Config(app, host=host, port=port)
     server = uvicorn.Server(config)
 
+    def _request_exit(signum, frame):
+        # 첫 시그널: graceful / 두 번째: 강제 (uvicorn handle_exit 와 동일 의미)
+        if server.should_exit:
+            server.force_exit = True
+        else:
+            server.should_exit = True
+
+    for _sig in (signal.SIGINT, signal.SIGTERM):
+        try:
+            signal.signal(_sig, _request_exit)
+        except (ValueError, OSError):
+            pass  # 비메인 스레드 등 — uvicorn 기본 처리에 맡긴다
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     serve_task = loop.create_task(server.serve())
-    try:
-        loop.run_until_complete(serve_task)
-    except (KeyboardInterrupt, SystemExit):
-        # 시그널이 KeyboardInterrupt 로 들어온 경우 — graceful 종료로 전환
+
+    def _resume_to_completion():
+        """serve 태스크를 graceful 종료로 끝까지 완주시킨다 (이미 끝났으면 통과)."""
+        if serve_task.done():
+            return
         server.should_exit = True
         try:
             loop.run_until_complete(asyncio.wait_for(asyncio.shield(serve_task), timeout=10))
         except BaseException:
-            # 두 번째 Ctrl+C / 타임아웃 — 강제 종료로 전환하되 태스크는 회수한다
+            # 추가 시그널 / 타임아웃 — 강제 종료로 전환하되 태스크는 회수한다
             server.force_exit = True
             serve_task.cancel()
             loop.run_until_complete(asyncio.gather(serve_task, return_exceptions=True))
+
+    try:
+        loop.run_until_complete(serve_task)
+    except (KeyboardInterrupt, SystemExit):
+        _resume_to_completion()
+    except RuntimeError:
+        # '루프가 외부에서 stop 됨' 케이스 — serve 가 진행 중이면 재개해 완주.
+        # serve 태스크 자체가 던진 진짜 오류면 그대로 올린다.
+        if serve_task.done():
+            raise
+        _resume_to_completion()
     finally:
         try:
             pending = [t for t in asyncio.all_tasks(loop) if not t.done()]

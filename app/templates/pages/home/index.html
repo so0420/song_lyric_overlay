@@ -277,14 +277,12 @@
         </div>
     </div>
 
+    {% if not user %}
     <div class="home-cta">
         <h3>지금 바로 시작하세요</h3>
         <p>로그인하고 나만의 가사 자막을 만들어보세요.</p>
-        {% if not user %}
         <a href="/login" class="btn" style="background: white; color: var(--text-main);">로그인</a>
-        {% else %}
-        <a href="/overlay" class="btn" style="background: white; color: var(--text-main);">노래하기로 이동</a>
-        {% endif %}
     </div>
+    {% endif %}
 </div>
 {% endblock %}

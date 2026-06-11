@@ -578,8 +578,15 @@
             MR 영상 보기
         </a>
 
-        <label class="sb-modal-label" for="sbRequesterName">신청자 닉네임</label>
-        <input type="text" id="sbRequesterName" class="sb-modal-input" maxlength="30" placeholder="닉네임을 입력해 주세요.">
+        {% if user %}
+        <a class="btn btn-outline" id="sbModalLyricsBtn" href="#"
+           style="width: 100%; justify-content: center; margin-top: 8px;">✏️ 이 곡 가사 만들기</a>
+        {% endif %}
+
+        <div id="sbRequestArea">
+            <label class="sb-modal-label" for="sbRequesterName">신청자 닉네임</label>
+            <input type="text" id="sbRequesterName" class="sb-modal-input" maxlength="30" placeholder="닉네임을 입력해 주세요.">
+        </div>
 
         <div class="sb-modal-actions">
             <button class="btn btn-outline" style="flex: 1;" onclick="closeRequestModal()">닫기</button>
@@ -596,6 +603,7 @@
 // 스트리머 정보 주입 — streamer.id는 외부 UUID 문자열 그대로 사용 (parseInt 금지)
 const STREAMER = {{ streamer | tojson }};
 const USER_NAME = {{ (user.name if user else '') | tojson }};
+const IS_LOGGED_IN = {{ (user is not none) | tojson }};
 const NICKNAME_STORAGE_KEY = 'songbook_requester_name';
 
 let allSongs = [];          // 전체 수록곡 (서버 정렬 순서 유지)
@@ -796,7 +804,8 @@ function coverFallbackHtml() {
 
 // ===== 신청 모달 =====
 function openRequestModal(song) {
-    if (!canRequest) return;
+    // 신청이 꺼져 있어도 로그인 사용자(스트리머)는 곡 상세 + '가사 만들기'를 위해 모달을 연다
+    if (!canRequest && !IS_LOGGED_IN) return;
     selectedSong = song;
 
     // 곡 정보
@@ -832,14 +841,28 @@ function openRequestModal(song) {
         mrLink.style.display = 'none';
     }
 
-    // 닉네임 기본값: 저장된 닉네임 > 로그인 유저 이름
+    // '가사 만들기' 버튼: 이 곡으로 가사 편집기 열기 (로그인 시에만 존재)
+    const lyricsBtn = document.getElementById('sbModalLyricsBtn');
+    if (lyricsBtn) {
+        lyricsBtn.href = song.song_external_id
+            ? `/lyrics?external_id=${encodeURIComponent(song.song_external_id)}`
+            : '/lyrics';
+    }
+
+    // 신청 영역(닉네임 입력 + 신청 버튼)은 신청 가능할 때만 표시
+    document.getElementById('sbRequestArea').style.display = canRequest ? '' : 'none';
+    document.getElementById('sbSubmitBtn').style.display = canRequest ? '' : 'none';
+
     const input = document.getElementById('sbRequesterName');
-    let savedName = '';
-    try { savedName = localStorage.getItem(NICKNAME_STORAGE_KEY) || ''; } catch (e) { /* 시크릿 모드 등 */ }
-    input.value = savedName || USER_NAME || '';
+    if (canRequest) {
+        // 닉네임 기본값: 저장된 닉네임 > 로그인 유저 이름
+        let savedName = '';
+        try { savedName = localStorage.getItem(NICKNAME_STORAGE_KEY) || ''; } catch (e) { /* 시크릿 모드 등 */ }
+        input.value = savedName || USER_NAME || '';
+    }
 
     document.getElementById('sbRequestModal').classList.add('active');
-    if (!input.value) input.focus();
+    if (canRequest && !input.value) input.focus();
 }
 
 function closeRequestModal() {

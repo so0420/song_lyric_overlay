@@ -120,15 +120,11 @@ class StreamerRepository:
     # 생성 / 수정 / 삭제
     # ---------------------------------------------------------------
     async def create_profile(self, user_id: int, slug: str) -> int:
-        """스트리머 프로필 생성. 외부 노출용 streamer_id(UUID)를 새로 발급한다.
-
-        웹(노래책 페이지) 신청은 기본 ON — '신청 받기'(마스터)만 켜면 비로그인 시청자가
-        바로 신청할 수 있게 한다. 마스터는 기본 OFF 이므로 켜기 전까지는 신청을 받지 않는다.
-        """
+        """스트리머 프로필 생성. 외부 노출용 streamer_id(UUID)를 새로 발급한다."""
         streamer_id = str(uuid.uuid4())
         query = """
-            INSERT INTO streamers (user_id, streamer_id, slug, request_web_enabled)
-            VALUES (%s, %s, %s, 1)
+            INSERT INTO streamers (user_id, streamer_id, slug)
+            VALUES (%s, %s, %s)
         """
         return await self.db.execute_query(query, (user_id, streamer_id, slug))
 

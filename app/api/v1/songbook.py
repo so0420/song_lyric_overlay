@@ -54,11 +54,15 @@ async def _validate_lyrics_link(
     user: CurrentUserSchema,
     lyrics_repo: LyricsRepository,
 ) -> None:
-    """가사 연결 가능 여부 검증: 존재(미삭제) + 노래 일치 + 열람 권한 — 실패 시 400"""
+    """가사 연결 가능 여부 검증: 존재(미삭제) + 노래 일치(형제 곡 허용) + 열람 권한 — 실패 시 400"""
     # get_lyrics_by_id 는 deleted_at IS NULL 필터를 포함한다
     lyric_row = await lyrics_repo.get_lyrics_by_id(lyrics_id)
-    if not lyric_row or lyric_row["song_id"] != song_internal_id:
+    if not lyric_row:
         raise HTTPException(status_code=400, detail="해당 가사를 연결할 수 없습니다.")
+    # 같은 곡 또는 같은 제목+가수인 형제 곡(중복 레코드)의 가사면 연결 허용
+    if lyric_row["song_id"] != song_internal_id:
+        if not await lyrics_repo.is_canonical_sibling(lyric_row["song_id"], song_internal_id):
+            raise HTTPException(status_code=400, detail="해당 가사를 연결할 수 없습니다.")
     if not await can_view_lyrics(lyric_row, user, lyrics_repo):
         raise HTTPException(status_code=400, detail="해당 가사를 연결할 수 없습니다.")
 
@@ -121,6 +125,9 @@ async def add_songbook_entry(
     lyrics_id = payload.lyrics_id or None
     if lyrics_id:
         await _validate_lyrics_link(lyrics_id, song["id"], user, lyrics_repo)
+    else:
+        # 직접 지정하지 않았으면 같은 곡(형제 곡 포함)의 기존 공개 가사를 자동 연결
+        lyrics_id = await lyrics_repo.get_best_public_lyrics_id_for_song(song["id"])
 
     entry_id = await songbook_repo.add_song(
         streamer_id=streamer["id"],

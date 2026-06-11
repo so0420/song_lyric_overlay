@@ -43,6 +43,7 @@ class LyricsRepository:
         self, song_id: int, user_id: Optional[int] = None, is_admin: bool = False
     ) -> List[Dict[str, Any]]:
         vis_where, vis_params = self.visibility_where(user_id, is_admin)
+        # 같은 제목+가수인 형제 곡(앨범아트만 다른 중복 레코드)의 가사까지 함께 조회
         query = f"""
             SELECT
                 l.id,
@@ -55,8 +56,10 @@ class LyricsRepository:
                 l.likes_count,
                 l.created_at
             FROM song_lyrics l
+            JOIN songs sx ON l.song_id = sx.id
+            JOIN songs sref ON sref.id = %s AND sx.title = sref.title AND (sx.artist_id <=> sref.artist_id)
             LEFT JOIN users u ON l.owner_id = u.id
-            WHERE l.song_id = %s AND l.deleted_at IS NULL AND {vis_where}
+            WHERE l.deleted_at IS NULL AND {vis_where}
             ORDER BY l.is_verified DESC, l.likes_count DESC, l.created_at DESC
         """
         return await self.db.fetch_all(query, (song_id, *vis_params))
@@ -81,15 +84,17 @@ class LyricsRepository:
                 COUNT(DISTINCT fav.id) as favorites_count,
                 MAX(CASE WHEN ulf.id IS NOT NULL THEN 1 ELSE 0 END) as is_favorited
             FROM song_lyrics l
+            JOIN songs sx ON l.song_id = sx.id
+            JOIN songs sref ON sref.id = %s AND sx.title = sref.title AND (sx.artist_id <=> sref.artist_id)
             LEFT JOIN users u ON l.owner_id = u.id
             LEFT JOIN user_lyrics_favorites fav ON l.id = fav.lyrics_id
             LEFT JOIN user_lyrics_favorites ulf ON l.id = ulf.lyrics_id AND ulf.user_id = %s
-            WHERE l.song_id = %s AND l.deleted_at IS NULL AND {vis_where}
+            WHERE l.deleted_at IS NULL AND {vis_where}
             GROUP BY l.id, l.owner_id, u.name, l.title, l.mr_youtube_video_id,
                      l.is_verified, l.visibility, l.likes_count, l.created_at, l.updated_at
             ORDER BY l.is_verified DESC, l.likes_count DESC, l.created_at DESC
         """
-        return await self.db.fetch_all(query, (user_id, song_id, *vis_params))
+        return await self.db.fetch_all(query, (song_id, user_id, *vis_params))
 
     async def get_lyrics_by_external_id(
         self, song_external_id: str, user_id: Optional[int] = None, is_admin: bool = False
@@ -98,6 +103,34 @@ class LyricsRepository:
         if not song:
             return []
         return await self.get_lyrics_by_song_id(song['id'], user_id=user_id, is_admin=is_admin)
+
+    async def is_canonical_sibling(self, song_id_a: int, song_id_b: int) -> bool:
+        """두 곡이 같은 제목+가수(형제 곡)인지 (같은 곡이면 True)"""
+        if song_id_a == song_id_b:
+            return True
+        query = """
+            SELECT 1 FROM songs a
+            JOIN songs b ON a.title = b.title AND (a.artist_id <=> b.artist_id)
+            WHERE a.id = %s AND b.id = %s LIMIT 1
+        """
+        return await self.db.fetch_one(query, (song_id_a, song_id_b)) is not None
+
+    async def get_best_public_lyrics_id_for_song(self, song_id: int) -> Optional[int]:
+        """해당 곡(및 같은 제목+가수 형제 곡)의 가장 적합한 공개 가사 id (없으면 None).
+
+        노래책에 곡을 추가할 때 기존 가사를 자동 연결하는 데 사용.
+        """
+        query = """
+            SELECT l.id
+            FROM song_lyrics l
+            JOIN songs sx ON l.song_id = sx.id
+            JOIN songs sref ON sref.id = %s AND sx.title = sref.title AND (sx.artist_id <=> sref.artist_id)
+            WHERE l.deleted_at IS NULL AND l.visibility = 'public'
+            ORDER BY l.is_verified DESC, l.likes_count DESC, l.created_at DESC
+            LIMIT 1
+        """
+        row = await self.db.fetch_one(query, (song_id,))
+        return row["id"] if row else None
 
     async def get_lyrics_by_id(self, lyrics_id: int) -> Optional[Dict[str, Any]]:
         """단일 가사 조회 (visibility 필터 없음 — 호출 측에서 can_view_lyrics 로 검사).
@@ -228,14 +261,16 @@ class LyricsRepository:
 
         vis_where, vis_params = self.visibility_where(user_id, is_admin)
         format_strings = ','.join(['%s'] * len(external_ids))
+        # 각 external_id 의 가사 개수를 같은 제목+가수 형제 곡까지 합산
         query = f"""
-            SELECT s.song_external_id, COUNT(l.id) as count
-            FROM songs s
-            JOIN song_lyrics l ON s.id = l.song_id
-            WHERE s.song_external_id IN ({format_strings}) AND l.deleted_at IS NULL AND {vis_where}
-            GROUP BY s.song_external_id
+            SELECT sref.song_external_id, COUNT(l.id) as count
+            FROM songs sref
+            JOIN songs sx ON sx.title = sref.title AND (sx.artist_id <=> sref.artist_id)
+            JOIN song_lyrics l ON l.song_id = sx.id AND l.deleted_at IS NULL AND {vis_where}
+            WHERE sref.song_external_id IN ({format_strings})
+            GROUP BY sref.song_external_id
         """
-        results = await self.db.fetch_all(query, (*external_ids, *vis_params))
+        results = await self.db.fetch_all(query, (*vis_params, *external_ids))
         return {r['song_external_id']: r['count'] for r in results}
 
     async def get_songs_meta_by_external_ids(

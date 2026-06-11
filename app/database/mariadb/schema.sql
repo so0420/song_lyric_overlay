@@ -162,6 +162,7 @@ CREATE TABLE IF NOT EXISTS `user_overlay_settings` (
 
 CREATE INDEX idx_songs_artist_id ON songs(artist_id);
 CREATE INDEX idx_songs_owner_id ON songs(owner_id);
+CREATE INDEX idx_songs_title_artist ON songs(title, artist_id);  -- 같은 제목+가수 묶기(중복 곡 정규화)
 CREATE INDEX idx_lyrics_song_id ON song_lyrics(song_id);
 CREATE INDEX idx_lyrics_owner_id ON song_lyrics(owner_id);
 CREATE INDEX idx_lyrics_visibility ON song_lyrics(visibility);

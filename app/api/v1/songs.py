@@ -229,6 +229,21 @@ async def search_songs(request: Request, q: str, offset: int = 0, limit: int = 2
         count_map = await lyrics_repo.get_lyrics_counts(external_ids)
         for r in formatted_results:
             r["lyrics_count"] = count_map.get(r["song_external_id"], 0)
+
+        # 같은 제목+가수인 중복 곡(앨범아트만 다름)은 하나로 합침 (가사 보유 레코드를 대표로)
+        deduped = []
+        seen = {}
+        for r in formatted_results:
+            key = ((r.get("title") or "").strip().lower(), (r.get("artist_name") or "").strip().lower())
+            if key in seen:
+                idx = seen[key]
+                if r.get("lyrics_count", 0) > deduped[idx].get("lyrics_count", 0):
+                    deduped[idx] = r  # 가사가 더 많은 레코드를 대표로 교체
+                continue
+            seen[key] = len(deduped)
+            deduped.append(r)
+        formatted_results = deduped
+
         formatted_results.sort(key=lambda r: r["lyrics_count"], reverse=True)
 
     return {

@@ -183,15 +183,23 @@ class SongbookRepository:
                 return cursor.rowcount > 0
 
     async def autolink_song_lyrics(self, song_id: int, lyrics_id: int) -> int:
-        """해당 곡을 노래책에 보유하고 가사가 연결되지 않은 항목에 새 가사를 자동 연결.
+        """이 곡(및 같은 제목+가수 형제 곡)을 노래책에 보유하고 가사가 연결되지 않은
+        항목에 새 가사를 자동 연결.
 
         이미 가사가 연결된 항목(lyrics_id 가 NULL 이 아님)은 건드리지 않는다.
         자동 연결된 항목 수를 반환.
         """
-        query = "UPDATE streamer_songbooks SET lyrics_id = %s WHERE song_id = %s AND lyrics_id IS NULL"
+        query = """
+            UPDATE streamer_songbooks sb
+            JOIN songs sbsong ON sb.song_id = sbsong.id
+            JOIN songs refsong ON refsong.id = %s
+                 AND sbsong.title = refsong.title AND (sbsong.artist_id <=> refsong.artist_id)
+            SET sb.lyrics_id = %s
+            WHERE sb.lyrics_id IS NULL
+        """
         async with self.db.session() as conn:
             async with conn.cursor() as cursor:
-                await cursor.execute(query, (lyrics_id, song_id))
+                await cursor.execute(query, (song_id, lyrics_id))
                 return cursor.rowcount
 
 

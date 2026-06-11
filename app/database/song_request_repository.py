@@ -6,7 +6,8 @@ from typing import Optional, Dict, Any, List
 # (soft delete 된 가사는 JOIN 조건으로 걸러 ref_lyrics_id 가 NULL 로 나온다)
 _REQUEST_SELECT = """
     SELECT r.*, s.title AS ref_song_title, s.song_external_id, a.name AS ref_artist_name,
-           sb.cover_image_url AS ref_song_cover, sb.mr_youtube_video_id AS sb_mr_video_id,
+           COALESCE(sb.cover_image_url, s.cover_image_url) AS ref_song_cover,
+           sb.mr_youtube_video_id AS sb_mr_video_id,
            l.id AS ref_lyrics_id, l.title AS ref_lyrics_title, l.mr_youtube_video_id AS lyrics_mr_video_id,
            CASE WHEN sb.id IS NOT NULL THEN 1 ELSE 0 END AS is_in_songbook
     FROM song_requests r

@@ -6,9 +6,11 @@ import json
 
 # 공통 SELECT: 수록곡 + 노래/아티스트/연결 가사 메타데이터
 # (soft delete 된 가사는 FK SET NULL 이 발동하지 않으므로 JOIN 조건으로 걸러 lyrics_id 가 NULL 로 나온다)
+# 커버는 수록곡별 지정 커버가 없으면 곡 자체의 커버로 폴백한다
 _SONGBOOK_SELECT = """
     SELECT sb.id AS entry_id, sb.sort_order, sb.difficulty, sb.memo, sb.tags AS song_tags,
-           sb.mr_youtube_video_id, sb.cover_image_url,
+           sb.mr_youtube_video_id,
+           COALESCE(sb.cover_image_url, s.cover_image_url) AS cover_image_url,
            s.id AS song_id, s.song_external_id, s.title, s.length_ms,
            a.name AS artist_name,
            l.id AS lyrics_id, l.title AS lyrics_title, l.mr_youtube_video_id AS lyrics_mr_video_id

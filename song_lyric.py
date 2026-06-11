@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import asyncio
 from dotenv import load_dotenv
@@ -35,6 +36,21 @@ from app.database.redis.redis import redis
 from app.integrations.chzzk_connection.chzzk_connection_client import chzzk_connection_client
 
 
+_orig_unraisablehook = sys.unraisablehook
+
+
+def _quiet_unraisable_hook(unraisable):
+    """종료 시 GC 가 이미 닫힌 이벤트 루프에서 커넥션 finalizer(aiomysql 등)를 돌릴 때
+    나는 'Event loop is closed' 노이즈만 무시한다. 그 외에는 기본 훅으로 위임."""
+    exc = getattr(unraisable, "exc_value", None)
+    if isinstance(exc, RuntimeError) and "Event loop is closed" in str(exc):
+        return
+    _orig_unraisablehook(unraisable)
+
+
+sys.unraisablehook = _quiet_unraisable_hook
+
+
 def _quiet_shutdown_exception_handler(loop, context):
     """서버 종료 시 asyncio 가 루프 정리 중 출력하는 무해한 예외를 무시한다.
 
@@ -68,19 +84,26 @@ async def lifespan(app: FastAPI):
         logger.info("치지직 채팅 릴레이 연결 활성화됨")
 
     yield
-    # 종료 시 실행
+    # 종료 시 실행 — 한 단계가 멈춰도 다른 정리를 막지 않도록 격리 + 시간 제한.
+    # (특히 치지직 socketio 정리가 Ctrl+C 중 지연되면 DB 풀이 안 닫혀 finalizer 노이즈가 난다)
     if chzzk_task:
         chzzk_task.cancel()
-        # start() 의 finally 가 disconnect 까지 처리한다. 취소/실패는 조용히 흡수.
+        # start() 의 finally 가 disconnect 까지 처리한다. 지연되면 강제로 끊는다.
         try:
-            await chzzk_task
+            await asyncio.wait_for(chzzk_task, timeout=3)
         except BaseException:
             pass
 
-    await db_handler.close()
-    await youtube_api.close()
-    await meilisearch_handler.close()
-    await redis.close()
+    for name, closer in (
+        ("db", db_handler.close),
+        ("youtube", youtube_api.close),
+        ("meilisearch", meilisearch_handler.close),
+        ("redis", redis.close),
+    ):
+        try:
+            await asyncio.wait_for(closer(), timeout=5)
+        except Exception as e:
+            logger.warning(f"종료 정리 실패({name}): {e}")
 
 # FastAPI 애플리케이션 생성
 app = FastAPI(lifespan=lifespan)

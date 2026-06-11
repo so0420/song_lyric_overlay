@@ -121,9 +121,10 @@ class ChzzkConnectionClient:
         self._running = False
         try:
             if self.sio.connected:
-                await self.sio.disconnect()
+                # 종료 중 소켓이 응답 없으면 무한정 기다리지 않도록 시간 제한
+                await asyncio.wait_for(self.sio.disconnect(), timeout=2)
                 logger.info("[ChzzkRelay] 연결 해제됨")
-        except Exception:
+        except (Exception, asyncio.CancelledError):
             pass
         # engineio 의 aiohttp 세션이 남아있으면 닫는다
         try:

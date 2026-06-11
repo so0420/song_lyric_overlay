@@ -766,6 +766,26 @@
         flex-shrink: 0;
     }
 
+    .playlist-item-thumb--empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        background: #eef2f7;
+    }
+
+    .playlist-item-novideo {
+        display: inline-block;
+        margin-left: 4px;
+        padding: 0 6px;
+        border-radius: 6px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: #b45309;
+        background: #fef3c7;
+        vertical-align: middle;
+    }
+
     .playlist-item-info {
         flex: 1;
         min-width: 0;
@@ -1719,7 +1739,8 @@
                     </div>
                 </div>
                 <button class="offset-reset" id="offsetReset" title="오프셋 초기화">초기화</button>
-                <a href="https://chromewebstore.google.com/detail/dhmalklebhljlmfbbpiojdilckgnjiio?utm_source=item-share-cb" target="_blank" style="margin-left: auto; text-decoration: none; white-space: nowrap; padding: 5px 12px; font-size: 0.75rem; font-weight: 700; color: #fff; background: #8b5cf6; border-radius: 6px;">노래 키 조절하기</a>
+                <button type="button" id="changeVideoBtn" title="현재 재생 곡의 영상 변경" style="margin-left: auto; cursor: pointer; border: none; white-space: nowrap; padding: 5px 12px; font-size: 0.75rem; font-weight: 700; color: #fff; background: #2563eb; border-radius: 6px;">영상 변경하기</button>
+                <a href="https://chromewebstore.google.com/detail/dhmalklebhljlmfbbpiojdilckgnjiio?utm_source=item-share-cb" target="_blank" style="text-decoration: none; white-space: nowrap; padding: 5px 12px; font-size: 0.75rem; font-weight: 700; color: #fff; background: #8b5cf6; border-radius: 6px;">노래 키 조절하기</a>
             </div>
         </div>
     </div>
@@ -2305,6 +2326,16 @@
             searchVideosForSelection();
         }
 
+        // 상단 '영상 변경하기' 버튼 — 현재 재생 중인 곡의 영상을 교체
+        function openVideoReplaceForCurrent() {
+            const index = state.currentPlayingIndex;
+            if (index < 0 || index >= state.playlist.length) {
+                showToast('먼저 재생할 곡을 선택해주세요', 'info');
+                return;
+            }
+            openVideoReplace(index);
+        }
+
         // 교체 모드: 기존 재생목록 항목의 영상만 바꾼다
         function replaceItemVideo(videoId, videoTitle, channelTitle, thumbnailUrl) {
             const index = state.replaceTargetIndex;
@@ -2547,12 +2578,19 @@
         // 반환값: 실제로 추가됐으면 true, 중복이면 false
         function addToPlaylist(lyricsId, songId, songTitle, artistName, videoId, lyricsTitle, coverImageUrl, options = {}) {
             const silent = options.silent === true;
-            // 중복 체크: lyricsId가 있으면 lyricsId로, 없으면 songId+videoId로 체크
+            // 중복 체크: 가사ID > 곡ID+영상 > (임시 곡) 제목 순으로 비교
             const isDuplicate = state.playlist.some(item => {
                 if (lyricsId && item.lyricsId) {
                     return item.lyricsId === lyricsId;
                 }
-                return item.songId === songId && item.videoId === videoId;
+                if (songId && item.songId) {
+                    return item.songId === songId && item.videoId === videoId;
+                }
+                // 임시 곡(가사/곡ID 없음): 제목으로 구분 (서로 다른 임시 곡이 합쳐지지 않도록)
+                if (!lyricsId && !songId) {
+                    return !item.lyricsId && !item.songId && (item.songTitle || '') === (songTitle || '');
+                }
+                return false;
             });
 
             if (isDuplicate) {
@@ -2626,6 +2664,14 @@
             elements.playlistItems.innerHTML = items.map((item, index) => {
                 const isActive = index === state.currentPlayingIndex && state.currentTab === 'playlist';
                 const videoId = item.videoId || item.mr_youtube_video_id;
+                const hasVideo = !!videoId;
+                const thumbHtml = item.coverImageUrl
+                    ? `<img class="playlist-item-thumb" src="${item.coverImageUrl}" alt="" loading="lazy" ${hasVideo ? `onerror="this.src='https://img.youtube.com/vi/${videoId}/default.jpg'"` : ''}>`
+                    : (hasVideo
+                        ? `<img class="playlist-item-thumb" src="https://img.youtube.com/vi/${videoId}/default.jpg" alt="" loading="lazy">`
+                        : `<div class="playlist-item-thumb playlist-item-thumb--empty" title="영상 없음">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                           </div>`);
                 return `
                 <div class="playlist-item ${isActive ? 'active playing' : ''}"
                      draggable="${state.currentTab === 'playlist'}"
@@ -2639,18 +2685,12 @@
                         </svg>
                     </div>
                     ` : ''}
-                    <img class="playlist-item-thumb" src="${item.coverImageUrl || `https://img.youtube.com/vi/${videoId}/default.jpg`}" alt="" loading="lazy" onerror="this.src='https://img.youtube.com/vi/${videoId}/default.jpg'">
+                    ${thumbHtml}
                     <div class="playlist-item-info">
                         <div class="playlist-item-title">${escapeHtml(item.songTitle || item.song_title)}</div>
-                        <div class="playlist-item-artist">${escapeHtml(item.artistName || item.artist_name || '')}</div>
+                        <div class="playlist-item-artist">${escapeHtml(item.artistName || item.artist_name || '')}${hasVideo ? '' : ' <span class="playlist-item-novideo">영상 없음</span>'}</div>
                     </div>
                     ${state.currentTab === 'playlist' ? `
-                    <button class="playlist-item-remove" data-swap="${index}" title="재생 영상 변경">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="23 7 16 12 23 17 23 7"/>
-                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                        </svg>
-                    </button>
                     <button class="playlist-item-remove" data-remove="${index}" title="삭제">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M18 6 6 18M6 6l12 12"/>
@@ -2670,14 +2710,6 @@
                         playItem(index);
                     }
                 });
-
-                const swapBtn = item.querySelector('[data-swap]');
-                if (swapBtn) {
-                    swapBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        openVideoReplace(parseInt(e.currentTarget.dataset.swap));
-                    });
-                }
 
                 const removeBtn = item.querySelector('[data-remove]');
                 if (removeBtn) {
@@ -2764,8 +2796,9 @@
             // Load video (cue only, don't auto-play)
             console.log('playItem videoId:', videoId, 'isPlayerReady:', state.isPlayerReady);
             if (!videoId) {
-                console.warn('No videoId for item:', item);
-                showToast('영상 ID가 없습니다', 'error');
+                // 임시 신청 등 영상이 없는 곡 — 영상 변경 모달을 열어 직접 지정하게 유도
+                showToast('재생할 영상을 선택해주세요', 'info');
+                if (state.currentTab === 'playlist') openVideoReplace(index);
             } else if (state.isPlayerReady && state.ytPlayer.cueVideoById) {
                 console.log('Cueing video immediately:', videoId);
                 state.ytPlayer.cueVideoById(videoId);
@@ -3048,8 +3081,8 @@
             if (!data) return;
             // 신청자 닉네임/곡 제목은 익명 입력이므로 반드시 이스케이프(토스트는 innerHTML 사용)
             showToast(`노래 신청: ${escapeHtml(data.title)} - ${escapeHtml(data.requester)}`);
-            // 자동 추가가 켜져 있고 가사 또는 MR이 연결된 곡만 재생목록에 추가 (silent: 작업 중 모달을 닫지 않음)
-            if (data.auto_playlist && (data.lyrics_id || data.mr_video_id)) {
+            // 자동 추가가 켜져 있으면 임시 신청(영상 없음)도 재생목록에 추가 (영상은 직접 지정)
+            if (data.auto_playlist) {
                 addToPlaylist(
                     data.lyrics_id,
                     data.song_external_id,
@@ -3689,6 +3722,7 @@
             elements.obsOffsetMinus.addEventListener('click', () => adjustOffset('obs', -100));
             elements.obsOffsetPlus.addEventListener('click', () => adjustOffset('obs', 100));
             elements.offsetReset.addEventListener('click', resetOffsets);
+            document.getElementById('changeVideoBtn').addEventListener('click', openVideoReplaceForCurrent);
 
             // Initialize offset display
             updateOffsetDisplay();

@@ -696,8 +696,8 @@ class TestPlaylistPending:
         repos.request.get_playlist_pending.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_filters_out_items_without_lyrics_and_mr(self):
-        """가사도 MR 도 없는 신청은 재생목록 투입 대상에서 제외"""
+    async def test_includes_temp_items_without_lyrics_and_mr(self):
+        """가사/MR 없는 임시 신청도 재생목록 대기 목록에 포함 (영상은 노래하기에서 직접 지정)"""
         repos = make_repos()
         repos.streamer.get_by_user_id.return_value = make_streamer_row()
         repos.request.get_playlist_pending.return_value = [
@@ -706,7 +706,7 @@ class TestPlaylistPending:
             # MR 만 (가사의 MR fallback)
             make_request_row(id=2, ref_lyrics_id=None, ref_lyrics_title=None,
                              sb_mr_video_id=None, lyrics_mr_video_id="lvid"),
-            # 둘 다 없음 → 제외 대상
+            # 둘 다 없는 임시 곡 → 이제 포함
             make_request_row(id=3, ref_lyrics_id=None, ref_lyrics_title=None,
                              sb_mr_video_id=None, lyrics_mr_video_id=None,
                              song_id=None, ref_song_title=None, title="노래책 외 곡"),
@@ -717,9 +717,12 @@ class TestPlaylistPending:
 
         assert response.status_code == 200
         items = response.json()["items"]
-        assert [item["request_id"] for item in items] == [1, 2]
+        assert [item["request_id"] for item in items] == [1, 2, 3]
         assert items[0]["lyrics_id"] == 67
         assert items[1]["mr_video_id"] == "lvid"  # sb MR 없으면 가사 MR fallback
+        # 임시 곡: 가사/MR 없이 입력 곡명만
+        assert items[2]["lyrics_id"] is None and items[2]["mr_video_id"] is None
+        assert items[2]["title"] == "노래책 외 곡"
         repos.request.get_playlist_pending.assert_awaited_once_with(10)
 
 

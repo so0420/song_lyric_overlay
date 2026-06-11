@@ -71,18 +71,14 @@ async def get_playlist_pending(
     """노래하기 재생목록 자동 추가 미전달분 조회
 
     프로필이 없거나 자동 추가 옵션이 꺼져 있으면 빈 목록.
-    재생목록 투입 가능 곡(가사 또는 MR 연결)만 반환한다.
+    가사/MR 이 없는 임시 신청도 포함한다(영상은 노래하기에서 직접 지정).
     """
     streamer = await streamer_repo.get_by_user_id(user["id"])
     if not streamer or not streamer.get("request_auto_playlist"):
         return {"items": []}
 
     rows = await request_repo.get_playlist_pending(streamer["id"])
-    items = []
-    for row in rows:
-        item = _build_push_data(row)
-        if item["lyrics_id"] or item["mr_video_id"]:
-            items.append(item)
+    items = [_build_push_data(row) for row in rows]
     return {"items": items}
 
 

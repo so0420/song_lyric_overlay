@@ -126,6 +126,9 @@ def make_repos():
     # 신청 폭주 상한/소유권 검사 기본값 (해피패스: 대기 0건, 소유권 있음)
     repos.request.count_waiting.return_value = 0
     repos.request.belongs_to.return_value = True
+    # 곡 정규화(형제 곡) 기본값: 자동 연결 가사 없음, 형제 아님
+    repos.lyrics.get_best_public_lyrics_id_for_song.return_value = None
+    repos.lyrics.is_canonical_sibling.return_value = False
     return repos
 
 

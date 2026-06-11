@@ -83,27 +83,32 @@ async def lifespan(app: FastAPI):
         chzzk_task = asyncio.create_task(chzzk_connection_client.start())
         logger.info("치지직 채팅 릴레이 연결 활성화됨")
 
-    yield
-    # 종료 시 실행 — 한 단계가 멈춰도 다른 정리를 막지 않도록 격리 + 시간 제한.
-    # (특히 치지직 socketio 정리가 Ctrl+C 중 지연되면 DB 풀이 안 닫혀 finalizer 노이즈가 난다)
-    if chzzk_task:
-        chzzk_task.cancel()
-        # start() 의 finally 가 disconnect 까지 처리한다. 지연되면 강제로 끊는다.
-        try:
-            await asyncio.wait_for(chzzk_task, timeout=3)
-        except BaseException:
-            pass
+    try:
+        yield
+    finally:
+        # 종료 시 실행 — try/finally 라서 정상 종료뿐 아니라 취소(athrow)로
+        # 끊겨도 반드시 실행된다. (이게 없으면 lifespan 제너레이터에 예외가
+        # 던져질 때 정리가 통째로 건너뛰어져 'generator didn't stop after
+        # athrow()' + pending 태스크 파괴 노이즈가 난다)
+        # 한 단계가 멈춰도 다른 정리를 막지 않도록 격리 + 시간 제한.
+        if chzzk_task:
+            chzzk_task.cancel()
+            # start() 의 finally 가 disconnect 까지 처리한다. 지연되면 강제로 끊는다.
+            try:
+                await asyncio.wait_for(chzzk_task, timeout=3)
+            except BaseException:
+                pass
 
-    for name, closer in (
-        ("db", db_handler.close),
-        ("youtube", youtube_api.close),
-        ("meilisearch", meilisearch_handler.close),
-        ("redis", redis.close),
-    ):
-        try:
-            await asyncio.wait_for(closer(), timeout=5)
-        except Exception as e:
-            logger.warning(f"종료 정리 실패({name}): {e}")
+        for name, closer in (
+            ("db", db_handler.close),
+            ("youtube", youtube_api.close),
+            ("meilisearch", meilisearch_handler.close),
+            ("redis", redis.close),
+        ):
+            try:
+                await asyncio.wait_for(closer(), timeout=5)
+            except BaseException as e:
+                logger.warning(f"종료 정리 실패({name}): {e!r}")
 
 # FastAPI 애플리케이션 생성
 app = FastAPI(lifespan=lifespan)
@@ -211,41 +216,47 @@ app.include_router(api_router, prefix="/api")
 app.include_router(web_router)
 
 def _run_server(host, port):
-    """uvicorn 을 직접 구동한다. 종료(Ctrl+C) 노이즈를 없애기 위해 이벤트 루프를
-    직접 관리한다.
+    """uvicorn 을 수동 이벤트 루프로 구동한다 (Ctrl+C graceful 종료 보장).
 
-    Python 3.12 의 asyncio.run(=asyncio.Runner)은 자체 SIGINT 처리를 하는데,
-    이게 uvicorn/우리 핸들러와 충돌하면서 루프를 중단시켜
-    'Event loop stopped before Future completed' + lifespan CancelledError
-    traceback 을 낸다. 따라서 asyncio.run 을 쓰지 않고 루프를 직접 돌리며,
-    POSIX 에서는 SIGINT/SIGTERM 에 should_exit 만 세워 serve() 가 정상적으로
-    빠져나가게 한다(lifespan 종료 코드는 그대로 실행됨).
+    - asyncio.run(=Runner)을 쓰지 않는다: Runner 의 SIGINT 처리는 메인 태스크를
+      즉시 취소해 lifespan 이 athrow 로 끊긴다.
+    - 커스텀 시그널 핸들러도 달지 않는다: uvicorn 자체 시그널 처리(should_exit)와
+      충돌해 한쪽이 덮어써진다. uvicorn 의 기본 동작이 이미 graceful 이다.
+    - 그래도 KeyboardInterrupt 가 루프 밖으로 새어 나오면(시그널 타이밍 경합 등)
+      should_exit 를 세우고 serve() 를 끝까지 재개시켜 lifespan 종료(리소스
+      정리)까지 완주시킨다.
+    - 루프를 닫기 전에 남은 태스크를 취소·회수한다 ('Task was destroyed but it
+      is pending!' / 'coroutine ignored GeneratorExit' 방지).
     """
-    import signal
     import uvicorn
 
     config = uvicorn.Config(app, host=host, port=port)
     server = uvicorn.Server(config)
-    is_posix = (os.name == "posix")
-    if is_posix:
-        # uvicorn 의 기본(루프 중단형) 시그널 핸들러 비활성화
-        server.install_signal_handlers = lambda: None
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    if is_posix:
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(sig, lambda: setattr(server, "should_exit", True))
-
+    serve_task = loop.create_task(server.serve())
     try:
-        loop.run_until_complete(server.serve())
+        loop.run_until_complete(serve_task)
     except (KeyboardInterrupt, SystemExit):
-        # Windows 등 기본 시그널 경로로 들어온 종료 — 정상 종료로 간주
-        pass
+        # 시그널이 KeyboardInterrupt 로 들어온 경우 — graceful 종료로 전환
+        server.should_exit = True
+        try:
+            loop.run_until_complete(asyncio.wait_for(asyncio.shield(serve_task), timeout=10))
+        except BaseException:
+            # 두 번째 Ctrl+C / 타임아웃 — 강제 종료로 전환하되 태스크는 회수한다
+            server.force_exit = True
+            serve_task.cancel()
+            loop.run_until_complete(asyncio.gather(serve_task, return_exceptions=True))
     finally:
         try:
+            pending = [t for t in asyncio.all_tasks(loop) if not t.done()]
+            for t in pending:
+                t.cancel()
+            if pending:
+                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
             loop.run_until_complete(loop.shutdown_asyncgens())
-        except Exception:
+        except BaseException:
             pass
         asyncio.set_event_loop(None)
         loop.close()

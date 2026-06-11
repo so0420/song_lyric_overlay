@@ -131,7 +131,11 @@ class ChzzkConnectionClient:
         except asyncio.CancelledError:
             pass  # 서버 종료 — finally 에서 정리
         finally:
-            await self.disconnect()
+            # 취소/강제 종료 중에도 안전하게 — 정리 실패가 종료 흐름을 막지 않게 한다
+            try:
+                await self.disconnect()
+            except BaseException:
+                pass
 
     async def disconnect(self):
         """릴레이 연결 해제 + 소켓 세션 정리 (Unclosed session 방지)"""

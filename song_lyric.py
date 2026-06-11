@@ -35,9 +35,26 @@ from app.database.redis.redis import redis
 from app.integrations.chzzk_connection.chzzk_connection_client import chzzk_connection_client
 
 
+def _quiet_shutdown_exception_handler(loop, context):
+    """서버 종료 시 asyncio 가 루프 정리 중 출력하는 무해한 예외를 무시한다.
+
+    (Ctrl+C 종료 시 나는 CancelledError / 'Event loop stopped...' RuntimeError)
+    그 외 예외는 기본 핸들러로 위임해 진짜 오류는 그대로 보고한다.
+    """
+    exc = context.get("exception")
+    if isinstance(exc, asyncio.CancelledError):
+        return
+    if isinstance(exc, RuntimeError) and "Event loop stopped before Future completed" in str(exc):
+        return
+    loop.default_exception_handler(context)
+
+
 # 리소스 관리를 위한 lifespan 정의
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # uvicorn 이 만든 실제 이벤트 루프에 종료 노이즈 억제 핸들러 설치
+    asyncio.get_running_loop().set_exception_handler(_quiet_shutdown_exception_handler)
+
     # 시작 시 실행
     await db_handler.initialize()
     await youtube_api.initialize()
@@ -54,11 +71,11 @@ async def lifespan(app: FastAPI):
     # 종료 시 실행
     if chzzk_task:
         chzzk_task.cancel()
+        # start() 의 finally 가 disconnect 까지 처리한다. 취소/실패는 조용히 흡수.
         try:
             await chzzk_task
-        except asyncio.CancelledError:
+        except BaseException:
             pass
-        await chzzk_connection_client.disconnect()
 
     await db_handler.close()
     await youtube_api.close()

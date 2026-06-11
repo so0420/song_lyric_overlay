@@ -15,10 +15,21 @@ from app.utils.log import logger
 from app.integrations.chzzk_connection.chzzk_event_handler import chzzk_event_handler
 from app.database.chzzk_repository import ChzzkChannelRepository
 
-# engineio/socketio 의 저수준 INFO 노이즈 억제
+# engineio/socketio 의 저수준 노이즈 억제
 # (종료 시 나는 'packet queue is empty, aborting' 등 — 진짜 오류는 ERROR 로 유지)
-for _noisy in ("engineio.client", "engineio", "socketio.client", "socketio"):
-    logging.getLogger(_noisy).setLevel(logging.ERROR)
+class _EngineIONoiseFilter(logging.Filter):
+    """emit 시점에서 무해한 저수준 메시지를 걸러낸다(레벨 변경에 영향받지 않음)."""
+    _DROP = ("packet queue is empty",)
+
+    def filter(self, record):
+        msg = record.getMessage()
+        return not any(s in msg for s in self._DROP)
+
+
+for _noisy in ("engineio", "engineio.client", "socketio", "socketio.client"):
+    _lg = logging.getLogger(_noisy)
+    _lg.setLevel(logging.WARNING)
+    _lg.addFilter(_EngineIONoiseFilter())
 
 # 구독 목록 갱신 주기(초) — 새로 연동/해제한 스트리머 반영
 _REFRESH_INTERVAL = 30

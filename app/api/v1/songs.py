@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Form, Request
+from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Form, Request, Query
 from pydantic import BaseModel
 from app.core.auth import get_current_user, get_current_user_api, require_admin
 from typing import Optional
@@ -315,6 +315,60 @@ async def _reindex_songs_in_meilisearch(song_ids: list):
             await meilisearch_handler.add_documents(docs)
         except Exception as e:
             logger.warning(f"Meilisearch reindex error: {e}")
+
+
+@router.get("/admin/search")
+async def admin_search_songs(
+    q: Optional[str] = Query(None, max_length=100, description="검색어(곡명/가수명)"),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(30, ge=1, le=100),
+    admin=Depends(require_admin),
+):
+    """관리자 곡 정보 수정용 곡 검색 (관리자 전용).
+
+    노래책에 등록됐거나 가사가 있는 모든 곡을 반환한다 — 가사 없는 노래책 곡도 포함.
+    각 곡의 가사 개수(lyrics_count)와 노래책 등록 수(songbook_count)를 함께 준다.
+    """
+    # 편집 대상: 가사가 있거나 노래책에 등록된 곡
+    where = """
+        WHERE (EXISTS (SELECT 1 FROM song_lyrics l WHERE l.song_id = s.id AND l.deleted_at IS NULL)
+               OR EXISTS (SELECT 1 FROM streamer_songbooks sb WHERE sb.song_id = s.id))
+    """
+    params: list = []
+    if q:
+        where += """ AND (s.title LIKE %s OR a.name LIKE %s
+                          OR REPLACE(s.title, ' ', '') LIKE %s OR REPLACE(a.name, ' ', '') LIKE %s)"""
+        like = f"%{q}%"
+        nospace = f"%{q.replace(' ', '')}%"
+        params += [like, like, nospace, nospace]
+
+    rows = await db_handler.fetch_all(
+        f"""
+        SELECT s.id AS song_id, s.song_external_id, s.title,
+               a.name AS artist_name, s.cover_image_url,
+               (SELECT COUNT(*) FROM song_lyrics l
+                  WHERE l.song_id = s.id AND l.deleted_at IS NULL) AS lyrics_count,
+               (SELECT COUNT(*) FROM streamer_songbooks sb WHERE sb.song_id = s.id) AS songbook_count
+        FROM songs s
+        LEFT JOIN artists a ON s.artist_id = a.id
+        {where}
+        ORDER BY s.title ASC, s.id ASC
+        LIMIT %s OFFSET %s
+        """,
+        (*params, limit, offset),
+    )
+    count_row = await db_handler.fetch_one(
+        f"SELECT COUNT(*) AS total FROM songs s LEFT JOIN artists a ON s.artist_id = a.id {where}",
+        tuple(params),
+    )
+    total = count_row["total"] if count_row else 0
+    return {
+        "items": rows,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "has_more": offset + len(rows) < total,
+    }
 
 
 @router.patch("/{external_id}", dependencies=[Depends(verify_csrf)])

@@ -1,0 +1,293 @@
+{% extends "base/base.html" %}
+
+{% block title %}곡 정보 수정 - 관리자{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .se-wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+    .se-head { margin-bottom: 20px; }
+    .se-title { font-size: 1.4rem; font-weight: 800; color: var(--text-main); }
+    .se-desc { margin-top: 6px; font-size: 0.88rem; color: var(--text-sub); line-height: 1.5; }
+
+    .se-search { position: relative; margin-bottom: 18px; }
+    .se-search input {
+        width: 100%; box-sizing: border-box; padding: 12px 14px;
+        border: 1px solid var(--border-color); border-radius: 10px;
+        font-size: 0.95rem; background: var(--bg-card, #fff); color: var(--text-main);
+    }
+    .se-search input:focus { outline: none; border-color: var(--accent, #6366f1); }
+
+    .se-total { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 10px; }
+
+    .se-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .se-row {
+        display: flex; align-items: center; gap: 14px;
+        padding: 12px 14px; border: 1px solid var(--border-color);
+        border-radius: 12px; background: var(--bg-card, #fff);
+    }
+    .se-thumb {
+        width: 52px; height: 52px; border-radius: 8px; object-fit: cover;
+        background: #eef2f7; flex-shrink: 0;
+    }
+    .se-thumb--empty {
+        display: flex; align-items: center; justify-content: center; color: #94a3b8;
+    }
+    .se-info { flex: 1; min-width: 0; }
+
+    .se-field { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .se-field + .se-field { margin-top: 4px; }
+    .se-fname { font-weight: 700; font-size: 0.95rem; color: var(--text-main);
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .se-faname { font-size: 0.85rem; color: var(--text-sub);
+                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .se-edit-btn {
+        background: none; border: none; cursor: pointer; padding: 3px;
+        color: #94a3b8; display: inline-flex; flex-shrink: 0;
+    }
+    .se-edit-btn:hover { color: var(--accent, #6366f1); }
+
+    .se-edit-input {
+        flex: 1; min-width: 0; padding: 4px 8px; font-size: 0.9rem;
+        border: 1px solid var(--accent, #6366f1); border-radius: 6px;
+        background: var(--bg-card, #fff); color: var(--text-main);
+    }
+    .se-save, .se-cancel {
+        border: none; cursor: pointer; padding: 4px 10px; border-radius: 6px;
+        font-size: 0.78rem; font-weight: 700; flex-shrink: 0;
+    }
+    .se-save { background: var(--accent, #6366f1); color: #fff; }
+    .se-cancel { background: #e2e8f0; color: #475569; }
+
+    .se-badges { display: flex; gap: 6px; margin-top: 6px; }
+    .se-badge {
+        font-size: 0.68rem; font-weight: 700; padding: 1px 7px; border-radius: 6px;
+    }
+    .se-badge--lyrics { color: #1d4ed8; background: #dbeafe; }
+    .se-badge--book { color: #b45309; background: #fef3c7; }
+    .se-badge--none { color: #94a3b8; background: #f1f5f9; }
+
+    .se-state { text-align: center; padding: 40px 0; color: var(--text-dim); font-size: 0.9rem; }
+    .se-more {
+        display: block; margin: 16px auto 0; padding: 10px 20px;
+        border: 1px solid var(--border-color); border-radius: 10px;
+        background: var(--bg-card, #fff); color: var(--text-sub);
+        font-weight: 700; cursor: pointer; font-size: 0.85rem;
+    }
+    .se-more:hover { border-color: var(--accent, #6366f1); color: var(--accent, #6366f1); }
+    .spinner-sm {
+        width: 20px; height: 20px; border: 2px solid var(--border-color);
+        border-top-color: var(--accent, #6366f1); border-radius: 50%;
+        animation: spin 0.7s linear infinite; margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="se-wrap">
+    <div class="se-head">
+        <div class="se-title">곡 정보 수정</div>
+        <div class="se-desc">
+            가사가 등록된 곡과 <strong>노래책에 등록된 곡</strong>(가사 없어도)의 곡명·가수명을 수정합니다.<br>
+            가수명 변경은 <strong>같은 가수의 모든 곡</strong>에 적용됩니다.
+        </div>
+    </div>
+
+    <div class="se-search">
+        <input type="text" id="seSearch" placeholder="곡명 또는 가수명으로 검색 (비우면 전체)" maxlength="100" autocomplete="off">
+    </div>
+
+    <div class="se-total" id="seTotal"></div>
+    <div class="se-list" id="seList"></div>
+    <div class="se-state" id="seState" style="display:none;"></div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const PAGE = 30;
+    const listEl = document.getElementById('seList');
+    const stateEl = document.getElementById('seState');
+    const totalEl = document.getElementById('seTotal');
+    const searchEl = document.getElementById('seSearch');
+
+    let curQuery = '';
+    let offset = 0;
+    let total = 0;
+    let loading = false;
+
+    function esc(s) {
+        return (s || '').replace(/[&<>"']/g, c => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+        ));
+    }
+
+    function thumbHtml(item) {
+        if (item.cover_image_url) {
+            return `<img class="se-thumb" src="${esc(item.cover_image_url)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`;
+        }
+        return `<div class="se-thumb se-thumb--empty">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </div>`;
+    }
+
+    const PENCIL = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
+
+    function badgesHtml(item) {
+        const b = [];
+        if (item.lyrics_count > 0) b.push(`<span class="se-badge se-badge--lyrics">가사 ${item.lyrics_count}</span>`);
+        if (item.songbook_count > 0) b.push(`<span class="se-badge se-badge--book">노래책 ${item.songbook_count}</span>`);
+        if (b.length === 0) b.push(`<span class="se-badge se-badge--none">미사용</span>`);
+        return `<div class="se-badges">${b.join('')}</div>`;
+    }
+
+    function rowHtml(item) {
+        const eid = esc(item.song_external_id);
+        return `
+        <div class="se-row" data-eid="${eid}">
+            ${thumbHtml(item)}
+            <div class="se-info">
+                <div class="se-field" data-field="title">
+                    <span class="se-fname">${esc(item.title)}</span>
+                    <button class="se-edit-btn" title="곡명 수정" onclick="startEdit(this, 'title')">${PENCIL}</button>
+                </div>
+                <div class="se-field" data-field="artist">
+                    <span class="se-faname">${esc(item.artist_name) || '(가수 없음)'}</span>
+                    <button class="se-edit-btn" title="가수명 수정" onclick="startEdit(this, 'artist')">${PENCIL}</button>
+                </div>
+                ${badgesHtml(item)}
+            </div>
+        </div>`;
+    }
+
+    // 인라인 편집 시작
+    function startEdit(btn, field) {
+        const fieldEl = btn.closest('.se-field');
+        const span = fieldEl.querySelector(field === 'title' ? '.se-fname' : '.se-faname');
+        const cur = span.textContent === '(가수 없음)' ? '' : span.textContent;
+        fieldEl.dataset.orig = fieldEl.innerHTML;
+        fieldEl.dataset.oldval = cur;
+        fieldEl.innerHTML = `
+            <input class="se-edit-input" type="text" maxlength="255" value="${esc(cur)}">
+            <button class="se-save">저장</button>
+            <button class="se-cancel">취소</button>`;
+        const input = fieldEl.querySelector('input');
+        input.focus();
+        input.select();
+        fieldEl.querySelector('.se-save').onclick = () => saveEdit(fieldEl, field, input.value);
+        fieldEl.querySelector('.se-cancel').onclick = () => { fieldEl.innerHTML = fieldEl.dataset.orig; };
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') saveEdit(fieldEl, field, input.value);
+            else if (e.key === 'Escape') fieldEl.innerHTML = fieldEl.dataset.orig;
+        };
+    }
+
+    async function saveEdit(fieldEl, field, value) {
+        const val = value.trim();
+        if (!val) { alert(field === 'title' ? '곡명을 입력하세요.' : '가수명을 입력하세요.'); return; }
+        const row = fieldEl.closest('.se-row');
+        const eid = row.dataset.eid;
+        const saveBtn = fieldEl.querySelector('.se-save');
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '...'; }
+        try {
+            const res = await fetch(`/api/v1/songs/${encodeURIComponent(eid)}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+                body: JSON.stringify(field === 'title' ? { title: val } : { artist: val }),
+            });
+            if (!res.ok) {
+                const d = await res.json().catch(() => ({}));
+                alert(typeof d.detail === 'string' ? d.detail : '수정에 실패했습니다.');
+                fieldEl.innerHTML = fieldEl.dataset.orig;
+                return;
+            }
+            const updated = await res.json();
+            // UI 갱신
+            if (field === 'title') {
+                fieldEl.innerHTML = `<span class="se-fname">${esc(updated.title)}</span>
+                    <button class="se-edit-btn" title="곡명 수정" onclick="startEdit(this, 'title')">${PENCIL}</button>`;
+            } else {
+                // 가수명 변경은 같은 가수의 모든 곡에 적용 — 화면의 같은 가수명 행도 함께 갱신
+                const newName = updated.artist_name || '';
+                const oldName = fieldEl.dataset.oldval || '';
+                const newLabel = esc(newName) || '(가수 없음)';
+                document.querySelectorAll('.se-field[data-field="artist"] .se-faname').forEach(af => {
+                    if (af.closest('.se-field') === fieldEl) return;
+                    const shown = af.textContent === '(가수 없음)' ? '' : af.textContent;
+                    if (shown === oldName) af.innerHTML = newLabel;
+                });
+                fieldEl.innerHTML = `<span class="se-faname">${newLabel}</span>
+                    <button class="se-edit-btn" title="가수명 수정" onclick="startEdit(this, 'artist')">${PENCIL}</button>`;
+            }
+        } catch (e) {
+            alert('오류가 발생했습니다.');
+            fieldEl.innerHTML = fieldEl.dataset.orig;
+        }
+    }
+
+    async function load(reset) {
+        if (loading) return;
+        loading = true;
+        if (reset) {
+            offset = 0;
+            listEl.innerHTML = '';
+            totalEl.textContent = '';
+            removeMore();
+            stateEl.style.display = 'block';
+            stateEl.innerHTML = '<div class="spinner-sm"></div>';
+        }
+        try {
+            const url = `/api/v1/songs/admin/search?offset=${offset}&limit=${PAGE}`
+                + (curQuery ? `&q=${encodeURIComponent(curQuery)}` : '');
+            const res = await fetch(url, { headers: { 'X-CSRF-Token': CSRF } });
+            if (!res.ok) throw new Error('load failed');
+            const data = await res.json();
+            total = data.total;
+            stateEl.style.display = 'none';
+
+            if (reset && data.items.length === 0) {
+                stateEl.style.display = 'block';
+                stateEl.textContent = curQuery ? '검색 결과가 없습니다.' : '편집할 곡이 없습니다.';
+                totalEl.textContent = '';
+                return;
+            }
+            totalEl.textContent = `총 ${total}곡`;
+            listEl.insertAdjacentHTML('beforeend', data.items.map(rowHtml).join(''));
+            offset += data.items.length;
+            removeMore();
+            if (data.has_more) {
+                const btn = document.createElement('button');
+                btn.className = 'se-more';
+                btn.id = 'seMore';
+                btn.textContent = '더 보기';
+                btn.onclick = () => load(false);
+                listEl.after(btn);
+            }
+        } catch (e) {
+            stateEl.style.display = 'block';
+            stateEl.textContent = '불러오기에 실패했습니다.';
+        } finally {
+            loading = false;
+        }
+    }
+
+    function removeMore() {
+        const m = document.getElementById('seMore');
+        if (m) m.remove();
+    }
+
+    let debounce;
+    searchEl.addEventListener('input', (e) => {
+        clearTimeout(debounce);
+        debounce = setTimeout(() => {
+            curQuery = e.target.value.trim();
+            load(true);
+        }, 300);
+    });
+
+    // 최초 로드
+    load(true);
+</script>
+{% endblock %}

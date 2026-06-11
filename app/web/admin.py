@@ -46,3 +46,15 @@ async def access_requests_page(request: Request, user=Depends(get_admin_user)):
         "request": request,
         "user": user
     })
+
+
+@router.get("/song-edit", response_class=HTMLResponse)
+async def song_edit_page(request: Request, user=Depends(get_admin_user)):
+    """곡 정보 수정 페이지 (가사 있는 곡 + 노래책 등록 곡)"""
+    if not user:
+        return RedirectResponse(url="/login")
+
+    return templates.TemplateResponse("pages/admin/song_edit.html", {
+        "request": request,
+        "user": user
+    })

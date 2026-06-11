@@ -328,6 +328,31 @@
     flex-shrink: 0;
 }
 
+/* 태그 필터 칩 (노래책 탭) */
+.sb-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.sb-filter-chip {
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 9999px;
+    background: white;
+    color: var(--text-sub);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.sb-filter-chip:hover { border-color: var(--accent); }
+.sb-filter-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+
 .chip-lyrics { background: var(--accent-light); color: var(--accent); cursor: help; }
 .chip-mr { background: #fdf2f8; color: #be185d; }
 .chip-out { background: #fef2f2; color: #dc2626; }
@@ -858,9 +883,12 @@ input:checked + .toggle-slider:before { transform: translateX(22px); }
                 <span class="stats-text" id="songbookStats"></span>
                 <button class="btn btn-primary btn-sm" id="addSongBtn">+ 곡 추가</button>
             </div>
+            <div class="sb-filter-row" id="songbookTagFilters"></div>
             <div id="songbookList" class="row-list">
                 <div class="sb-loading"><div class="spinner"></div></div>
             </div>
+            <div id="songbookSentinel" style="height: 1px;"></div>
+            <div id="songbookLoadingMore" class="sb-loading" style="display: none; padding: 12px;"><div class="spinner"></div></div>
         </section>
 
         <!-- ② 신청 목록 탭 -->
@@ -1227,7 +1255,8 @@ function showDashboard() {
     document.getElementById('dashboard').style.display = 'block';
     renderHeader();
     renderSettings();
-    loadSongbook();
+    renderSongbookTagFilters();
+    loadSongbook(true);
 }
 
 function renderHeader() {
@@ -1266,32 +1295,89 @@ document.querySelectorAll('.tab-nav-btn').forEach(btn => {
 // ① 노래책 탭
 // ============================================================
 let songbookSearchDebounce = null;
-let songbookRequestId = 0;
+
+// 노래책 무한 스크롤 + 검색/태그 필터 상태
+const SB_PAGE = 50;
+let sbQ = '';
+let sbTag = null;
+let sbOffset = 0;
+let sbLoading = false;
+let sbHasMore = true;
+let sbReqId = 0;
 
 document.getElementById('songbookSearch').addEventListener('input', (e) => {
     clearTimeout(songbookSearchDebounce);
-    songbookSearchDebounce = setTimeout(() => loadSongbook(e.target.value.trim()), 300);
+    songbookSearchDebounce = setTimeout(() => { sbQ = e.target.value.trim(); loadSongbook(true); }, 300);
 });
 
-async function loadSongbook(q = '') {
-    const requestId = ++songbookRequestId;
+// 태그 필터 칩 (내 streamers.tags 기반)
+function renderSongbookTagFilters() {
+    const wrap = document.getElementById('songbookTagFilters');
+    const tags = (profile && Array.isArray(profile.tags)) ? profile.tags : [];
+    if (!tags.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'flex';
+    wrap.innerHTML = '';
+    const mkChip = (label, val, color) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'sb-filter-chip' + (sbTag === val ? ' active' : '');
+        b.textContent = label;
+        if (color && sbTag !== val) { b.style.borderColor = color; b.style.color = color; }
+        b.addEventListener('click', () => {
+            sbTag = (sbTag === val) ? null : val;
+            renderSongbookTagFilters();
+            loadSongbook(true);
+        });
+        return b;
+    };
+    wrap.appendChild(mkChip('전체', null, null));
+    tags.forEach(t => { if (t && t.name) wrap.appendChild(mkChip(t.name, t.name, t.color)); });
+}
+
+async function loadSongbook(reset = true) {
+    if (sbLoading) return;
+    const reqId = ++sbReqId;
     const list = document.getElementById('songbookList');
-    list.innerHTML = '<div class="sb-loading"><div class="spinner"></div></div>';
-    try {
-        let url = `/api/v1/songbook/${encodeURIComponent(myStreamerId)}?limit=500`;
-        if (q) url += `&q=${encodeURIComponent(q)}`;
-        const data = await api(url);
-        if (requestId !== songbookRequestId) return; // 더 새로운 요청이 있으면 폐기
-        songbookItems = data.items || [];
-        if (!q) {
-            songbookExtIds = new Set(songbookItems.map(it => it.song_external_id));
-        }
-        document.getElementById('songbookStats').textContent = `총 ${data.total}곡`;
-        renderSongbook(q);
-    } catch (e) {
-        if (requestId !== songbookRequestId) return;
-        list.innerHTML = `<div class="sb-empty">${escapeHtml(e.message)}</div>`;
+    if (reset) {
+        sbOffset = 0;
+        sbHasMore = true;
+        songbookItems = [];
+        list.innerHTML = '<div class="sb-loading"><div class="spinner"></div></div>';
     }
+    if (!sbHasMore) return;
+    sbLoading = true;
+    if (!reset) document.getElementById('songbookLoadingMore').style.display = 'flex';
+    try {
+        const params = new URLSearchParams({ limit: String(SB_PAGE), offset: String(sbOffset) });
+        if (sbQ) params.set('q', sbQ);
+        if (sbTag) params.set('tags', sbTag);
+        const data = await api(`/api/v1/songbook/${encodeURIComponent(myStreamerId)}?${params.toString()}`);
+        if (reqId !== sbReqId) return; // 더 새로운 요청이 있으면 폐기
+        const items = data.items || [];
+        if (reset) { songbookItems = items; list.innerHTML = ''; }
+        else { songbookItems = songbookItems.concat(items); }
+        items.forEach(it => songbookExtIds.add(it.song_external_id)); // '추가됨' 배지/프리필용 누적
+        sbOffset += items.length;
+        sbHasMore = sbOffset < (data.total || 0) && items.length > 0;
+        const filtered = !!(sbQ || sbTag);
+        document.getElementById('songbookStats').textContent = filtered ? `${data.total}곡 (필터)` : `총 ${data.total}곡`;
+        renderSongbookAppend(items, reset);
+        // 화면이 짧아 센티넬이 계속 보이면 다음 페이지도 이어서 로드
+        requestAnimationFrame(maybeLoadMoreSongbook);
+    } catch (e) {
+        if (reqId === sbReqId && reset) list.innerHTML = `<div class="sb-empty">${escapeHtml(e.message)}</div>`;
+    } finally {
+        sbLoading = false;
+        document.getElementById('songbookLoadingMore').style.display = 'none';
+    }
+}
+
+function maybeLoadMoreSongbook() {
+    if (!sbHasMore || sbLoading) return;
+    if (currentTab !== 'songbook') return;
+    const s = document.getElementById('songbookSentinel');
+    const r = s.getBoundingClientRect();
+    if (r.top < window.innerHeight + 200) loadSongbook(false);
 }
 
 function tagChipsHtml(tags) {
@@ -1304,15 +1390,8 @@ function tagChipsHtml(tags) {
     }).join('');
 }
 
-function renderSongbook(q = '') {
-    const list = document.getElementById('songbookList');
-    if (!songbookItems.length) {
-        list.innerHTML = q
-            ? '<div class="sb-empty">검색 결과가 없습니다.</div>'
-            : '<div class="sb-empty">아직 등록된 곡이 없어요.<br>"곡 추가" 버튼으로 첫 곡을 등록해보세요!</div>';
-        return;
-    }
-    list.innerHTML = songbookItems.map(item => `
+function songbookRowHtml(item) {
+    return `
         <div class="list-row" data-entry-id="${item.entry_id}">
             ${coverHtml(item.cover_image_url)}
             <div class="row-info">
@@ -1341,8 +1420,25 @@ function renderSongbook(q = '') {
                 </button>
             </div>
         </div>
-    `).join('');
+    `;
 }
+
+function renderSongbookAppend(items, reset) {
+    const list = document.getElementById('songbookList');
+    if (reset && (!items || items.length === 0)) {
+        list.innerHTML = (sbQ || sbTag)
+            ? '<div class="sb-empty">검색/필터 결과가 없습니다.</div>'
+            : '<div class="sb-empty">아직 등록된 곡이 없어요.<br>"곡 추가" 버튼으로 첫 곡을 등록해보세요!</div>';
+        return;
+    }
+    list.insertAdjacentHTML('beforeend', items.map(songbookRowHtml).join(''));
+}
+
+// 무한 스크롤: 센티넬이 보이면 다음 페이지 로드
+const _sbObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) maybeLoadMoreSongbook();
+}, { rootMargin: '200px' });
+_sbObserver.observe(document.getElementById('songbookSentinel'));
 
 // 수정/삭제 버튼 (이벤트 위임)
 document.getElementById('songbookList').addEventListener('click', async (e) => {
@@ -1361,7 +1457,7 @@ document.getElementById('songbookList').addEventListener('click', async (e) => {
             await api(`/api/v1/songbook/${entryId}`, { method: 'DELETE' });
             songbookExtIds.delete(entry.song_external_id);
             showToast('삭제되었습니다.', 'success');
-            loadSongbook(document.getElementById('songbookSearch').value.trim());
+            loadSongbook(true);
         } catch (err) {
             showToast(err.message, 'error');
         }
@@ -1875,7 +1971,7 @@ document.getElementById('detailSaveBtn').addEventListener('click', async () => {
             showToast('노래책에 추가했습니다.', 'success');
         }
         closeSongModal();
-        loadSongbook(document.getElementById('songbookSearch').value.trim());
+        loadSongbook(true);
     } catch (e) {
         showToast(e.message, 'error');
     } finally {

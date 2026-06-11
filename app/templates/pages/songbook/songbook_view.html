@@ -573,6 +573,8 @@
             <p>노래책 불러오는 중...</p>
         </div>
     </div>
+    <div id="sbSentinel" style="height: 1px;"></div>
+    <div id="sbLoadingMore" class="sb-loading" style="display: none;"><div class="sb-spinner"></div></div>
 </div>
 
 <!-- 노래 신청 모달 -->
@@ -653,41 +655,67 @@ function showToast(message, type = '') {
     }, 3000);
 }
 
-// ===== 노래책 로드 =====
-async function loadSongbook() {
-    const grid = document.getElementById('sbSongGrid');
-    try {
-        const LIMIT = 500;
-        let offset = 0;
-        let total = 0;
-        let collected = [];
-        let streamerInfo = null;
+// ===== 노래책 로드 (서버사이드 검색/태그 필터 + 무한 스크롤) =====
+const SB_PAGE = 50;
+let sbOffset = 0;
+let sbLoading = false;
+let sbHasMore = true;
+let sbReqId = 0;
+let firstLoadDone = false;
 
-        // limit 단위로 전부 수집 (안전 상한 10회)
-        for (let i = 0; i < 10; i++) {
-            const res = await fetch(`/api/v1/songbook/${encodeURIComponent(STREAMER.id)}?limit=${LIMIT}&offset=${offset}`);
-            if (!res.ok) throw new Error(`load failed (${res.status})`);
-            const data = await res.json();
-            collected = collected.concat(data.items || []);
-            total = data.total || 0;
-            if (data.streamer) streamerInfo = data.streamer;
-            if (!data.items || data.items.length === 0 || collected.length >= total) break;
-            offset += data.items.length;
+async function loadSongbook(reset = true) {
+    if (sbLoading) return;
+    const reqId = ++sbReqId;
+    const grid = document.getElementById('sbSongGrid');
+    if (reset) {
+        sbOffset = 0; sbHasMore = true; allSongs = [];
+        grid.innerHTML = '<div class="sb-loading"><div class="sb-spinner"></div><p>노래책 불러오는 중...</p></div>';
+    }
+    if (!sbHasMore) return;
+    sbLoading = true;
+    if (!reset) document.getElementById('sbLoadingMore').style.display = 'flex';
+    try {
+        const params = new URLSearchParams({ limit: String(SB_PAGE), offset: String(sbOffset) });
+        if (searchQuery) params.set('q', searchQuery);
+        if (activeTag) params.set('tags', activeTag);
+        const res = await fetch(`/api/v1/songbook/${encodeURIComponent(STREAMER.id)}?${params.toString()}`);
+        if (!res.ok) throw new Error(`load failed (${res.status})`);
+        const data = await res.json();
+        if (reqId !== sbReqId) return; // 더 새로운 요청이 있으면 폐기
+
+        // 신청 가능 여부는 첫 응답으로 1회 결정
+        if (!firstLoadDone) {
+            const info = data.streamer || STREAMER;
+            canRequest = !!(Number(info.request_enabled) && Number(info.request_web_enabled));
+            document.getElementById('sbClosedNotice').style.display = canRequest ? 'none' : 'flex';
+            firstLoadDone = true;
         }
 
-        allSongs = collected;
+        const items = data.items || [];
+        if (reset) { allSongs = items; grid.innerHTML = ''; }
+        else allSongs = allSongs.concat(items);
+        sbOffset += items.length;
+        sbHasMore = sbOffset < (data.total || 0) && items.length > 0;
 
-        // 신청 가능 여부는 API 응답(최신값) 우선, 없으면 서버 렌더 시점 값 사용
-        const info = streamerInfo || STREAMER;
-        canRequest = !!(Number(info.request_enabled) && Number(info.request_web_enabled));
-        document.getElementById('sbClosedNotice').style.display = canRequest ? 'none' : 'flex';
-
-        renderTagFilters();
-        renderSongs();
+        const total = data.total || 0;
+        document.getElementById('sbStats').textContent = (searchQuery || activeTag) ? `${total}곡` : `총 ${total}곡`;
+        renderSongsAppend(items, reset);
+        requestAnimationFrame(maybeLoadMore);
     } catch (e) {
         console.error(e);
-        grid.innerHTML = `<div class="sb-empty">노래책을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>`;
+        if (reqId === sbReqId && reset) {
+            grid.innerHTML = `<div class="sb-empty">노래책을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>`;
+        }
+    } finally {
+        sbLoading = false;
+        document.getElementById('sbLoadingMore').style.display = 'none';
     }
+}
+
+function maybeLoadMore() {
+    if (!sbHasMore || sbLoading) return;
+    const s = document.getElementById('sbSentinel');
+    if (s && s.getBoundingClientRect().top < window.innerHeight + 200) loadSongbook(false);
 }
 
 // ===== 태그 필터 칩 렌더 =====
@@ -704,7 +732,7 @@ function renderTagFilters() {
     allChip.type = 'button';
     allChip.className = 'sb-tag-chip' + (activeTag === null ? ' active' : '');
     allChip.textContent = '전체';
-    allChip.addEventListener('click', () => { activeTag = null; renderTagFilters(); renderSongs(); });
+    allChip.addEventListener('click', () => { activeTag = null; renderTagFilters(); loadSongbook(true); });
     wrap.appendChild(allChip);
 
     tags.forEach(tag => {
@@ -724,95 +752,70 @@ function renderTagFilters() {
         chip.addEventListener('click', () => {
             activeTag = (activeTag === name) ? null : name;
             renderTagFilters();
-            renderSongs();
+            loadSongbook(true);
         });
         wrap.appendChild(chip);
     });
 }
 
 // ===== 곡 카드 렌더 =====
-function getFilteredSongs() {
-    const q = searchQuery.toLowerCase();
-    return allSongs.filter(s => {
-        const title = (s.title || '').toLowerCase();
-        const artist = (s.artist_name || '').toLowerCase();
-        const matchesQuery = !q || title.includes(q) || artist.includes(q);
-        const matchesTag = !activeTag || (Array.isArray(s.tags) && s.tags.includes(activeTag));
-        return matchesQuery && matchesTag;
-    });
-}
-
 function difficultyClass(d) {
     if (d <= 3) return 'lv-easy';
     if (d <= 7) return 'lv-mid';
     return 'lv-hard';
 }
 
-function renderSongs() {
+function renderSongCard(s) {
+    const card = document.createElement('div');
+    card.className = 'sb-song-card' + (canRequest ? ' requestable' : '');
+    if (s.memo) card.title = s.memo;
+
+    const cover = s.cover_image_url
+        ? `<img src="${escapeHtml(s.cover_image_url)}" class="sb-song-cover" alt="" loading="lazy" onerror="this.outerHTML=coverFallbackHtml()">`
+        : coverFallbackHtml();
+
+    const badges = [];
+    const lv = Number(s.difficulty);
+    if (s.difficulty !== null && s.difficulty !== undefined && lv) {
+        badges.push(`<span class="sb-badge ${difficultyClass(lv)}">Lv.${lv}</span>`);
+    }
+    if (s.has_lyrics) {
+        badges.push(`<span class="sb-badge lyrics" title="${escapeHtml(s.lyrics_title || '가사 연결됨')}">가사</span>`);
+    }
+    if (s.mr_youtube_video_id) {
+        badges.push(`<a class="sb-mr-link" href="https://www.youtube.com/watch?v=${encodeURIComponent(s.mr_youtube_video_id)}" target="_blank" rel="noopener noreferrer" title="MR 영상 보기" onclick="event.stopPropagation()"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 4-8 4z"/></svg></a>`);
+    }
+    if (Array.isArray(s.tags)) {
+        s.tags.slice(0, 3).forEach(t => {
+            badges.push(`<span class="sb-badge tag">${escapeHtml(t)}</span>`);
+        });
+    }
+
+    card.innerHTML = `
+        ${cover}
+        <div class="sb-song-info">
+            <div class="sb-song-title">${escapeHtml(s.title)}</div>
+            <div class="sb-song-artist">${escapeHtml(s.artist_name || '알 수 없음')}</div>
+            <div class="sb-song-meta">${badges.join('')}</div>
+        </div>
+        ${canRequest ? '<button type="button" class="sb-request-btn">신청</button>' : ''}
+    `;
+
+    if (canRequest) {
+        card.addEventListener('click', () => openRequestModal(s));
+    }
+    return card;
+}
+
+function renderSongsAppend(items, reset) {
     const grid = document.getElementById('sbSongGrid');
-    const stats = document.getElementById('sbStats');
-    const filtered = getFilteredSongs();
-
-    if (filtered.length === allSongs.length) {
-        stats.textContent = `총 ${allSongs.length}곡`;
-    } else {
-        stats.textContent = `${filtered.length} / ${allSongs.length}곡`;
-    }
-
-    grid.innerHTML = '';
-
-    if (allSongs.length === 0) {
-        grid.innerHTML = `<div class="sb-empty">아직 등록된 노래가 없습니다.</div>`;
+    if (reset && items.length === 0) {
+        grid.innerHTML = (searchQuery || activeTag)
+            ? `<div class="sb-empty">검색 결과가 없습니다.</div>`
+            : `<div class="sb-empty">아직 등록된 노래가 없습니다.</div>`;
         return;
     }
-    if (filtered.length === 0) {
-        grid.innerHTML = `<div class="sb-empty">검색 결과가 없습니다.</div>`;
-        return;
-    }
-
-    filtered.forEach(s => {
-        const card = document.createElement('div');
-        card.className = 'sb-song-card' + (canRequest ? ' requestable' : '');
-        if (s.memo) card.title = s.memo;
-
-        // 커버 (없으면 음표 placeholder)
-        const cover = s.cover_image_url
-            ? `<img src="${escapeHtml(s.cover_image_url)}" class="sb-song-cover" alt="" loading="lazy" onerror="this.outerHTML=coverFallbackHtml()">`
-            : coverFallbackHtml();
-
-        // 메타 배지: 난이도(설정된 경우만) / 가사 / MR / 태그
-        const badges = [];
-        const lv = Number(s.difficulty);
-        if (s.difficulty !== null && s.difficulty !== undefined && lv) {
-            badges.push(`<span class="sb-badge ${difficultyClass(lv)}">Lv.${lv}</span>`);
-        }
-        if (s.has_lyrics) {
-            badges.push(`<span class="sb-badge lyrics" title="${escapeHtml(s.lyrics_title || '가사 연결됨')}">가사</span>`);
-        }
-        if (s.mr_youtube_video_id) {
-            badges.push(`<a class="sb-mr-link" href="https://www.youtube.com/watch?v=${encodeURIComponent(s.mr_youtube_video_id)}" target="_blank" rel="noopener noreferrer" title="MR 영상 보기" onclick="event.stopPropagation()"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 4-8 4z"/></svg></a>`);
-        }
-        if (Array.isArray(s.tags)) {
-            s.tags.slice(0, 3).forEach(t => {
-                badges.push(`<span class="sb-badge tag">${escapeHtml(t)}</span>`);
-            });
-        }
-
-        card.innerHTML = `
-            ${cover}
-            <div class="sb-song-info">
-                <div class="sb-song-title">${escapeHtml(s.title)}</div>
-                <div class="sb-song-artist">${escapeHtml(s.artist_name || '알 수 없음')}</div>
-                <div class="sb-song-meta">${badges.join('')}</div>
-            </div>
-            ${canRequest ? '<button type="button" class="sb-request-btn">신청</button>' : ''}
-        `;
-
-        if (canRequest) {
-            card.addEventListener('click', () => openRequestModal(s));
-        }
-        grid.appendChild(card);
-    });
+    items.forEach(s => grid.appendChild(renderSongCard(s)));
 }
 
 function coverFallbackHtml() {
@@ -950,9 +953,14 @@ document.getElementById('sbSearchInput').addEventListener('input', (e) => {
     clearTimeout(searchDebounce);
     searchDebounce = setTimeout(() => {
         searchQuery = e.target.value.trim();
-        renderSongs();
-    }, 200);
+        loadSongbook(true);
+    }, 300);
 });
+
+// 무한 스크롤: 센티넬이 보이면 다음 페이지 로드
+new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) maybeLoadMore();
+}, { rootMargin: '200px' }).observe(document.getElementById('sbSentinel'));
 
 // 모달 바깥 mousedown 시 닫기
 document.getElementById('sbRequestModal').addEventListener('mousedown', (e) => {
@@ -971,6 +979,7 @@ document.getElementById('sbRequesterName').addEventListener('keydown', (e) => {
 });
 
 // 초기 로드
-loadSongbook();
+renderTagFilters();
+loadSongbook(true);
 </script>
 {% endblock %}

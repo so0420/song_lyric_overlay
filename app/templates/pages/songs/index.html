@@ -268,14 +268,45 @@
     background: #f8fafc;
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    cursor: pointer;
     transition: all 0.2s;
 }
 
 .lyrics-item:hover {
     border-color: var(--accent);
-    background: var(--accent-light);
 }
+
+.lyrics-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.li-action {
+    border: none;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.li-book {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.li-book:hover { background: #fde68a; }
+
+.li-play {
+    background: var(--accent);
+    color: #fff;
+}
+
+.li-play:hover { filter: brightness(1.05); }
 
 .lyrics-item-info {
     flex: 1;
@@ -463,6 +494,79 @@ let hasMore = false;
 let currentSong = null;
 let searchDebounce = null;
 
+const IS_ADMIN = {{ is_admin | tojson }};
+const IS_LOGGED_IN = {{ (user is not none) | tojson }};
+
+function visibilityBadge(v) {
+    if (v === 'private') return '<span style="padding:2px 8px; border-radius:999px; background:#e2e8f0; color:#475569; font-size:0.7rem; font-weight:500;">비공개</span>';
+    if (v === 'whitelist') return '<span style="padding:2px 8px; border-radius:999px; background:#ffedd5; color:#9a3412; font-size:0.7rem; font-weight:500;">화이트리스트</span>';
+    return '';  // public 은 배지 표시 안 함
+}
+
+// 가사 항목 1개 렌더 (노래책에 추가 / 재생목록에 추가 버튼)
+function renderLyricsItem(l) {
+    const badges = `${visibilityBadge(l.visibility)}${l.is_verified ? '<span class="lyrics-item-badge verified">검증됨</span>' : ''}`;
+    const adminBtn = IS_ADMIN
+        ? `<button type="button" onclick="openVisibilityModal(${l.id})" title="공개 범위 편집" style="background:none; border:1px solid #cbd5e1; cursor:pointer; padding:4px 8px; border-radius:6px; font-size:0.75rem; color:#475569;">공개 범위</button>`
+        : '';
+    const bookBtn = IS_LOGGED_IN
+        ? `<button type="button" class="li-action li-book" onclick="addToSongbook(${l.id})">노래책에 추가</button>`
+        : '';
+    return `
+        <div class="lyrics-item">
+            <div class="lyrics-item-info">
+                <div class="lyrics-item-title">${escapeHtml(l.title || '제목 없음')}</div>
+                <div class="lyrics-item-meta">by ${escapeHtml(l.owner_name || '익명')} · ${new Date(l.created_at).toLocaleDateString()}</div>
+            </div>
+            <div class="lyrics-item-actions">
+                ${badges}
+                ${adminBtn}
+                ${bookBtn}
+                <button type="button" class="li-action li-play" onclick="selectLyrics(${l.id})">재생목록에 추가</button>
+            </div>
+        </div>`;
+}
+
+// 노래책에 추가 (현재 모달의 곡 + 선택 가사) — 승인된 스트리머만 성공
+async function addToSongbook(lyricsId) {
+    if (!currentSong) return;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    try {
+        const res = await fetch('/api/v1/songbook/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ song_external_id: currentSong.song_external_id, lyrics_id: lyricsId }),
+        });
+        if (res.ok) {
+            showToast('노래책에 추가했습니다', 'success');
+        } else if (res.status === 401) {
+            showToast('로그인이 필요합니다', 'error');
+        } else if (res.status === 403) {
+            showToast('노래책 사용 승인이 필요합니다', 'error');
+        } else {
+            const d = await res.json().catch(() => ({}));
+            showToast(typeof d.detail === 'string' ? d.detail : '노래책 추가에 실패했습니다', 'error');
+        }
+    } catch (e) {
+        showToast('오류가 발생했습니다', 'error');
+    }
+}
+
+function showToast(msg, type) {
+    let el = document.getElementById('_toast');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = '_toast';
+        el.style.cssText = 'position:fixed; left:50%; bottom:32px; transform:translateX(-50%); z-index:9999; padding:10px 18px; border-radius:10px; color:#fff; font-size:0.88rem; font-weight:600; box-shadow:0 4px 14px rgba(0,0,0,0.2); opacity:0; transition:opacity 0.2s; pointer-events:none;';
+        document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.background = type === 'error' ? '#dc2626' : (type === 'success' ? '#16a34a' : '#334155');
+    el.style.opacity = '1';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.style.opacity = '0'; }, 2200);
+}
+
 function escapeHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');
@@ -573,30 +677,7 @@ async function openLyricsModal(songDataEncoded) {
             return;
         }
 
-        const visibilityBadge = (v) => {
-            if (v === 'private') return '<span style="padding:2px 8px; border-radius:999px; background:#e2e8f0; color:#475569; font-size:0.7rem; font-weight:500;">비공개</span>';
-            if (v === 'whitelist') return '<span style="padding:2px 8px; border-radius:999px; background:#ffedd5; color:#9a3412; font-size:0.7rem; font-weight:500;">화이트리스트</span>';
-            return '';  // public 은 배지 표시 안 함 (기본값이라 노이즈만 됨)
-        };
-        {% if is_admin %}
-        const adminEditBtn = (id) => `<button type="button" onclick="event.stopPropagation(); openVisibilityModal(${id})" title="공개 범위 편집" style="background:none; border:1px solid #cbd5e1; cursor:pointer; padding:4px 8px; border-radius:6px; font-size:0.75rem; color:#475569;">공개 범위</button>`;
-        {% else %}
-        const adminEditBtn = () => '';
-        {% endif %}
-
-        lyricsList.innerHTML = lyrics.map(l => `
-            <div class="lyrics-item" onclick="selectLyrics(${l.id})">
-                <div class="lyrics-item-info">
-                    <div class="lyrics-item-title">${escapeHtml(l.title || '제목 없음')}</div>
-                    <div class="lyrics-item-meta">by ${escapeHtml(l.owner_name || '익명')} · ${new Date(l.created_at).toLocaleDateString()}</div>
-                </div>
-                <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-                    ${visibilityBadge(l.visibility)}
-                    ${l.is_verified ? '<span class="lyrics-item-badge verified">검증됨</span>' : ''}
-                    ${adminEditBtn(l.id)}
-                </div>
-            </div>
-        `).join('');
+        lyricsList.innerHTML = lyrics.map(renderLyricsItem).join('');
     } catch (e) {
         console.error(e);
         lyricsList.innerHTML = `<div class="lyrics-loading">가사를 불러오지 못했습니다.</div>`;
@@ -854,25 +935,7 @@ function reloadLyrics(lyrics) {
         lyricsList.innerHTML = `<div class="lyrics-loading">등록된 가사가 없습니다.</div>`;
         return;
     }
-    const visibilityBadge = (v) => {
-        if (v === 'private') return '<span style="padding:2px 8px; border-radius:999px; background:#e2e8f0; color:#475569; font-size:0.7rem; font-weight:500;">비공개</span>';
-        if (v === 'whitelist') return '<span style="padding:2px 8px; border-radius:999px; background:#ffedd5; color:#9a3412; font-size:0.7rem; font-weight:500;">화이트리스트</span>';
-        return '';
-    };
-    const adminEditBtn = (id) => `<button type="button" onclick="event.stopPropagation(); openVisibilityModal(${id})" title="공개 범위 편집" style="background:none; border:1px solid #cbd5e1; cursor:pointer; padding:4px 8px; border-radius:6px; font-size:0.75rem; color:#475569;">공개 범위</button>`;
-    lyricsList.innerHTML = lyrics.map(l => `
-        <div class="lyrics-item" onclick="selectLyrics(${l.id})">
-            <div class="lyrics-item-info">
-                <div class="lyrics-item-title">${escapeHtml(l.title || '제목 없음')}</div>
-                <div class="lyrics-item-meta">by ${escapeHtml(l.owner_name || '익명')} · ${new Date(l.created_at).toLocaleDateString()}</div>
-            </div>
-            <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-                ${visibilityBadge(l.visibility)}
-                ${l.is_verified ? '<span class="lyrics-item-badge verified">검증됨</span>' : ''}
-                ${adminEditBtn(l.id)}
-            </div>
-        </div>
-    `).join('');
+    lyricsList.innerHTML = lyrics.map(renderLyricsItem).join('');
 }
 
 document.getElementById('visibility-modal').addEventListener('mousedown', (e) => {

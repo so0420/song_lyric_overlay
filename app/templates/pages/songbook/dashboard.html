@@ -352,6 +352,14 @@
     border-color: var(--accent);
     color: white;
 }
+.sb-filter-none {
+    align-self: center;
+    padding: 6px 4px;
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    font-style: italic;
+    opacity: 0.7;
+}
 
 .chip-lyrics { background: var(--accent-light); color: var(--accent); cursor: help; }
 .chip-mr { background: #fdf2f8; color: #be185d; }
@@ -1332,18 +1340,23 @@ function renderSongbookTagFilters() {
     wrap.appendChild(chip('가사 없음', sbHasLyrics === false, () => {
         sbHasLyrics = (sbHasLyrics === false) ? null : false; renderSongbookTagFilters(); loadSongbook(true);
     }));
-    // 태그 필터 (내 streamers.tags 가 있을 때)
+    // 태그 필터 (내 streamers.tags 기반)
     const tags = (profile && Array.isArray(profile.tags)) ? profile.tags : [];
+    const sep = document.createElement('span');
+    sep.style.cssText = 'width:1px;background:var(--border-color);align-self:stretch;margin:0 2px;';
+    wrap.appendChild(sep);
     if (tags.length) {
-        const sep = document.createElement('span');
-        sep.style.cssText = 'width:1px;background:var(--border-color);align-self:stretch;margin:0 2px;';
-        wrap.appendChild(sep);
         tags.forEach(t => {
             if (!t || !t.name) return;
             wrap.appendChild(chip(t.name, sbTag === t.name, () => {
                 sbTag = (sbTag === t.name) ? null : t.name; renderSongbookTagFilters(); loadSongbook(true);
             }, t.color));
         });
+    } else {
+        const none = document.createElement('span');
+        none.className = 'sb-filter-none';
+        none.textContent = '(태그 없음)';
+        wrap.appendChild(none);
     }
 }
 

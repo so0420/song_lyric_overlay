@@ -163,6 +163,15 @@
     color: white;
 }
 
+.sb-filter-none {
+    align-self: center;
+    padding: 6px 6px;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    font-style: italic;
+    opacity: 0.7;
+}
+
 .sb-stats {
     color: var(--text-sub);
     font-size: 0.85rem;
@@ -747,10 +756,10 @@ function renderTagFilters() {
 
     // 태그 필터 (스트리머가 태그를 만든 경우)
     const tags = Array.isArray(STREAMER.tags) ? STREAMER.tags : [];
+    const sep = document.createElement('span');
+    sep.style.cssText = 'width:1px;background:#e2e8f0;align-self:stretch;margin:2px;';
+    wrap.appendChild(sep);
     if (tags.length) {
-        const sep = document.createElement('span');
-        sep.style.cssText = 'width:1px;background:#e2e8f0;align-self:stretch;margin:2px;';
-        wrap.appendChild(sep);
         tags.forEach(tag => {
             const name = tag && tag.name ? tag.name : '';
             if (!name) return;
@@ -758,6 +767,11 @@ function renderTagFilters() {
                 activeTag = (activeTag === name) ? null : name; renderTagFilters(); loadSongbook(true);
             }, tag.color));
         });
+    } else {
+        const none = document.createElement('span');
+        none.className = 'sb-filter-none';
+        none.textContent = '(태그 없음)';
+        wrap.appendChild(none);
     }
 }
 

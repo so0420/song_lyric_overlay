@@ -196,8 +196,10 @@ def handler_mocks():
          patch.object(mod, "meilisearch_handler") as meili, \
          patch.object(mod, "db_handler") as db, \
          patch.object(mod, "broadcast_new_request", new=AsyncMock()) as push:
-        meili.search = AsyncMock(return_value={"hits": [{"id": 42}]})
-        db.fetch_all = AsyncMock(return_value=[{"song_id": 42, "title": "사랑노래", "artist_name": "가수"}])
+        # Meilisearch 문서 id 는 song_external_id(문자열)
+        meili.search = AsyncMock(return_value={"hits": [{"id": "custom_42"}]})
+        db.fetch_all = AsyncMock(return_value=[
+            {"song_external_id": "custom_42", "song_id": 42, "title": "사랑노래", "artist_name": "가수"}])
         yield SimpleNamespace(streamer_repo=streamer_repo, request_repo=request_repo,
                               meili=meili, db=db, push=push, mod=mod)
 

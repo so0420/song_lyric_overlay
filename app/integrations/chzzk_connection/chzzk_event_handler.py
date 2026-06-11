@@ -117,7 +117,10 @@ class ChzzkEventHandler:
             )
 
     async def _match_songbook_song(self, streamer_internal_id: int, query: str):
-        """검색어로 노래책 수록곡 중 첫 매칭 곡을 찾는다 (없으면 None)"""
+        """검색어로 노래책 수록곡 중 첫 매칭 곡을 찾는다 (없으면 None)
+
+        Meilisearch 문서의 id 는 song_external_id(문자열) 이므로 그 값으로 매칭한다.
+        """
         try:
             result = await meilisearch_handler.search(
                 query, attributes_to_search_on=["title", "singer"], limit=10
@@ -125,25 +128,25 @@ class ChzzkEventHandler:
         except Exception:
             return None
         hits = result.get("hits", []) if isinstance(result, dict) else []
-        song_ids = [int(h["id"]) for h in hits if "id" in h]
-        if not song_ids:
+        ext_ids = [str(h["id"]) for h in hits if h.get("id") is not None]
+        if not ext_ids:
             return None
 
-        placeholders = ", ".join(["%s"] * len(song_ids))
+        placeholders = ", ".join(["%s"] * len(ext_ids))
         sql = f"""
-            SELECT sb.song_id, s.title, a.name AS artist_name
+            SELECT s.song_external_id, sb.song_id, s.title, a.name AS artist_name
             FROM streamer_songbooks sb
             JOIN songs s ON sb.song_id = s.id
             LEFT JOIN artists a ON s.artist_id = a.id
-            WHERE sb.streamer_id = %s AND sb.song_id IN ({placeholders})
+            WHERE sb.streamer_id = %s AND s.song_external_id IN ({placeholders})
         """
-        params = [streamer_internal_id] + song_ids
+        params = [streamer_internal_id] + ext_ids
         matched = await db_handler.fetch_all(sql, tuple(params))
-        matched_map = {int(m["song_id"]): m for m in matched}
+        matched_map = {m["song_external_id"]: m for m in matched}
         for h in hits:  # Meilisearch 관련도 순서 유지
-            sid = int(h["id"])
-            if sid in matched_map:
-                return matched_map[sid]
+            ext = str(h.get("id"))
+            if ext in matched_map:
+                return matched_map[ext]
         return None
 
 

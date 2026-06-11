@@ -211,18 +211,37 @@ app.include_router(api_router, prefix="/api")
 app.include_router(web_router)
 
 def _run_server(host, port):
-    """uvicorn 실행 + 종료(Ctrl+C) 시 발생하는 무해한 노이즈를 정리한다."""
+    """uvicorn 을 직접 구동하되, 종료 시그널(SIGINT/SIGTERM)을 graceful 종료로
+    변환한다.
+
+    uvicorn.run(app) 의 기본 시그널 처리는 Ctrl+C 시 이벤트 루프를 중단시켜
+    'Event loop stopped before Future completed' + lifespan CancelledError
+    traceback 노이즈를 낸다. POSIX 에서는 기본 핸들러를 끄고 should_exit 만
+    세워 serve() 가 정상적으로 빠져나가게 한다(lifespan 종료 코드는 그대로 실행).
+    """
+    import signal
     import uvicorn
+
+    config = uvicorn.Config(app, host=host, port=port)
+    server = uvicorn.Server(config)
+    is_posix = (os.name == "posix")
+    if is_posix:
+        # uvicorn 의 기본(루프 중단형) 시그널 핸들러 비활성화
+        server.install_signal_handlers = lambda: None
+
+    async def _serve():
+        if is_posix:
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                loop.add_signal_handler(sig, lambda: setattr(server, "should_exit", True))
+        await server.serve()
+
     try:
-        uvicorn.run(app, host=host, port=port)
+        asyncio.run(_serve())
     except (KeyboardInterrupt, SystemExit):
+        # Windows 등 기본 시그널 경로로 들어온 종료 — 정상 종료로 간주
         pass
-    except RuntimeError as e:
-        # uvicorn 종료 중 이벤트 루프 정리 과정에서 나는 알려진 무해한 예외
-        if "Event loop stopped before Future completed" in str(e):
-            logger.info("서버가 종료되었습니다.")
-        else:
-            raise
+    logger.info("서버가 종료되었습니다.")
 
 
 if __name__ == "__main__":

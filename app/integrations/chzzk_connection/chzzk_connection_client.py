@@ -7,12 +7,18 @@ CHZZK_RELAY_TOKEN 이 설정돼 있어야 동작한다.
 주의: relay 서버는 구버전 Socket.IO 프로토콜이므로 python-socketio==4.6.1 이 필요하다.
 """
 import asyncio
+import logging
 import socketio
 
 from app.utils.config import settings
 from app.utils.log import logger
 from app.integrations.chzzk_connection.chzzk_event_handler import chzzk_event_handler
 from app.database.chzzk_repository import ChzzkChannelRepository
+
+# engineio/socketio 의 저수준 INFO 노이즈 억제
+# (종료 시 나는 'packet queue is empty, aborting' 등 — 진짜 오류는 ERROR 로 유지)
+for _noisy in ("engineio.client", "engineio", "socketio.client", "socketio"):
+    logging.getLogger(_noisy).setLevel(logging.ERROR)
 
 # 구독 목록 갱신 주기(초) — 새로 연동/해제한 스트리머 반영
 _REFRESH_INTERVAL = 30

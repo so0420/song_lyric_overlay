@@ -195,13 +195,15 @@ def handler_mocks():
          patch.object(mod, "SongRequestRepository", return_value=request_repo), \
          patch.object(mod, "meilisearch_handler") as meili, \
          patch.object(mod, "db_handler") as db, \
+         patch.object(mod, "search_itunes", new=AsyncMock(return_value=None)) as itunes, \
          patch.object(mod, "broadcast_new_request", new=AsyncMock()) as push:
         # Meilisearch 문서 id 는 song_external_id(문자열)
         meili.search = AsyncMock(return_value={"hits": [{"id": "custom_42"}]})
         db.fetch_all = AsyncMock(return_value=[
-            {"song_external_id": "custom_42", "song_id": 42, "title": "사랑노래", "artist_name": "가수"}])
+            {"song_external_id": "custom_42", "song_id": 42, "title": "사랑노래",
+             "artist_name": "가수", "lyrics_title": None}])
         yield SimpleNamespace(streamer_repo=streamer_repo, request_repo=request_repo,
-                              meili=meili, db=db, push=push, mod=mod)
+                              meili=meili, db=db, itunes=itunes, push=push, mod=mod)
 
 
 class TestEventHandler:
@@ -242,9 +244,49 @@ class TestEventHandler:
         m = handler_mocks
         m.streamer_repo.get_by_chzzk_channel_id.return_value = make_streamer()
         m.meili.search.return_value = {"hits": []}
+        m.db.fetch_all.return_value = []  # 노래책 후보 없음
         await m.mod.chzzk_event_handler.handle_message(chat_msg(content="!신청 없는노래"))
         kwargs = m.request_repo.add_request.await_args.kwargs
         assert kwargs.get("song_id") is None and kwargs["title"] == "없는노래"
+
+    @pytest.mark.asyncio
+    async def test_match_by_lyrics_title(self, handler_mocks):
+        """곡 제목은 영어인데 가사 제목이 한글이면, 한글 신청도 노래책 매칭"""
+        m = handler_mocks
+        m.streamer_repo.get_by_chzzk_channel_id.return_value = make_streamer()
+        m.meili.search.return_value = {"hits": []}  # Meilisearch(제목/가수)로는 못 찾음
+        m.db.fetch_all.return_value = [{
+            "song_external_id": "custom_it_1", "song_id": 7,
+            "title": "antifreeze", "artist_name": "엘르가든", "lyrics_title": "안티프리즈",
+        }]
+        await m.mod.chzzk_event_handler.handle_message(chat_msg(content="!신청 안티프리즈"))
+        kwargs = m.request_repo.add_request.await_args.kwargs
+        assert kwargs.get("song_id") == 7  # 가사제목으로 노래책 매칭 성공
+        m.push.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_itunes_fallback_when_not_in_songbook(self, handler_mocks):
+        """노래책에 없으면 iTunes 검색으로 정확한 곡명 보강 (관련성 통과 시)"""
+        m = handler_mocks
+        m.streamer_repo.get_by_chzzk_channel_id.return_value = make_streamer()
+        m.meili.search.return_value = {"hits": []}
+        m.db.fetch_all.return_value = []  # 노래책 매칭 없음
+        m.itunes.return_value = [{"track_name": "Antifreeze", "artist_name": "Ellegarden"}]
+        await m.mod.chzzk_event_handler.handle_message(chat_msg(content="!신청 antifreeze"))
+        kwargs = m.request_repo.add_request.await_args.kwargs
+        assert kwargs.get("song_id") is None and kwargs["title"] == "Antifreeze"
+
+    @pytest.mark.asyncio
+    async def test_itunes_irrelevant_falls_to_temp(self, handler_mocks):
+        """iTunes 결과가 신청어와 전혀 다르면 무시하고 임시(입력값) 신청"""
+        m = handler_mocks
+        m.streamer_repo.get_by_chzzk_channel_id.return_value = make_streamer()
+        m.meili.search.return_value = {"hits": []}
+        m.db.fetch_all.return_value = []
+        m.itunes.return_value = [{"track_name": "완전히 다른 곡", "artist_name": "다른 가수"}]
+        await m.mod.chzzk_event_handler.handle_message(chat_msg(content="!신청 안티프리즈"))
+        kwargs = m.request_repo.add_request.await_args.kwargs
+        assert kwargs.get("song_id") is None and kwargs["title"] == "안티프리즈"
 
     @pytest.mark.asyncio
     async def test_donation_insufficient_noop(self, handler_mocks):

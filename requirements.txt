@@ -1,0 +1,46 @@
+# Song Lyric Overlay — Python 의존성
+# 설치: pip install -r requirements.txt  (Python 3.11+ 권장, 개발/검증 환경은 3.13)
+
+# --- 웹 프레임워크 / ASGI ---
+fastapi==0.136.3
+starlette==0.50.0
+uvicorn==0.49.0
+python-multipart==0.0.20      # 폼/파일 업로드 파싱
+itsdangerous==2.2.0           # 세션 미들웨어 서명
+websockets==14.2              # 오버레이 WebSocket
+
+# --- 데이터 검증 / 설정 ---
+pydantic==2.13.4
+pydantic-settings==2.14.1
+email-validator==2.3.0        # pydantic EmailStr 검증
+
+# --- 템플릿 ---
+Jinja2==3.1.5
+MarkupSafe==3.0.3
+
+# --- 데이터베이스 / 캐시 / 검색 ---
+aiomysql==0.2.0               # MariaDB 비동기 드라이버
+PyMySQL==1.1.2                # aiomysql 의존 + migrate.py 동기 적용용
+redis==7.0.1                  # WS 토큰 / OTP / 레이트리밋 / 캐시
+meilisearch-python-sdk==7.2.1 # 가사 전문 검색
+
+# --- 인증 / 보안 ---
+Authlib==1.7.2               # Google/Naver OAuth
+bcrypt==5.0.0                # 비밀번호 해시
+slowapi==0.1.9               # 레이트리밋
+
+# --- 치지직 연동 ---
+# jamkubot 릴레이(relay.jamkubot.com)는 구버전 Socket.IO 프로토콜이라 4.6.1 고정 필수
+python-socketio==4.6.1
+python-engineio==3.14.2
+
+# --- HTTP 클라이언트 ---
+httpx==0.28.1                # 비동기 HTTP (OAuth, 외부 API)
+curl_cffi==0.15.0            # iTunes 검색 등 일부 외부 요청
+
+# --- 환경변수 ---
+python-dotenv==1.2.2
+
+# --- 테스트 (개발용) ---
+pytest==8.3.4
+pytest-asyncio==0.25.0

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>텍스트 정리기</title>
+    <style>
+        :root {
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --text-main: #1e293b;
+            --text-sub: #475569;
+            --text-dim: #94a3b8;
+            --border-color: #e2e8f0;
+            --bg-card: #ffffff;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --premium-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8fafc;
+            color: var(--text-main);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            padding: 24px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+        }
+
+        .editor-layout {
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        @media (max-width: 768px) {
+            .editor-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr auto;
+            }
+        }
+
+        /* Left: textarea */
+        .text-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: var(--premium-shadow);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .panel-header {
+            padding: 12px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fbfcfe;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .panel-header h2 {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .text-panel textarea {
+            flex: 1;
+            width: 100%;
+            padding: 16px;
+            background: white;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-main);
+            font-family: inherit;
+            resize: none;
+            line-height: 1.7;
+            outline: none;
+        }
+
+        /* Right: options */
+        .options-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: var(--premium-shadow);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow-y: auto;
+        }
+
+        .options-panel h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .section-divider {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 2px 0;
+        }
+
+        .option-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .option-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            cursor: pointer;
+            padding: 6px 0;
+        }
+
+        .option-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        /* Inline input row */
+        .inline-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .small-input {
+            width: 44px;
+            padding: 2px 4px;
+            border: 1.5px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            text-align: center;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .small-input:focus {
+            border-color: var(--accent);
+            outline: none;
+        }
+
+        /* Find & Replace */
+        .find-replace-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .find-replace-group input[type="text"] {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            font-family: inherit;
+        }
+
+        .find-replace-group input[type="text"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            outline: none;
+        }
+
+        .find-replace-group input[type="text"]::placeholder {
+            color: var(--text-dim);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid transparent;
+            font-size: 0.9rem;
+            gap: 8px;
+            user-select: none;
+        }
+
+        .btn:active { transform: scale(0.96); }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background-color: white;
+            border-color: var(--border-color);
+            color: var(--text-main);
+        }
+
+        .btn-outline:hover {
+            background-color: #f8fafc;
+            border-color: var(--text-dim);
+        }
+
+        .btn-sm {
+            padding: 7px 14px;
+            font-size: 0.82rem;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-row .btn {
+            flex: 1;
+        }
+
+        /* Stats */
+        .stats {
+            display: flex;
+            gap: 12px;
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            align-items: center;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #1e293b;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            z-index: 9999;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>텍스트 정리기</h1>
+        </div>
+
+        <div class="editor-layout">
+            <!-- 왼쪽: 텍스트 영역 -->
+            <div class="text-panel">
+                <div class="panel-header">
+                    <h2>텍스트</h2>
+                    <div class="stats">
+                        <span class="stat-item">줄 <span class="stat-value" id="stat-lines">0</span></span>
+                        <span class="stat-item">글자 <span class="stat-value" id="stat-chars">0</span></span>
+                        <span class="stat-item" style="color: var(--text-dim);">공백제외 <span class="stat-value" style="color: var(--text-sub);" id="stat-chars-no-space">0</span></span>
+                        <button class="btn btn-outline" style="padding: 4px 12px; font-size: 0.8rem;" onclick="copyText()">복사</button>
+                    </div>
+                </div>
+                <textarea id="input-text" oninput="updateStats()"></textarea>
+            </div>
+
+            <!-- 오른쪽: 옵션 및 버튼 -->
+            <div class="options-panel">
+                <h3>정리 옵션</h3>
+                <div class="option-group">
+                    <label><input type="checkbox" id="opt-invisible" checked> 보이지 않는 문자 제거</label>
+                    <label><input type="checkbox" id="opt-trim" checked> 각 줄 앞뒤 공백 제거</label>
+                    <label><input type="checkbox" id="opt-collapse" checked> 연속 빈 줄 하나로 합치기</label>
+                    <label><input type="checkbox" id="opt-multi-space" checked> 연속 공백 하나로</label>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="processText()">정리하기</button>
+                    <button class="btn btn-outline" onclick="undoText()">되돌리기</button>
+                </div>
+
+                <hr class="section-divider">
+
+                <h3>문단 나누기</h3>
+                <div class="inline-row">
+                    <input type="number" id="opt-linebreak-n" value="3" min="1" max="99" class="small-input">
+                    <span>줄마다 빈 줄 삽입</span>
+                </div>
+                <button class="btn btn-outline btn-sm" onclick="insertLineBreaks()">문단 나누기</button>
+
+                <hr class="section-divider">
+
+                <h3>찾기 & 바꾸기</h3>
+                <div class="find-replace-group">
+                    <input type="text" id="find-text" placeholder="찾을 텍스트">
+                    <input type="text" id="replace-text" placeholder="바꿀 텍스트">
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-outline btn-sm" onclick="findNext()">찾기</button>
+                    <button class="btn btn-outline btn-sm" onclick="findAndReplace()">모두 바꾸기</button>
+                </div>
+
+                <hr class="section-divider">
+
+                <h3>변환</h3>
+                <button class="btn btn-outline btn-sm" onclick="convertFullToHalf()">전각 → 반각 변환</button>
+
+                <div style="margin-top: auto;">
+                    <button class="btn btn-outline btn-sm" style="width: 100;" onclick="clearInput()">전체 지우기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+    const undoStack = [];
+    const MAX_UNDO = 30;
+
+    function saveUndo() {
+        const text = document.getElementById('input-text').value;
+        if (undoStack.length > 0 && undoStack[undoStack.length - 1] === text) return;
+        undoStack.push(text);
+        if (undoStack.length > MAX_UNDO) undoStack.shift();
+    }
+
+    function undoText() {
+        if (undoStack.length === 0) return showToast('되돌릴 내용이 없습니다.');
+        document.getElementById('input-text').value = undoStack.pop();
+        updateStats();
+        showToast('되돌렸습니다.');
+    }
+
+    function updateStats() {
+        const text = document.getElementById('input-text').value;
+        const lines = text ? text.split('\n').length : 0;
+        const noSpace = text.replace(/\s/g, '').length;
+        document.getElementById('stat-lines').textContent = lines;
+        document.getElementById('stat-chars').textContent = text.length;
+        document.getElementById('stat-chars-no-space').textContent = noSpace;
+    }
+
+    function processText() {
+        const textarea = document.getElementById('input-text');
+        const raw = textarea.value;
+        if (!raw.trim()) return showToast('정리할 텍스트가 없습니다.');
+
+        saveUndo();
+        let t = raw;
+
+        if (document.getElementById('opt-invisible').checked) {
+            t = t.replace(/[\u200B\u200C\u200D\uFEFF\u00AD\u2060\u180E]/g, '');
+        }
+
+        if (document.getElementById('opt-trim').checked) {
+            t = t.split('\n').map(l => l.trim()).join('\n');
+        }
+
+        if (document.getElementById('opt-multi-space').checked) {
+            t = t.split('\n').map(l => l.replace(/ {2,}/g, ' ')).join('\n');
+        }
+
+        if (document.getElementById('opt-collapse').checked) {
+            t = t.replace(/\n{3,}/g, '\n\n');
+        }
+
+        t = t.trim();
+
+        textarea.value = t;
+        updateStats();
+        showToast('텍스트가 정리되었습니다.');
+    }
+
+    function insertLineBreaks() {
+        const textarea = document.getElementById('input-text');
+        const raw = textarea.value;
+        if (!raw.trim()) return showToast('텍스트가 없습니다.');
+
+        saveUndo();
+        const n = parseInt(document.getElementById('opt-linebreak-n').value) || 3;
+        const lines = raw.split('\n').filter(l => l.trim());
+        const grouped = [];
+        for (let i = 0; i < lines.length; i++) {
+            grouped.push(lines[i]);
+            if ((i + 1) % n === 0 && i + 1 < lines.length) {
+                grouped.push('');
+            }
+        }
+
+        textarea.value = grouped.join('\n');
+        updateStats();
+        showToast(`${n}줄마다 문단이 나뉘었습니다.`);
+    }
+
+    let findIndex = 0;
+
+    function findNext() {
+        const textarea = document.getElementById('input-text');
+        const find = document.getElementById('find-text').value;
+        if (!find) return showToast('찾을 텍스트를 입력하세요.');
+
+        const text = textarea.value;
+        const pos = text.indexOf(find, findIndex);
+
+        if (pos === -1) {
+            if (findIndex > 0) {
+                findIndex = 0;
+                return findNext();
+            }
+            return showToast('일치하는 텍스트가 없습니다.');
+        }
+
+        textarea.focus();
+        textarea.setSelectionRange(pos, pos + find.length);
+        findIndex = pos + find.length;
+    }
+
+    // 찾기 입력 변경 시 위치 초기화
+    document.getElementById('find-text').addEventListener('input', () => { findIndex = 0; });
+
+    function findAndReplace() {
+        const textarea = document.getElementById('input-text');
+        const find = document.getElementById('find-text').value;
+        const replace = document.getElementById('replace-text').value;
+
+        if (!find) return showToast('찾을 텍스트를 입력하세요.');
+        if (!textarea.value.includes(find)) return showToast('일치하는 텍스트가 없습니다.');
+
+        saveUndo();
+        const count = textarea.value.split(find).length - 1;
+        textarea.value = textarea.value.replaceAll(find, replace);
+        updateStats();
+        showToast(`${count}건 바꿨습니다.`);
+    }
+
+    function convertFullToHalf() {
+        const textarea = document.getElementById('input-text');
+        const raw = textarea.value;
+        if (!raw.trim()) return showToast('텍스트가 없습니다.');
+
+        saveUndo();
+        let t = raw;
+        // 전각 영숫자/기호 (！～ U+FF01~FF5E) → 반각 (!~ U+0021~007E)
+        t = t.replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+        // 전각 공백 → 반각 공백
+        t = t.replace(/\u3000/g, ' ');
+
+        if (t === raw) return showToast('변환할 전각 문자가 없습니다.');
+        textarea.value = t;
+        updateStats();
+        showToast('전각 → 반각 변환 완료.');
+    }
+
+    function copyText() {
+        const text = document.getElementById('input-text').value;
+        if (!text.trim()) return showToast('복사할 텍스트가 없습니다.');
+
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('클립보드에 복사되었습니다.');
+        }).catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showToast('클립보드에 복사되었습니다.');
+        });
+    }
+
+    function clearInput() {
+        if (!document.getElementById('input-text').value) return;
+        saveUndo();
+        document.getElementById('input-text').value = '';
+        updateStats();
+    }
+
+    // Ctrl+Z 가로채기: 자체 undo 스택 사용
+    document.getElementById('input-text').addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+            e.preventDefault();
+            undoText();
+        }
+    });
+
+    let toastTimer;
+    function showToast(msg) {
+        const el = document.getElementById('toast');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+    }
+
+    const inputArea = document.getElementById('input-text');
+    inputArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        inputArea.style.borderColor = 'var(--accent)';
+    });
+    inputArea.addEventListener('dragleave', () => {
+        inputArea.style.borderColor = '';
+    });
+    inputArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        inputArea.style.borderColor = '';
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('text/')) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                saveUndo();
+                inputArea.value = ev.target.result;
+                updateStats();
+                showToast(`"${file.name}" 파일을 불러왔습니다.`);
+            };
+            reader.readAsText(file);
+        }
+    });
+
+    updateStats();
+    </script>
+</body>
+</html>

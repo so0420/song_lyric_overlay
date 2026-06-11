@@ -1,0 +1,931 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ streamer.name }}의 노래책 - Jamku Song{% endblock %}
+
+{% block extra_styles %}
+<style>
+.songbook-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding-top: 24px;
+}
+
+/* ===== 스트리머 프로필 헤더 ===== */
+.sb-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+    padding: 28px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    margin-bottom: 24px;
+}
+
+.sb-avatar,
+.sb-avatar-fallback {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid var(--border-color);
+}
+
+.sb-avatar {
+    object-fit: cover;
+    background: var(--accent-light);
+}
+
+/* 프로필 사진 없을 때 이니셜 원형 배지 (외부 아바타 API 미사용) */
+.sb-avatar-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
+    color: white;
+    font-size: 2.2rem;
+    font-weight: 800;
+    user-select: none;
+}
+
+.sb-profile-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.sb-name {
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    margin-bottom: 6px;
+    line-height: 1.2;
+    word-break: keep-all;
+}
+
+.sb-desc {
+    color: var(--text-sub);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-bottom: 12px;
+}
+
+.sb-social-links {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.sb-social-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 100px;
+    background: white;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-sub);
+    transition: all 0.2s;
+}
+
+.sb-social-link:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* 신청 마감 안내 배너 */
+.sb-closed-notice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 12px;
+    color: #92400e;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 24px;
+}
+
+/* ===== 검색 / 태그 필터 ===== */
+.sb-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 100px;
+    padding: 10px 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+}
+
+.sb-search-bar input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    font-size: 0.95rem;
+    background: transparent;
+}
+
+.sb-tag-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.sb-tag-chip {
+    padding: 6px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 100px;
+    background: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-sub);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sb-tag-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.sb-tag-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+
+.sb-stats {
+    color: var(--text-sub);
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+}
+
+/* ===== 곡 카드 그리드 ===== */
+.sb-song-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+}
+
+.sb-song-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    transition: all 0.2s;
+    position: relative;
+    min-width: 0;
+}
+
+.sb-song-card.requestable {
+    cursor: pointer;
+}
+
+.sb-song-card.requestable:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -8px rgba(37, 99, 235, 0.15);
+}
+
+.sb-song-cover,
+.sb-song-cover-fallback {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    flex-shrink: 0;
+}
+
+.sb-song-cover {
+    object-fit: cover;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.sb-song-cover-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.sb-song-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.sb-song-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sb-song-artist {
+    font-size: 0.82rem;
+    color: var(--text-sub);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+}
+
+.sb-song-meta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.sb-badge {
+    font-size: 0.68rem;
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.sb-badge.lv-easy { background: #dcfce7; color: #166534; }
+.sb-badge.lv-mid  { background: #fef9c3; color: #854d0e; }
+.sb-badge.lv-hard { background: #fee2e2; color: #991b1b; }
+.sb-badge.lyrics  { background: var(--accent-light); color: var(--accent); }
+.sb-badge.tag     { background: #f1f5f9; color: #475569; }
+
+.sb-mr-link {
+    display: inline-flex;
+    align-items: center;
+    color: #ff0000;
+    padding: 2px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.sb-mr-link:hover {
+    background: #fee2e2;
+}
+
+.sb-request-btn {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 100px;
+    background: var(--accent);
+    color: white;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sb-request-btn:hover {
+    background: var(--accent-hover);
+}
+
+/* 로딩 / 빈 상태 */
+.sb-loading,
+.sb-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+}
+
+.sb-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: sb-spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes sb-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ===== 신청 모달 ===== */
+.sb-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.sb-modal-overlay.active {
+    display: flex;
+}
+
+.sb-modal {
+    background: white;
+    border-radius: 20px;
+    max-width: 420px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 28px;
+}
+
+.sb-modal-song {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.sb-modal-song-title {
+    font-weight: 800;
+    font-size: 1.15rem;
+    color: var(--text-main);
+    word-break: break-word;
+}
+
+.sb-modal-song-artist {
+    font-size: 0.9rem;
+    color: var(--text-sub);
+}
+
+.sb-modal-memo {
+    background: #f8fafc;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    color: var(--text-sub);
+    line-height: 1.5;
+    margin-bottom: 16px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.sb-modal-mr {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 11px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: #f8fafc;
+    color: var(--text-main);
+    font-size: 0.88rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    transition: all 0.2s;
+}
+
+.sb-modal-mr:hover {
+    border-color: #ff0000;
+    background: #fff5f5;
+}
+
+.sb-modal-label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-sub);
+    margin-bottom: 8px;
+}
+
+.sb-modal-input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 0.95rem;
+    outline: none;
+    margin-bottom: 20px;
+    transition: border-color 0.2s;
+}
+
+.sb-modal-input:focus {
+    border-color: var(--accent);
+}
+
+.sb-modal-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* ===== 토스트 ===== */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--text-main);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 3000;
+    max-width: calc(100vw - 48px);
+    word-break: keep-all;
+}
+
+.toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.toast.success { background: #059669; }
+.toast.error   { background: #dc2626; }
+
+/* ===== 모바일 반응형 ===== */
+@media (max-width: 640px) {
+    .songbook-container {
+        padding-top: 8px;
+    }
+    .sb-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 24px 20px;
+        gap: 14px;
+    }
+    .sb-avatar,
+    .sb-avatar-fallback {
+        width: 80px;
+        height: 80px;
+    }
+    .sb-avatar-fallback {
+        font-size: 1.8rem;
+    }
+    .sb-social-links {
+        justify-content: center;
+    }
+    .sb-song-grid {
+        grid-template-columns: 1fr;
+    }
+    .toast {
+        left: 24px;
+        right: 24px;
+        text-align: center;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="songbook-container">
+    <!-- 스트리머 프로필 헤더 -->
+    <div class="sb-header">
+        {% if streamer.picture %}
+        <img src="{{ streamer.picture }}" alt="{{ streamer.name }}" class="sb-avatar"
+             onerror="this.style.display='none'; document.getElementById('sbAvatarFallback').style.display='flex';">
+        <div class="sb-avatar-fallback" id="sbAvatarFallback" style="display: none;">{{ streamer.name[:1] }}</div>
+        {% else %}
+        <div class="sb-avatar-fallback">{{ streamer.name[:1] }}</div>
+        {% endif %}
+
+        <div class="sb-profile-info">
+            <h1 class="sb-name">{{ streamer.name }}의 노래책</h1>
+            <p class="sb-desc">{{ streamer.description or '소개가 없습니다.' }}</p>
+
+            {% if streamer.social_links %}
+            <div class="sb-social-links">
+                {% for link in streamer.social_links %}
+                {% if link.url and (link.url.startswith('http://') or link.url.startswith('https://')) %}
+                <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer" class="sb-social-link">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                    </svg>
+                    {{ link.name }}
+                </a>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 신청 마감 안내 (request_enabled && request_web_enabled가 아닐 때) -->
+    <div class="sb-closed-notice" id="sbClosedNotice" style="display: none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        지금은 노래 신청을 받지 않아요. 노래책 둘러보기만 가능합니다.
+    </div>
+
+    <!-- 검색 -->
+    <div class="sb-search-bar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="flex-shrink:0;">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="sbSearchInput" placeholder="노래 제목, 가수 검색...">
+    </div>
+
+    <!-- 태그 필터 칩 -->
+    <div class="sb-tag-filters" id="sbTagFilters"></div>
+
+    <div class="sb-stats" id="sbStats"></div>
+
+    <!-- 곡 카드 그리드 -->
+    <div class="sb-song-grid" id="sbSongGrid">
+        <div class="sb-loading">
+            <div class="sb-spinner"></div>
+            <p>노래책 불러오는 중...</p>
+        </div>
+    </div>
+</div>
+
+<!-- 노래 신청 모달 -->
+<div class="sb-modal-overlay" id="sbRequestModal">
+    <div class="sb-modal">
+        <div class="sb-modal-song">
+            <div id="sbModalCoverWrap" style="flex-shrink: 0;"></div>
+            <div style="flex: 1; min-width: 0;">
+                <div class="sb-modal-song-title" id="sbModalTitle"></div>
+                <div class="sb-modal-song-artist" id="sbModalArtist"></div>
+                <div class="sb-song-meta" id="sbModalMeta" style="margin-top: 6px;"></div>
+            </div>
+        </div>
+
+        <div class="sb-modal-memo" id="sbModalMemo" style="display: none;"></div>
+
+        <a class="sb-modal-mr" id="sbModalMrLink" href="#" target="_blank" rel="noopener noreferrer" style="display: none;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#ff0000">
+                <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 4-8 4z"/>
+            </svg>
+            MR 영상 보기
+        </a>
+
+        <label class="sb-modal-label" for="sbRequesterName">신청자 닉네임</label>
+        <input type="text" id="sbRequesterName" class="sb-modal-input" maxlength="30" placeholder="닉네임을 입력해 주세요.">
+
+        <div class="sb-modal-actions">
+            <button class="btn btn-outline" style="flex: 1;" onclick="closeRequestModal()">닫기</button>
+            <button class="btn btn-primary" style="flex: 2;" id="sbSubmitBtn" onclick="submitRequest()">노래 신청하기</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// 스트리머 정보 주입 — streamer.id는 외부 UUID 문자열 그대로 사용 (parseInt 금지)
+const STREAMER = {{ streamer | tojson }};
+const USER_NAME = {{ (user.name if user else '') | tojson }};
+const NICKNAME_STORAGE_KEY = 'songbook_requester_name';
+
+let allSongs = [];          // 전체 수록곡 (서버 정렬 순서 유지)
+let activeTag = null;       // 선택된 태그 필터 (null = 전체)
+let searchQuery = '';
+let canRequest = false;     // request_enabled && request_web_enabled
+let selectedSong = null;    // 신청 모달에 띄운 곡
+let isSubmitting = false;
+let searchDebounce = null;
+let toastTimer = null;
+
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    // 속성값 컨텍스트(src="...", title="...")에도 안전하도록 따옴표까지 이스케이프
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function showToast(message, type = '') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = 'toast show ' + type;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        toast.className = 'toast';
+    }, 3000);
+}
+
+// ===== 노래책 로드 =====
+async function loadSongbook() {
+    const grid = document.getElementById('sbSongGrid');
+    try {
+        const LIMIT = 500;
+        let offset = 0;
+        let total = 0;
+        let collected = [];
+        let streamerInfo = null;
+
+        // limit 단위로 전부 수집 (안전 상한 10회)
+        for (let i = 0; i < 10; i++) {
+            const res = await fetch(`/api/v1/songbook/${encodeURIComponent(STREAMER.id)}?limit=${LIMIT}&offset=${offset}`);
+            if (!res.ok) throw new Error(`load failed (${res.status})`);
+            const data = await res.json();
+            collected = collected.concat(data.items || []);
+            total = data.total || 0;
+            if (data.streamer) streamerInfo = data.streamer;
+            if (!data.items || data.items.length === 0 || collected.length >= total) break;
+            offset += data.items.length;
+        }
+
+        allSongs = collected;
+
+        // 신청 가능 여부는 API 응답(최신값) 우선, 없으면 서버 렌더 시점 값 사용
+        const info = streamerInfo || STREAMER;
+        canRequest = !!(Number(info.request_enabled) && Number(info.request_web_enabled));
+        document.getElementById('sbClosedNotice').style.display = canRequest ? 'none' : 'flex';
+
+        renderTagFilters();
+        renderSongs();
+    } catch (e) {
+        console.error(e);
+        grid.innerHTML = `<div class="sb-empty">노래책을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>`;
+    }
+}
+
+// ===== 태그 필터 칩 렌더 =====
+function renderTagFilters() {
+    const wrap = document.getElementById('sbTagFilters');
+    const tags = Array.isArray(STREAMER.tags) ? STREAMER.tags : [];
+    if (tags.length === 0) {
+        wrap.style.display = 'none';
+        return;
+    }
+
+    wrap.innerHTML = '';
+    const allChip = document.createElement('button');
+    allChip.type = 'button';
+    allChip.className = 'sb-tag-chip' + (activeTag === null ? ' active' : '');
+    allChip.textContent = '전체';
+    allChip.addEventListener('click', () => { activeTag = null; renderTagFilters(); renderSongs(); });
+    wrap.appendChild(allChip);
+
+    tags.forEach(tag => {
+        const name = tag && tag.name ? tag.name : '';
+        if (!name) return;
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'sb-tag-chip' + (activeTag === name ? ' active' : '');
+        chip.textContent = name;
+        if (tag.color && activeTag !== name) {
+            chip.style.borderColor = tag.color;
+            chip.style.color = tag.color;
+        } else if (tag.color && activeTag === name) {
+            chip.style.background = tag.color;
+            chip.style.borderColor = tag.color;
+        }
+        chip.addEventListener('click', () => {
+            activeTag = (activeTag === name) ? null : name;
+            renderTagFilters();
+            renderSongs();
+        });
+        wrap.appendChild(chip);
+    });
+}
+
+// ===== 곡 카드 렌더 =====
+function getFilteredSongs() {
+    const q = searchQuery.toLowerCase();
+    return allSongs.filter(s => {
+        const title = (s.title || '').toLowerCase();
+        const artist = (s.artist_name || '').toLowerCase();
+        const matchesQuery = !q || title.includes(q) || artist.includes(q);
+        const matchesTag = !activeTag || (Array.isArray(s.tags) && s.tags.includes(activeTag));
+        return matchesQuery && matchesTag;
+    });
+}
+
+function difficultyClass(d) {
+    if (d <= 3) return 'lv-easy';
+    if (d <= 7) return 'lv-mid';
+    return 'lv-hard';
+}
+
+function renderSongs() {
+    const grid = document.getElementById('sbSongGrid');
+    const stats = document.getElementById('sbStats');
+    const filtered = getFilteredSongs();
+
+    if (filtered.length === allSongs.length) {
+        stats.textContent = `총 ${allSongs.length}곡`;
+    } else {
+        stats.textContent = `${filtered.length} / ${allSongs.length}곡`;
+    }
+
+    grid.innerHTML = '';
+
+    if (allSongs.length === 0) {
+        grid.innerHTML = `<div class="sb-empty">아직 등록된 노래가 없습니다.</div>`;
+        return;
+    }
+    if (filtered.length === 0) {
+        grid.innerHTML = `<div class="sb-empty">검색 결과가 없습니다.</div>`;
+        return;
+    }
+
+    filtered.forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'sb-song-card' + (canRequest ? ' requestable' : '');
+        if (s.memo) card.title = s.memo;
+
+        // 커버 (없으면 음표 placeholder)
+        const cover = s.cover_image_url
+            ? `<img src="${escapeHtml(s.cover_image_url)}" class="sb-song-cover" alt="" loading="lazy" onerror="this.outerHTML=coverFallbackHtml()">`
+            : coverFallbackHtml();
+
+        // 메타 배지: 난이도 / 가사 / MR / 태그
+        const badges = [];
+        const lv = Number(s.difficulty) || 5;
+        badges.push(`<span class="sb-badge ${difficultyClass(lv)}">Lv.${lv}</span>`);
+        if (s.has_lyrics) {
+            badges.push(`<span class="sb-badge lyrics" title="${escapeHtml(s.lyrics_title || '가사 연결됨')}">가사</span>`);
+        }
+        if (s.mr_youtube_video_id) {
+            badges.push(`<a class="sb-mr-link" href="https://www.youtube.com/watch?v=${encodeURIComponent(s.mr_youtube_video_id)}" target="_blank" rel="noopener noreferrer" title="MR 영상 보기" onclick="event.stopPropagation()"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 4-8 4z"/></svg></a>`);
+        }
+        if (Array.isArray(s.tags)) {
+            s.tags.slice(0, 3).forEach(t => {
+                badges.push(`<span class="sb-badge tag">${escapeHtml(t)}</span>`);
+            });
+        }
+
+        card.innerHTML = `
+            ${cover}
+            <div class="sb-song-info">
+                <div class="sb-song-title">${escapeHtml(s.title)}</div>
+                <div class="sb-song-artist">${escapeHtml(s.artist_name || '알 수 없음')}</div>
+                <div class="sb-song-meta">${badges.join('')}</div>
+            </div>
+            ${canRequest ? '<button type="button" class="sb-request-btn">신청</button>' : ''}
+        `;
+
+        if (canRequest) {
+            card.addEventListener('click', () => openRequestModal(s));
+        }
+        grid.appendChild(card);
+    });
+}
+
+function coverFallbackHtml() {
+    return `<div class="sb-song-cover-fallback"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>`;
+}
+
+// ===== 신청 모달 =====
+function openRequestModal(song) {
+    if (!canRequest) return;
+    selectedSong = song;
+
+    // 곡 정보
+    document.getElementById('sbModalCoverWrap').innerHTML = song.cover_image_url
+        ? `<img src="${escapeHtml(song.cover_image_url)}" class="sb-song-cover" alt="" onerror="this.outerHTML=coverFallbackHtml()">`
+        : coverFallbackHtml();
+    document.getElementById('sbModalTitle').textContent = song.title || '';
+    document.getElementById('sbModalArtist').textContent = song.artist_name || '알 수 없음';
+
+    const lv = Number(song.difficulty) || 5;
+    const metaBadges = [`<span class="sb-badge ${difficultyClass(lv)}">Lv.${lv}</span>`];
+    if (song.has_lyrics) metaBadges.push('<span class="sb-badge lyrics">가사</span>');
+    document.getElementById('sbModalMeta').innerHTML = metaBadges.join('');
+
+    // 메모
+    const memoEl = document.getElementById('sbModalMemo');
+    if (song.memo) {
+        memoEl.textContent = song.memo;
+        memoEl.style.display = 'block';
+    } else {
+        memoEl.style.display = 'none';
+    }
+
+    // MR 링크
+    const mrLink = document.getElementById('sbModalMrLink');
+    if (song.mr_youtube_video_id) {
+        mrLink.href = `https://www.youtube.com/watch?v=${encodeURIComponent(song.mr_youtube_video_id)}`;
+        mrLink.style.display = 'flex';
+    } else {
+        mrLink.style.display = 'none';
+    }
+
+    // 닉네임 기본값: 저장된 닉네임 > 로그인 유저 이름
+    const input = document.getElementById('sbRequesterName');
+    let savedName = '';
+    try { savedName = localStorage.getItem(NICKNAME_STORAGE_KEY) || ''; } catch (e) { /* 시크릿 모드 등 */ }
+    input.value = savedName || USER_NAME || '';
+
+    document.getElementById('sbRequestModal').classList.add('active');
+    if (!input.value) input.focus();
+}
+
+function closeRequestModal() {
+    document.getElementById('sbRequestModal').classList.remove('active');
+    selectedSong = null;
+}
+
+async function submitRequest() {
+    if (!selectedSong || isSubmitting) return;
+
+    const input = document.getElementById('sbRequesterName');
+    const requester = input.value.trim();
+    if (!requester) {
+        showToast('닉네임을 입력해 주세요.', 'error');
+        input.focus();
+        return;
+    }
+    if (requester.length > 30) {
+        showToast('닉네임은 30자 이내로 입력해 주세요.', 'error');
+        return;
+    }
+
+    const submitBtn = document.getElementById('sbSubmitBtn');
+    isSubmitting = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '신청 중...';
+
+    try {
+        const res = await fetch('/api/v1/song-requests/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: JSON.stringify({
+                streamer_id: STREAMER.id,  // 외부 UUID 문자열 그대로 전송
+                requester: requester,
+                requester_type: 'WEB',
+                song_id: selectedSong.song_id,
+                title: selectedSong.title,
+                artist: selectedSong.artist_name,
+            }),
+        });
+
+        if (res.ok) {
+            // 닉네임 기억
+            try { localStorage.setItem(NICKNAME_STORAGE_KEY, requester); } catch (e) { /* 무시 */ }
+            showToast('신청 완료!', 'success');
+            closeRequestModal();
+        } else {
+            const data = await res.json().catch(() => ({}));
+            // detail이 문자열일 때만 그대로 노출 (422 검증 오류는 배열 형태라 제외)
+            const detail = typeof data.detail === 'string' ? data.detail : '';
+            showToast(detail || '신청에 실패했습니다. 잠시 후 다시 시도해 주세요.', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('오류가 발생했습니다. 잠시 후 다시 시도해 주세요.', 'error');
+    } finally {
+        isSubmitting = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = '노래 신청하기';
+    }
+}
+
+// ===== 이벤트 바인딩 =====
+document.getElementById('sbSearchInput').addEventListener('input', (e) => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => {
+        searchQuery = e.target.value.trim();
+        renderSongs();
+    }, 200);
+});
+
+// 모달 바깥 mousedown 시 닫기
+document.getElementById('sbRequestModal').addEventListener('mousedown', (e) => {
+    if (e.target.id === 'sbRequestModal') closeRequestModal();
+});
+
+// ESC로 모달 닫기, 닉네임 입력에서 Enter로 신청
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeRequestModal();
+});
+document.getElementById('sbRequesterName').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        submitRequest();
+    }
+});
+
+// 초기 로드
+loadSongbook();
+</script>
+{% endblock %}

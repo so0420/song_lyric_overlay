@@ -2471,7 +2471,11 @@
         }
 
         // Playlist Management
-        function addToPlaylist(lyricsId, songId, songTitle, artistName, videoId, lyricsTitle, coverImageUrl) {
+        // options.silent: 외부 이벤트(신청 자동 추가)로 호출 시 true — 모달/검색결과를 건드리지 않고
+        //                 개별 토스트도 띄우지 않는다(호출 측이 요약 토스트를 책임짐).
+        // 반환값: 실제로 추가됐으면 true, 중복이면 false
+        function addToPlaylist(lyricsId, songId, songTitle, artistName, videoId, lyricsTitle, coverImageUrl, options = {}) {
+            const silent = options.silent === true;
             // 중복 체크: lyricsId가 있으면 lyricsId로, 없으면 songId+videoId로 체크
             const isDuplicate = state.playlist.some(item => {
                 if (lyricsId && item.lyricsId) {
@@ -2481,16 +2485,19 @@
             });
 
             if (isDuplicate) {
-                showToast('이미 리스트에 있습니다', 'error');
-                return;
+                if (!silent) showToast('이미 리스트에 있습니다', 'error');
+                return false;
             }
 
             state.playlist.push({ lyricsId, songId, songTitle, artistName, videoId, lyricsTitle, coverImageUrl: coverImageUrl || '' });
             savePlaylist();
             renderPlaylist();
-            closeModal();
-            elements.searchResults.classList.remove('active');
-            showToast(`"${songTitle}" 추가됨`, 'success');
+            if (!silent) {
+                closeModal();
+                elements.searchResults.classList.remove('active');
+                showToast(`"${escapeHtml(songTitle)}" 추가됨`, 'success');
+            }
+            return true;
         }
 
         function removeFromPlaylist(index) {
@@ -2898,6 +2905,8 @@
                         clearTimeout(overlayWsReconnectTimer);
                         overlayWsReconnectTimer = null;
                     }
+                    // (재)연결 시 미전달 신청 곡 동기화
+                    syncPendingRequests();
                 };
 
                 overlayWs.onmessage = (e) => {
@@ -2909,6 +2918,9 @@
                             // OBS 오버레이가 (재)연결됨 → 현재 상태 전송
                             syncLyricsInit();
                             syncPlaylistToOBS();
+                        } else if (msg.type === 'song_request_new') {
+                            // 노래책 신청 곡 푸시 수신
+                            handleSongRequestPush(msg.data);
                         }
                     } catch {}
                 };
@@ -2942,6 +2954,78 @@
                 return true;
             }
             return false;
+        }
+
+        // ===== 노래책 신청 곡 자동 재생목록 등록 =====
+
+        // WS 푸시(song_request_new) 수신 처리
+        function handleSongRequestPush(data) {
+            if (!data) return;
+            // 신청자 닉네임/곡 제목은 익명 입력이므로 반드시 이스케이프(토스트는 innerHTML 사용)
+            showToast(`노래 신청: ${escapeHtml(data.title)} - ${escapeHtml(data.requester)}`);
+            // 자동 추가가 켜져 있고 가사 또는 MR이 연결된 곡만 재생목록에 추가 (silent: 작업 중 모달을 닫지 않음)
+            if (data.auto_playlist && (data.lyrics_id || data.mr_video_id)) {
+                addToPlaylist(
+                    data.lyrics_id,
+                    data.song_external_id,
+                    data.title,
+                    data.artist,
+                    data.mr_video_id,
+                    data.lyrics_title,
+                    data.cover_image_url || '',
+                    { silent: true }
+                );
+                markRequestsDelivered([data.request_id]);
+            }
+        }
+
+        // 미전달 신청 곡 동기화 (페이지 진입/WS 재연결 시) — 재진입 가드로 이중 호출 직렬화
+        let _syncingPending = false;
+        async function syncPendingRequests() {
+            if (_syncingPending) return;
+            _syncingPending = true;
+            try {
+                const res = await fetch('/api/v1/song-requests/playlist-pending');
+                if (!res.ok) return; // 프로필 없음(404) 등은 조용히 무시
+                const data = await res.json();
+                const items = data.items || [];
+                if (items.length === 0) return;
+                let added = 0;
+                items.forEach((item) => {
+                    // addToPlaylist의 중복 체크가 이중 추가를 막아줌(silent: 모달/개별 토스트 억제)
+                    const ok = addToPlaylist(
+                        item.lyrics_id,
+                        item.song_external_id,
+                        item.title,
+                        item.artist,
+                        item.mr_video_id,
+                        item.lyrics_title,
+                        item.cover_image_url || '',
+                        { silent: true }
+                    );
+                    if (ok) added++;
+                });
+                if (added > 0) showToast(`신청 곡 ${added}개를 재생목록에 추가했습니다`, 'success');
+                await markRequestsDelivered(items.map((item) => item.request_id));
+            } catch {
+                // 네트워크 오류 등은 조용히 무시
+            } finally {
+                _syncingPending = false;
+            }
+        }
+
+        // 신청 곡 전달 완료 마킹 (실패해도 addToPlaylist 중복 체크가 안전망)
+        async function markRequestsDelivered(ids) {
+            if (!ids || ids.length === 0) return;
+            try {
+                await fetch('/api/v1/song-requests/mark-delivered', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+                    body: JSON.stringify({ ids })
+                });
+            } catch {
+                // 마킹 실패는 무시
+            }
         }
 
         // 페이지 로드 시 WebSocket 연결
@@ -3604,6 +3688,9 @@
 
             // URL 파라미터로 곡 추가
             handleUrlParams();
+
+            // 미전달 신청 곡 동기화
+            syncPendingRequests();
         }
 
         async function handleUrlParams() {

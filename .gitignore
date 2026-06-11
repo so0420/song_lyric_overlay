@@ -9,6 +9,11 @@
 *.crt
 secrets/
 
+# ===== DB 덤프 (개인정보 포함 — 커밋 금지) =====
+*.sql
+!app/database/mariadb/schema.sql
+!app/database/mariadb/migration_*.sql
+
 # ===== Python =====
 __pycache__/
 *.py[cod]

@@ -50,4 +50,5 @@ RATE_LIMITS = {
     "otp": "3/minute",         # OTP 요청
     "search": "30/minute",     # 검색 요청
     "api": "60/minute",        # 일반 API 요청
+    "song_request": "10/minute",  # 노래 신청 (비로그인 시청자 포함)
 }

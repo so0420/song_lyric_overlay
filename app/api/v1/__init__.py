@@ -11,6 +11,10 @@ from .health import router as health_router
 from .admin import router as admin_router
 from .admin_lyrics import router as admin_lyrics_router
 from .access import router as access_router
+from .streamers import router as streamers_router
+from .songbook import router as songbook_router
+from .song_requests import router as song_requests_router
+from .integrations import router as integrations_router
 
 router = APIRouter()
 router.include_router(oauth_router, prefix="/oauth", tags=["oauth"])
@@ -24,5 +28,9 @@ router.include_router(health_router, tags=["health"])
 router.include_router(admin_router, prefix="/admin", tags=["admin"])
 router.include_router(admin_lyrics_router, prefix="/admin", tags=["admin-lyrics"])
 router.include_router(access_router, prefix="/access", tags=["access"])
+router.include_router(streamers_router, prefix="/streamers", tags=["streamers"])
+router.include_router(songbook_router, prefix="/songbook", tags=["songbook"])
+router.include_router(song_requests_router, prefix="/song-requests", tags=["song-requests"])
+router.include_router(integrations_router, prefix="/integrations", tags=["integrations"])
 
 __all__ = ["router"]

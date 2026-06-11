@@ -66,6 +66,16 @@ class Settings(BaseSettings):
     meilisearch_api_key: str
     meilisearch_index_name: str
 
+    # Chzzk 연동 (OAuth 는 jamkubot 에 위임) — 미설정 시 연동 기능 비활성화
+    chzzk_client_id: str = ""                 # account-interlock clientId
+    chzzk_interlock_redirect_uri: str = ""    # account-interlock redirectUri (jamkubot)
+    chzzk_state_prefix: str = "jamkusong_"    # state 접두사
+    chzzk_return_url: str = ""                # jamkubot 이 사용자를 되돌려보낼 우리 콜백
+
+    # Chzzk 채팅 릴레이 (jamkubot)
+    chzzk_relay_url: str = "https://relay.jamkubot.com"
+    chzzk_relay_token: str = ""               # 비어있으면 릴레이 연결 안 함
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": False,

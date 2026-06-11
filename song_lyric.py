@@ -32,6 +32,7 @@ from app.integrations.youtube_api import youtube_api
 from app.database.mariadb import db_handler
 from app.database.meilisearch.meilisearch import meilisearch_handler
 from app.database.redis.redis import redis
+from app.integrations.chzzk_connection.chzzk_connection_client import chzzk_connection_client
 
 
 # 리소스 관리를 위한 lifespan 정의
@@ -43,8 +44,22 @@ async def lifespan(app: FastAPI):
     await meilisearch_handler.initialize()
     await redis.initialize()
 
+    # 치지직 채팅 릴레이 (jamkubot) — 릴레이 토큰이 설정된 경우에만 연결
+    chzzk_task = None
+    if settings.chzzk_relay_token:
+        chzzk_task = asyncio.create_task(chzzk_connection_client.start())
+        logger.info("치지직 채팅 릴레이 연결 활성화됨")
+
     yield
     # 종료 시 실행
+    if chzzk_task:
+        chzzk_task.cancel()
+        try:
+            await chzzk_task
+        except asyncio.CancelledError:
+            pass
+        await chzzk_connection_client.disconnect()
+
     await db_handler.close()
     await youtube_api.close()
     await meilisearch_handler.close()

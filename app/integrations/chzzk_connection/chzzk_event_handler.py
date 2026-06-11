@@ -34,9 +34,10 @@ class ChzzkEventHandler:
         streamer_uid = data.get("streamerUid")
         requester = data.get("userName") or "익명"
         content = (data.get("content") or "").strip()
-        logger.info(f"[CHAT] [{data.get('streamerName')}|{requester}] {content}")
         query = self._extract_request_query(content)
+        # 신청(!신청)일 때만 로그를 남긴다
         if streamer_uid and query:
+            logger.info(f"[CHAT] [{data.get('streamerName')}|{requester}] {content}")
             await self._process_song_request(streamer_uid, requester, query, "CHAT")
 
     async def _handle_donation(self, data: dict):
@@ -44,9 +45,10 @@ class ChzzkEventHandler:
         requester = data.get("userName") or "익명"
         content = (data.get("donationText") or "").strip()
         pay_amount = int(data.get("payAmount") or 0)
-        logger.info(f"[DONATION] [{data.get('streamerName')}|{requester}] {pay_amount}원 {content}")
         query = self._extract_request_query(content)
+        # 신청(!신청)일 때만 로그를 남긴다
         if streamer_uid and query:
+            logger.info(f"[DONATION] [{data.get('streamerName')}|{requester}] {pay_amount}원 {content}")
             await self._process_song_request(streamer_uid, requester, query, "DONATION", pay_amount)
 
     @staticmethod

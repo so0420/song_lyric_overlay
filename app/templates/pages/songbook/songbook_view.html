@@ -755,10 +755,12 @@ function renderSongs() {
             ? `<img src="${escapeHtml(s.cover_image_url)}" class="sb-song-cover" alt="" loading="lazy" onerror="this.outerHTML=coverFallbackHtml()">`
             : coverFallbackHtml();
 
-        // 메타 배지: 난이도 / 가사 / MR / 태그
+        // 메타 배지: 난이도(설정된 경우만) / 가사 / MR / 태그
         const badges = [];
-        const lv = Number(s.difficulty) || 5;
-        badges.push(`<span class="sb-badge ${difficultyClass(lv)}">Lv.${lv}</span>`);
+        const lv = Number(s.difficulty);
+        if (s.difficulty !== null && s.difficulty !== undefined && lv) {
+            badges.push(`<span class="sb-badge ${difficultyClass(lv)}">Lv.${lv}</span>`);
+        }
         if (s.has_lyrics) {
             badges.push(`<span class="sb-badge lyrics" title="${escapeHtml(s.lyrics_title || '가사 연결됨')}">가사</span>`);
         }
@@ -804,8 +806,11 @@ function openRequestModal(song) {
     document.getElementById('sbModalTitle').textContent = song.title || '';
     document.getElementById('sbModalArtist').textContent = song.artist_name || '알 수 없음';
 
-    const lv = Number(song.difficulty) || 5;
-    const metaBadges = [`<span class="sb-badge ${difficultyClass(lv)}">Lv.${lv}</span>`];
+    const lv = Number(song.difficulty);
+    const metaBadges = [];
+    if (song.difficulty !== null && song.difficulty !== undefined && lv) {
+        metaBadges.push(`<span class="sb-badge ${difficultyClass(lv)}">Lv.${lv}</span>`);
+    }
     if (song.has_lyrics) metaBadges.push('<span class="sb-badge lyrics">가사</span>');
     document.getElementById('sbModalMeta').innerHTML = metaBadges.join('');
 

@@ -300,7 +300,7 @@ CREATE TABLE IF NOT EXISTS `streamer_songbooks` (
     `lyrics_id` BIGINT NULL COMMENT '연결된 가사 ID (song_lyrics)',
     `cover_image_url` TEXT NULL COMMENT '커버 이미지 URL',
     `tags` TEXT NOT NULL DEFAULT '[]' COMMENT '노래 태그 JSON ["tag1", ...] (streamers.tags의 name과 연결)',
-    `difficulty` TINYINT NOT NULL DEFAULT 5 COMMENT '난이도 (1 ~ 10)',
+    `difficulty` TINYINT NULL COMMENT '난이도 (1 ~ 10), NULL=미설정',
     `memo` VARCHAR(255) NULL COMMENT '노래 설명/메모',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

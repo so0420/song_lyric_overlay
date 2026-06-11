@@ -110,7 +110,7 @@ class SongbookRepository:
         lyrics_id: Optional[int] = None,
         mr_youtube_video_id: Optional[str] = None,
         tags: Optional[List[str]] = None,
-        difficulty: int = 5,
+        difficulty: Optional[int] = None,
         memo: Optional[str] = None,
         cover_image_url: Optional[str] = None,
     ) -> Optional[int]:

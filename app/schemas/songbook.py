@@ -66,7 +66,7 @@ class SongbookEntryCreateSchema(BaseModel):
     lyrics_id: Optional[int] = Field(None, description="연결할 가사 ID")
     mr_youtube_video_id: Optional[str] = Field(None, max_length=255, description="MR 유튜브 영상 ID")
     tags: List[str] = Field(default_factory=list, max_length=30, description="노래 태그 이름 목록")
-    difficulty: int = Field(5, ge=1, le=10, description="난이도 (1~10)")
+    difficulty: Optional[int] = Field(None, ge=1, le=10, description="난이도 (1~10, 없으면 미설정)")
     memo: Optional[str] = Field(None, max_length=255, description="노래 설명/메모")
     cover_image_url: Optional[str] = Field(None, description="커버 이미지 URL")
 

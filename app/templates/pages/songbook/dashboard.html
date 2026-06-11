@@ -1055,8 +1055,11 @@ input:checked + .toggle-slider:before { transform: translateX(22px); }
             <div id="detailStep" style="display: none;">
                 <div class="search-result-item" style="cursor: default;" id="detailSongHeader"></div>
 
-                <div class="modal-body-title">난이도</div>
+                <div class="modal-body-title">난이도 <span style="font-weight:400;color:var(--text-sub);font-size:0.82rem;">(선택)</span></div>
                 <div class="difficulty-row">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;white-space:nowrap;">
+                        <input type="checkbox" id="difficultyNone"> 없음
+                    </label>
                     <input type="range" id="difficultySlider" min="1" max="10" step="1" value="5">
                     <span class="lv-badge lv-mid" id="difficultyValue">Lv.5</span>
                 </div>
@@ -1153,7 +1156,9 @@ function coverHtml(url, extraClass = '') {
 }
 
 function difficultyBadgeHtml(d) {
-    const lv = Number(d) || 5;
+    if (d === null || d === undefined || d === '') return '';
+    const lv = Number(d);
+    if (!lv) return '';
     const cls = lv <= 3 ? 'lv-easy' : (lv <= 7 ? 'lv-mid' : 'lv-hard');
     return `<span class="lv-badge ${cls}">Lv.${lv}</span>`;
 }
@@ -1475,7 +1480,7 @@ async function selectSearchResult(song) {
             artist_name: song.artist_name,
             cover_image_url: song.cover_image_url,
         },
-        difficulty: existing ? existing.difficulty : 5,
+        difficulty: existing ? existing.difficulty : null,
         tags: new Set(existing ? existing.tags : []),
         memo: existing ? (existing.memo || '') : '',
         lyricsId: existing ? existing.lyrics_id : null,
@@ -1571,10 +1576,8 @@ function enterDetailStep() {
         </div>
     `;
 
-    // 난이도
-    const slider = document.getElementById('difficultySlider');
-    slider.value = detail.difficulty;
-    updateDifficultyDisplay();
+    // 난이도 (선택 — null 이면 '없음')
+    setupDifficultyUI();
 
     // 태그 체크박스 (내 streamers.tags 기반)
     renderDetailTags();
@@ -1591,15 +1594,43 @@ function enterDetailStep() {
     loadLyricsOptions();
 }
 
+function setupDifficultyUI() {
+    const none = document.getElementById('difficultyNone');
+    const slider = document.getElementById('difficultySlider');
+    const has = detail.difficulty !== null && detail.difficulty !== undefined;
+    none.checked = !has;
+    slider.disabled = !has;
+    slider.value = has ? detail.difficulty : 5;
+    updateDifficultyDisplay();
+}
+
 document.getElementById('difficultySlider').addEventListener('input', () => {
     if (!detail) return;
     detail.difficulty = parseInt(document.getElementById('difficultySlider').value);
     updateDifficultyDisplay();
 });
 
+document.getElementById('difficultyNone').addEventListener('change', (e) => {
+    if (!detail) return;
+    const slider = document.getElementById('difficultySlider');
+    if (e.target.checked) {
+        detail.difficulty = null;          // 난이도 없음
+        slider.disabled = true;
+    } else {
+        slider.disabled = false;
+        detail.difficulty = parseInt(slider.value);
+    }
+    updateDifficultyDisplay();
+});
+
 function updateDifficultyDisplay() {
-    const lv = parseInt(document.getElementById('difficultySlider').value);
     const el = document.getElementById('difficultyValue');
+    if (document.getElementById('difficultyNone').checked) {
+        el.textContent = '없음';
+        el.className = 'lv-badge';
+        return;
+    }
+    const lv = parseInt(document.getElementById('difficultySlider').value);
     el.textContent = `Lv.${lv}`;
     el.className = 'lv-badge ' + (lv <= 3 ? 'lv-easy' : (lv <= 7 ? 'lv-mid' : 'lv-hard'));
 }

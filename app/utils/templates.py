@@ -30,6 +30,15 @@ def csrf_token(request) -> str:
         return ""
 
 
+def impersonator(request):
+    """관리자가 다른 사용자로 전환 중이면 원래 관리자 정보를, 아니면 None 반환 (배너 표시용)"""
+    try:
+        return request.session.get("impersonator")
+    except Exception:
+        return None
+
+
 # Jinja2 전역 함수 등록
 templates.env.globals["csrf_input"] = csrf_input
 templates.env.globals["csrf_token"] = csrf_token
+templates.env.globals["impersonator"] = impersonator

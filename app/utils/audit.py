@@ -31,6 +31,8 @@ class AuditAction:
     # 관리자 작업
     ADMIN_BROADCAST = "admin_broadcast"
     ADMIN_DISCONNECT = "admin_disconnect"
+    ADMIN_IMPERSONATE = "admin_impersonate"            # 다른 사용자로 전환 시작
+    ADMIN_IMPERSONATE_STOP = "admin_impersonate_stop"  # 전환 종료(관리자 복귀)
 
 
 async def log_audit(

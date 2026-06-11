@@ -115,5 +115,103 @@
             </div>
         </a>
     </div>
+
+    <!-- 사용자 전환 -->
+    <div class="card" style="margin-top: 24px;">
+        <h3 style="margin-bottom: 6px;">다른 사용자로 보기</h3>
+        <p class="admin-card-desc" style="margin-bottom: 16px;">
+            특정 사용자 계정으로 전환해 그 사람 화면 그대로 관리할 수 있어요. 전환 중에는 하단 배너의 "관리자로 돌아가기"로 언제든 복귀합니다.
+        </p>
+        <input type="text" id="userSearch" placeholder="이름 또는 이메일 검색"
+               style="width: 100%; padding: 12px 14px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem;">
+        <div id="userResults" style="margin-top: 12px;"></div>
+    </div>
 </div>
+
+<style>
+    .user-row {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 12px; border: 1px solid var(--border-color);
+        border-radius: 8px; margin-bottom: 8px;
+    }
+    .user-row .grow { flex: 1; min-width: 0; }
+    .user-row .u-name { font-weight: 600; color: var(--text-main); }
+    .user-row .u-email { font-size: 0.82rem; color: var(--text-sub); word-break: break-all; }
+    .u-badge {
+        font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px;
+        background: var(--accent-light); color: var(--accent);
+    }
+    .u-badge.admin { background: #fef3c7; color: #b45309; }
+</style>
+<script>
+    const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
+    const searchInput = document.getElementById('userSearch');
+    const resultsBox = document.getElementById('userResults');
+    let searchDebounce = null;
+
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    async function loadUsers(q) {
+        try {
+            const url = '/api/v1/admin/users' + (q ? '?search=' + encodeURIComponent(q) : '');
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('조회 실패');
+            const data = await res.json();
+            renderUsers(data.items || []);
+        } catch (e) {
+            resultsBox.innerHTML = '<p class="admin-card-desc">사용자를 불러오지 못했습니다.</p>';
+        }
+    }
+
+    function renderUsers(users) {
+        if (!users.length) {
+            resultsBox.innerHTML = '<p class="admin-card-desc">검색 결과가 없습니다.</p>';
+            return;
+        }
+        resultsBox.innerHTML = users.map(u => `
+            <div class="user-row">
+                <div class="grow">
+                    <div class="u-name">${escapeHtml(u.name) || '(이름 없음)'}
+                        ${u.is_admin ? '<span class="u-badge admin">관리자</span>' : ''}
+                        ${u.overlay_approved ? '<span class="u-badge">승인</span>' : ''}
+                    </div>
+                    <div class="u-email">${escapeHtml(u.email)} · #${u.id}</div>
+                </div>
+                <button class="btn btn-outline" data-uid="${u.id}" style="padding:6px 12px;font-size:0.82rem;">이 사용자로 보기</button>
+            </div>
+        `).join('');
+        resultsBox.querySelectorAll('button[data-uid]').forEach(btn => {
+            btn.addEventListener('click', () => impersonate(btn.dataset.uid, btn));
+        });
+    }
+
+    async function impersonate(uid, btn) {
+        if (!confirm('이 사용자로 전환할까요? 하단 배너로 언제든 돌아올 수 있어요.')) return;
+        btn.disabled = true;
+        try {
+            const res = await fetch('/api/v1/admin/impersonate/' + uid, {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': CSRF_TOKEN }
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.detail || '전환에 실패했습니다.');
+            }
+            window.location.href = '/';
+        } catch (e) {
+            btn.disabled = false;
+            alert(e.message);
+        }
+    }
+
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => loadUsers(e.target.value.trim()), 300);
+    });
+    loadUsers('');
+</script>
 {% endblock %}

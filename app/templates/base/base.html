@@ -179,6 +179,43 @@
     {% block extra_styles %}{% endblock %}
 </head>
 <body>
+    {% set _imp = impersonator(request) %}
+    {% if _imp %}
+    <div class="impersonation-banner">
+        <span>🛡️ <strong>{{ user.name if user else '사용자' }}</strong> 님으로 보는 중 · 관리자: {{ _imp.name }}</span>
+        <button type="button" id="stopImpersonateBtn" class="imp-return-btn">관리자로 돌아가기</button>
+    </div>
+    <style>
+        .impersonation-banner {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 2000;
+            background: #b45309; color: #fff; padding: 10px 16px;
+            display: flex; align-items: center; justify-content: center; gap: 16px;
+            flex-wrap: wrap; font-size: 0.9rem;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.25);
+        }
+        .imp-return-btn {
+            background: #fff; color: #b45309; border: none; border-radius: 6px;
+            padding: 6px 14px; font-weight: 700; cursor: pointer; font-size: 0.85rem;
+        }
+        .imp-return-btn:hover { background: #fde68a; }
+        main { padding-bottom: 120px; }
+    </style>
+    <script>
+        document.getElementById('stopImpersonateBtn')?.addEventListener('click', async function () {
+            this.disabled = true;
+            try {
+                const res = await fetch('/api/v1/admin/impersonate/stop', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content }
+                });
+                if (res.ok) { window.location.href = '/admin'; return; }
+            } catch (e) {}
+            this.disabled = false;
+            alert('관리자 복귀에 실패했습니다. 다시 시도해주세요.');
+        });
+    </script>
+    {% endif %}
+
     <!-- Mobile Header -->
     <header class="mobile-header">
         <button class="hamburger-btn" id="hamburgerBtn" aria-label="메뉴 열기">

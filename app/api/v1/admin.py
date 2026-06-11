@@ -1,16 +1,102 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from app.core.auth import require_admin
+from app.core.auth import require_admin, get_current_user_api
 from app.core.overlay_websocket import overlay_manager
 from app.database.mariadb import db_handler
 from app.database.access_request_repository import get_access_request_repository, AccessRequestRepository
 from app.schemas.access_request import AccessRequestRejectSchema, AccessRequestResponseSchema
 from app.utils.audit import log_audit, get_client_ip, AuditAction
+from app.utils.csrf import verify_csrf
 from app.utils.mailer import send_email
 from app.utils.email_templates import get_access_approved_email
 from app.utils.config import config
 from typing import List, Optional
 
 router = APIRouter()
+
+
+# ============ 사용자 전환(임퍼소네이션) ============
+
+@router.get("/users")
+async def search_users(
+    search: Optional[str] = Query(None, description="이름 또는 이메일 검색"),
+    limit: int = Query(30, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user=Depends(require_admin),
+):
+    """전체 사용자 검색 (전환 대상 선택용)"""
+    base = "SELECT id, email, name, is_admin, overlay_approved FROM users WHERE deleted_at IS NULL"
+    if search:
+        like = f"%{search}%"
+        rows = await db_handler.fetch_all(
+            base + " AND (name LIKE %s OR email LIKE %s) ORDER BY id DESC LIMIT %s OFFSET %s",
+            (like, like, limit, offset),
+        )
+    else:
+        rows = await db_handler.fetch_all(
+            base + " ORDER BY id DESC LIMIT %s OFFSET %s", (limit, offset)
+        )
+    return {"items": rows}
+
+
+# 정적 경로(/impersonate/stop)는 동적 경로(/impersonate/{user_id}) 보다 먼저 정의해야
+# "stop" 이 user_id 로 잘못 매칭되지 않는다.
+@router.post("/impersonate/stop", dependencies=[Depends(verify_csrf)])
+async def stop_impersonate(request: Request, user=Depends(get_current_user_api)):
+    """사용자 전환 종료 — 원래 관리자 세션으로 복귀
+
+    전환 중에는 세션 user 가 대상 사용자(비관리자일 수 있음)이므로 require_admin 을 쓰지 않는다.
+    복귀는 오직 세션에 보존된 impersonator 로만 가능하며, 이는 관리자만 설정할 수 있다.
+    """
+    impersonator_user = request.session.get("impersonator")
+    if not impersonator_user:
+        raise HTTPException(status_code=400, detail="사용자 전환 상태가 아닙니다.")
+
+    request.session["user"] = impersonator_user
+    request.session.pop("impersonator", None)
+
+    await log_audit(
+        actor_id=impersonator_user["id"],
+        action=AuditAction.ADMIN_IMPERSONATE_STOP,
+        target_type="user",
+        target_id=user["id"],
+        details=None,
+        ip_address=get_client_ip(request),
+    )
+    return {"success": True}
+
+
+@router.post("/impersonate/{user_id}", dependencies=[Depends(verify_csrf)])
+async def impersonate_user(user_id: int, request: Request, user=Depends(require_admin)):
+    """다른 사용자로 전환 (관리자 전용). 원래 관리자 세션은 보존된다."""
+    target = await db_handler.fetch_one(
+        "SELECT id, email, name, is_admin FROM users WHERE id = %s AND deleted_at IS NULL",
+        (user_id,),
+    )
+    if not target:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+    if target["id"] == user["id"]:
+        raise HTTPException(status_code=400, detail="자기 자신으로는 전환할 수 없습니다.")
+
+    # require_admin 을 통과했으므로 현재 세션 user 는 관리자 — 원본을 보존
+    if "impersonator" not in request.session:
+        request.session["impersonator"] = request.session["user"]
+
+    request.session["user"] = {
+        "id": target["id"],
+        "email": target["email"],
+        "name": target["name"],
+        "is_admin": bool(target["is_admin"]),
+    }
+
+    await log_audit(
+        actor_id=user["id"],
+        action=AuditAction.ADMIN_IMPERSONATE,
+        target_type="user",
+        target_id=target["id"],
+        details={"target_email": target["email"], "target_name": target["name"]},
+        ip_address=get_client_ip(request),
+    )
+    return {"success": True, "user": request.session["user"]}
 
 
 @router.get("/websocket/stats")

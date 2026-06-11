@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from app.core.auth import get_current_user_api, get_current_user
 from app.core.lyrics_access import can_view_lyrics
 from app.database.lyrics_repository import get_lyrics_repository, LyricsRepository
+from app.database.songbook_repository import get_songbook_repository
 from app.database.meilisearch.meilisearch import meilisearch_handler
 from app.integrations.itunes_search import search_itunes_cached
 from app.api.v1.songs import register_itunes_results
@@ -205,6 +206,16 @@ async def create_lyrics(
         anon_ids = request.session.get('anon_lyrics_ids', [])
         anon_ids.append(lyrics_id)
         request.session['anon_lyrics_ids'] = anon_ids
+
+    # 이 곡을 노래책에 보유하고 가사가 연결되지 않은 항목에 새 가사를 자동 연결
+    # (다른 스트리머도 쓸 수 있어야 하므로 공개 가사만 대상)
+    if lyrics_id and visibility == "public":
+        try:
+            linked = await get_songbook_repository().autolink_song_lyrics(data.song_id, lyrics_id)
+            if linked:
+                logger.info(f"새 가사 자동 연결: lyrics_id={lyrics_id}, song_id={data.song_id}, 노래책 {linked}건")
+        except Exception as e:
+            logger.warning(f"가사 자동 연결 실패 (lyrics_id={lyrics_id}): {e}")
 
     return IdResponse(id=lyrics_id)
 

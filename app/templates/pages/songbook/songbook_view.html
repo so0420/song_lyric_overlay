@@ -784,7 +784,8 @@ function difficultyClass(d) {
 
 function renderSongCard(s) {
     const card = document.createElement('div');
-    card.className = 'sb-song-card' + (canRequest ? ' requestable' : '');
+    // 신청 여부와 무관하게 카드는 항상 클릭 가능(곡 상세/가사 만들기용)
+    card.className = 'sb-song-card requestable';
     if (s.memo) card.title = s.memo;
 
     const cover = s.cover_image_url
@@ -818,9 +819,7 @@ function renderSongCard(s) {
         ${canRequest ? '<button type="button" class="sb-request-btn">신청</button>' : ''}
     `;
 
-    if (canRequest) {
-        card.addEventListener('click', () => openRequestModal(s));
-    }
+    card.addEventListener('click', () => openRequestModal(s));
     return card;
 }
 
@@ -841,8 +840,8 @@ function coverFallbackHtml() {
 
 // ===== 신청 모달 =====
 function openRequestModal(song) {
-    // 신청이 꺼져 있어도 로그인 사용자(스트리머)는 곡 상세 + '가사 만들기'를 위해 모달을 연다
-    if (!canRequest && !IS_LOGGED_IN) return;
+    // 신청 여부/로그인 여부와 무관하게 모달을 열어 곡 상세 정보를 보여준다.
+    // 신청 영역(닉네임 입력 + 신청 버튼)만 canRequest일 때 노출된다.
     selectedSong = song;
 
     // 곡 정보

@@ -455,6 +455,28 @@
     margin-top: 18px;
 }
 
+/* ===== 관리자 곡 정보 수정 영역 ===== */
+.sb-admin-edit {
+    margin-top: 12px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border-color);
+}
+
+.sb-admin-edit .sb-modal-label {
+    margin-top: 12px;
+}
+
+.sb-admin-edit .sb-modal-label:first-child {
+    margin-top: 0;
+}
+
+.sb-admin-hint {
+    font-size: 0.8rem;
+    color: var(--text-sub);
+    margin: 12px 0 14px;
+    line-height: 1.4;
+}
+
 /* ===== 토스트 ===== */
 .toast {
     position: fixed;
@@ -611,6 +633,20 @@
         <a class="sb-modal-action" id="sbModalLyricsBtn" href="#">✏️ 이 곡 가사 만들기</a>
         {% endif %}
 
+        {% if is_admin %}
+        <button type="button" class="sb-modal-action" id="sbAdminEditToggle" onclick="toggleAdminEdit()">🛠️ 곡 정보 수정 (관리자)</button>
+        <div id="sbAdminEditArea" class="sb-admin-edit" style="display: none;">
+            <label class="sb-modal-label" for="sbEditTitle">제목</label>
+            <input type="text" id="sbEditTitle" class="sb-modal-input" maxlength="255">
+            <label class="sb-modal-label" for="sbEditArtist">가수</label>
+            <input type="text" id="sbEditArtist" class="sb-modal-input" maxlength="255">
+            <label class="sb-modal-label" for="sbEditCover">썸네일 이미지 URL</label>
+            <input type="text" id="sbEditCover" class="sb-modal-input" placeholder="비워두면 기본 이미지로 표시됩니다.">
+            <p class="sb-admin-hint">⚠️ 가수명을 바꾸면 같은 가수의 모든 곡에 반영됩니다.</p>
+            <button type="button" class="btn btn-primary" style="width: 100%;" id="sbEditSaveBtn" onclick="saveSongEdit()">변경사항 저장</button>
+        </div>
+        {% endif %}
+
         <div id="sbRequestArea" class="sb-request-area">
             <label class="sb-modal-label" for="sbRequesterName">신청자 닉네임</label>
             <input type="text" id="sbRequesterName" class="sb-modal-input" maxlength="30" placeholder="닉네임을 입력해 주세요.">
@@ -632,6 +668,7 @@
 const STREAMER = {{ streamer | tojson }};
 const USER_NAME = {{ (user.name if user else '') | tojson }};
 const IS_LOGGED_IN = {{ (user is not none) | tojson }};
+const IS_ADMIN = {{ (is_admin | default(false)) | tojson }};
 const NICKNAME_STORAGE_KEY = 'songbook_requester_name';
 
 let allSongs = [];          // 전체 수록곡 (서버 정렬 순서 유지)
@@ -885,6 +922,21 @@ function openRequestModal(song) {
             : '/lyrics';
     }
 
+    // 관리자 곡 정보 수정 영역: 모달 열 때마다 접어두고 현재 값으로 채운다
+    if (IS_ADMIN) {
+        const editArea = document.getElementById('sbAdminEditArea');
+        const editToggle = document.getElementById('sbAdminEditToggle');
+        // song_external_id 가 있어야 수정 가능 (커스텀/등록곡)
+        const canEdit = !!song.song_external_id;
+        if (editToggle) editToggle.style.display = canEdit ? '' : 'none';
+        if (editArea) {
+            editArea.style.display = 'none';
+            document.getElementById('sbEditTitle').value = song.title || '';
+            document.getElementById('sbEditArtist').value = song.artist_name || '';
+            document.getElementById('sbEditCover').value = song.cover_image_url || '';
+        }
+    }
+
     // 신청 영역(닉네임 입력 + 신청 버튼)은 신청 가능할 때만 표시
     document.getElementById('sbRequestArea').style.display = canRequest ? '' : 'none';
     document.getElementById('sbSubmitBtn').style.display = canRequest ? '' : 'none';
@@ -904,6 +956,94 @@ function openRequestModal(song) {
 function closeRequestModal() {
     document.getElementById('sbRequestModal').classList.remove('active');
     selectedSong = null;
+}
+
+// ===== 관리자: 곡 정보 수정 =====
+function toggleAdminEdit() {
+    const area = document.getElementById('sbAdminEditArea');
+    if (!area) return;
+    const opening = area.style.display === 'none';
+    area.style.display = opening ? 'block' : 'none';
+    if (opening) document.getElementById('sbEditTitle').focus();
+}
+
+async function saveSongEdit() {
+    if (!selectedSong || !selectedSong.song_external_id) return;
+
+    const title = document.getElementById('sbEditTitle').value.trim();
+    const artist = document.getElementById('sbEditArtist').value.trim();
+    const cover = document.getElementById('sbEditCover').value.trim();
+
+    if (!title) { showToast('제목을 입력해 주세요.', 'error'); return; }
+    if (!artist) { showToast('가수명을 입력해 주세요.', 'error'); return; }
+
+    // 변경된 필드만 전송 (가수명 변경은 같은 아티스트의 모든 곡에 영향 → 불필요한 재인덱싱 방지)
+    const body = {};
+    if (title !== (selectedSong.title || '')) body.title = title;
+    if (artist !== (selectedSong.artist_name || '')) body.artist = artist;
+    if (cover !== (selectedSong.cover_image_url || '')) body.cover_image_url = cover;
+
+    if (Object.keys(body).length === 0) {
+        showToast('변경된 내용이 없습니다.');
+        return;
+    }
+
+    const saveBtn = document.getElementById('sbEditSaveBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '저장 중...';
+
+    try {
+        const res = await fetch(`/api/v1/songs/${encodeURIComponent(selectedSong.song_external_id)}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || '저장에 실패했습니다.');
+        }
+        const updated = await res.json();
+
+        // 가수명이 바뀌었다면 같은 가수의 로드된 곡들도 함께 갱신
+        const oldArtist = selectedSong.artist_name;
+        const artistChanged = 'artist' in body && updated.artist_name !== oldArtist;
+
+        // 선택된 곡(= allSongs 내 참조) 갱신
+        selectedSong.title = updated.title;
+        selectedSong.artist_name = updated.artist_name;
+        selectedSong.cover_image_url = updated.cover_image_url;
+
+        if (artistChanged) {
+            allSongs.forEach(s => {
+                if (s !== selectedSong && s.artist_name === oldArtist) {
+                    s.artist_name = updated.artist_name;
+                }
+            });
+        }
+
+        // 모달 표시 갱신
+        document.getElementById('sbModalTitle').textContent = updated.title || '';
+        document.getElementById('sbModalArtist').textContent = updated.artist_name || '알 수 없음';
+        document.getElementById('sbModalCoverWrap').innerHTML = updated.cover_image_url
+            ? `<img src="${escapeHtml(updated.cover_image_url)}" class="sb-song-cover" alt="" onerror="this.outerHTML=coverFallbackHtml()">`
+            : coverFallbackHtml();
+
+        // 그리드 카드 다시 그리기 (로드된 곡 기준)
+        const grid = document.getElementById('sbSongGrid');
+        grid.innerHTML = '';
+        allSongs.forEach(s => grid.appendChild(renderSongCard(s)));
+
+        showToast('곡 정보를 수정했어요.', 'success');
+        document.getElementById('sbAdminEditArea').style.display = 'none';
+    } catch (e) {
+        showToast(e.message || '저장 중 오류가 발생했습니다.', 'error');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '변경사항 저장';
+    }
 }
 
 async function submitRequest() {

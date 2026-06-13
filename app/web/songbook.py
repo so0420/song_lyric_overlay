@@ -7,7 +7,7 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.utils.templates import templates
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_admin_user
 from app.database.access_request_repository import get_access_request_repository
 from app.database.streamer_repository import get_streamer_repository
 
@@ -52,7 +52,8 @@ async def songbook_dashboard_page(
 async def public_songbook_page(
     slug: str,
     request: Request,
-    user=Depends(get_current_user)
+    user=Depends(get_current_user),
+    admin=Depends(get_admin_user),
 ):
     """공개 노래책 페이지 (비로그인 열람 가능, 미승인/탈퇴 스트리머는 404)"""
     repo = get_streamer_repository()
@@ -65,6 +66,7 @@ async def public_songbook_page(
     return templates.TemplateResponse("pages/songbook/songbook_view.html", {
         "request": request,
         "user": user,
+        "is_admin": admin is not None,  # 관리자에게만 곡 정보 수정 UI 노출 (실제 권한은 API에서 재검증)
         "streamer": {
             "id": streamer["streamer_id"],
             "slug": streamer["slug"],

@@ -38,7 +38,9 @@ def _serialize_entry(row: dict) -> dict:
         "title": row["title"],
         "artist_name": row.get("artist_name"),
         "cover_image_url": row.get("cover_image_url"),
-        "mr_youtube_video_id": row.get("mr_youtube_video_id"),
+        # MR 해석: 수록곡 지정 MR 우선, 없으면 연결된 가사의 MR 으로 폴백
+        # (신청 흐름의 core.song_request_push.resolve_mr_video_id 와 동일 규칙)
+        "mr_youtube_video_id": row.get("mr_youtube_video_id") or row.get("lyrics_mr_video_id"),
         "lyrics_id": row.get("lyrics_id"),
         "lyrics_title": row.get("lyrics_title"),
         "has_lyrics": row.get("has_lyrics", False),

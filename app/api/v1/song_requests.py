@@ -18,6 +18,7 @@ from app.schemas.songbook import (
     SongRequestReorderSchema,
     MarkDeliveredSchema,
     RandomFillSchema,
+    PlaylistRequestCreateSchema,
 )
 from app.utils.csrf import verify_csrf
 from app.utils.rate_limit import limiter, RATE_LIMITS
@@ -277,6 +278,42 @@ async def mark_requests_delivered(
     streamer = await _require_my_streamer(user, streamer_repo)
     await request_repo.mark_delivered(streamer["id"], data.ids)
     return {"success": True}
+
+
+@router.post("/from-playlist", dependencies=[Depends(verify_csrf)])
+async def create_request_from_playlist(
+    data: PlaylistRequestCreateSchema,
+    user=Depends(get_current_user_api),
+    streamer_repo: StreamerRepository = Depends(get_streamer_repository),
+    request_repo: SongRequestRepository = Depends(get_song_request_repository),
+    song_repo: SongRepository = Depends(get_song_repository),
+):
+    """노래하기 재생목록에서 직접 추가한 곡을 신청목록에도 생성 (재생목록→신청목록 동기화)
+
+    WS 푸시 없이 곧바로 delivered 처리 → 재생목록으로 되돌아오지 않음(이중 추가/루프 차단).
+    프로필이 없으면 404 (호출 측은 조용히 무시).
+    """
+    streamer = await _require_my_streamer(user, streamer_repo)
+    if not data.title and not data.song_external_id:
+        raise HTTPException(status_code=400, detail="곡 정보가 필요합니다.")
+
+    internal_song_id = None
+    if data.song_external_id:
+        song = await song_repo.get_song_by_external_id(data.song_external_id)
+        internal_song_id = song["id"] if song else None
+
+    request_id = await request_repo.add_request(
+        streamer_id=streamer["id"],
+        requester="직접 추가",
+        requester_type="MANUAL",
+        requester_platform="Playlist",
+        song_id=internal_song_id,
+        title=data.title,
+        artist=data.artist,
+    )
+    # 재생목록發이므로 전달 완료 처리 (playlist-pending 재수집 대상에서 제외)
+    await request_repo.mark_delivered(streamer["id"], [request_id])
+    return {"request_id": request_id}
 
 
 # ---------------------------------------------------------------

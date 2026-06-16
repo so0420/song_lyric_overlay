@@ -2598,9 +2598,14 @@
                 return false;
             }
 
-            state.playlist.push({ lyricsId, songId, songTitle, artistName, videoId, lyricsTitle, coverImageUrl: coverImageUrl || '' });
+            const newItem = { lyricsId, songId, songTitle, artistName, videoId, lyricsTitle, coverImageUrl: coverImageUrl || '', requestId: options.requestId || null };
+            state.playlist.push(newItem);
             savePlaylist();
             renderPlaylist();
+            // 신청目록發이 아닌 '직접 추가' 곡은 신청목록에도 생성(양방향 동기화)
+            if (!options.requestId) {
+                createRequestForPlaylistItem(newItem);
+            }
             if (!silent) {
                 closeModal();
                 elements.searchResults.classList.remove('active');
@@ -2623,18 +2628,63 @@
             savePlaylist();
             renderPlaylist();
             updateControlButtons();
+            // 신청목록에도 삭제 반영 (연결된 신청만)
+            if (removed && removed.requestId) deleteLinkedRequest(removed.requestId);
             showToast(`"${removed.songTitle}" 삭제됨`);
         }
 
         function clearPlaylist() {
             if (!confirm('재생 목록을 모두 삭제하시겠습니까?')) return;
+            // 신청목록에도 삭제 반영 (연결된 신청만) — 비우기 전에 id 수집
+            const linkedIds = state.playlist.map(it => it.requestId).filter(Boolean);
             state.playlist = [];
             state.currentPlayingIndex = -1;
             clearLyricsDisplay();
             savePlaylist();
             renderPlaylist();
             updateControlButtons();
+            linkedIds.forEach(deleteLinkedRequest);
             showToast('재생 목록이 비워졌습니다');
+        }
+
+        // ===== 재생목록 → 신청목록 동기화 헬퍼 (양방향) =====
+        // 직접 추가한 곡을 신청목록에도 생성하고, 반환된 requestId 를 항목에 기록.
+        async function createRequestForPlaylistItem(item) {
+            try {
+                const res = await fetch('/api/v1/song-requests/from-playlist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+                    body: JSON.stringify({
+                        song_external_id: item.songId || null,
+                        title: item.songTitle || item.lyricsTitle || '',
+                        artist: item.artistName || ''
+                    })
+                });
+                if (!res.ok) return; // 노래책 프로필 없음(404) 등은 조용히 무시
+                const data = await res.json();
+                if (data && data.request_id) {
+                    item.requestId = data.request_id;  // state.playlist 내 객체 참조 → 그대로 반영
+                    persistPlaylist();                 // requestId 를 DB에도 저장
+                }
+            } catch { /* 무시 */ }
+        }
+
+        // 재생목록에서 삭제한 곡의 연결 신청 삭제
+        function deleteLinkedRequest(requestId) {
+            if (!requestId) return;
+            fetch(`/api/v1/song-requests/${requestId}`, { method: 'DELETE', headers: { ...csrfHeaders } })
+                .catch(() => {});
+        }
+
+        // 재생목록 순서를 신청목록에 반영 (연결된 신청 id 만, 재생목록 순서대로)
+        function reorderLinkedRequests() {
+            const ids = state.playlist.map(it => it.requestId).filter(Boolean);
+            if (ids.length < 2) return;
+            fetch('/api/v1/song-requests/reorder', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+                body: JSON.stringify({ ids })
+            }).catch(() => {});
         }
 
         function savePlaylist() {
@@ -2810,6 +2860,8 @@
                     state.playlist = newPlaylist;
                     savePlaylist();
                     renderPlaylist();
+                    // 신청목록에도 순서 반영
+                    reorderLinkedRequests();
                 });
             });
         }
@@ -3132,7 +3184,7 @@
                     data.mr_video_id,
                     data.lyrics_title,
                     data.cover_image_url || '',
-                    { silent: true }
+                    { silent: true, requestId: data.request_id }
                 );
                 markRequestsDelivered([data.request_id]);
             }
@@ -3160,7 +3212,7 @@
                         item.mr_video_id,
                         item.lyrics_title,
                         item.cover_image_url || '',
-                        { silent: true }
+                        { silent: true, requestId: item.request_id }
                     );
                     if (ok) added++;
                 });

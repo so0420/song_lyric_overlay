@@ -105,6 +105,16 @@ class SongRequestCreateSchema(BaseModel):
         return v
 
 
+class PlaylistRequestCreateSchema(BaseModel):
+    """노래하기 재생목록에서 직접 추가한 곡 → 신청목록 동기화 생성 (POST /song-requests/from-playlist)
+
+    재생목록發이므로 WS 푸시 없이 곧바로 전달 완료(delivered) 처리한다(이중 추가/루프 방지).
+    """
+    song_external_id: Optional[str] = Field(None, max_length=255, description="노래 외부 ID (songs 매핑용)")
+    title: Optional[str] = Field(None, max_length=255, description="노래 제목")
+    artist: Optional[str] = Field(None, max_length=255, description="아티스트")
+
+
 class SongRequestUpdateSchema(BaseModel):
     """노래 신청 수정 (PATCH /song-requests/{request_id})"""
     status: Optional[SongRequestStatusT] = Field(None, description="상태: 대기중/부르는중/이미부름")

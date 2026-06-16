@@ -3415,14 +3415,14 @@
         }
 
         // 재생목록을 OBS 오버레이로 동기화
+        // OBS/시청자에는 항상 '재생목록'만 노출한다. (즐겨찾기 탭을 보고 있어도 재생목록을 보냄)
         function syncPlaylistToOBS() {
-            const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
-
             const message = {
                 type: 'playlist_update',
                 data: {
-                    playlist: items,
-                    currentIndex: state.currentPlayingIndex
+                    playlist: state.playlist,
+                    // 재생목록 탭일 때만 현재 재생 인덱스가 재생목록을 가리킴(즐겨찾기 탭은 하이라이트 없음)
+                    currentIndex: state.currentTab === 'playlist' ? state.currentPlayingIndex : -1
                 }
             };
 

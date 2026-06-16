@@ -215,12 +215,33 @@
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            width: 280px;
+            width: 360px;
             background: rgba(0, 0, 0, 0.7);
-            border-radius: 16px;
-            padding: 16px;
+            border-radius: 18px;
+            padding: 20px;
             opacity: 0;
             transition: all 0.4s ease;
+        }
+
+        /* 자동 스크롤 루프 컨테이너 */
+        .playlist-items {
+            overflow: hidden;
+        }
+
+        .playlist-scroll {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .playlist-scroll.is-scrolling {
+            animation: pl-marquee var(--pl-dur, 20s) linear infinite;
+            will-change: transform;
+        }
+
+        @keyframes pl-marquee {
+            from { transform: translateY(0); }
+            to   { transform: translateY(var(--pl-shift, 0)); }
         }
 
         .playlist-box.visible {
@@ -282,8 +303,8 @@
         }
 
         .playlist-item-thumb {
-            width: 48px;
-            height: 36px;
+            width: 56px;
+            height: 42px;
             border-radius: 6px;
             object-fit: cover;
             background: linear-gradient(135deg, #667eea, #764ba2);
@@ -574,21 +595,8 @@
                 return;
             }
 
-            const maxItems = settings.playlist_max_items || 5;
-            let startIndex = 0;
-
-            // 현재 재생 중인 곡이 보이도록 스크롤 조정
-            if (currentPlayingIndex >= 0) {
-                startIndex = Math.max(0, currentPlayingIndex - Math.floor(maxItems / 2));
-                if (startIndex + maxItems > currentPlaylist.length) {
-                    startIndex = Math.max(0, currentPlaylist.length - maxItems);
-                }
-            }
-
-            const visibleItems = currentPlaylist.slice(startIndex, startIndex + maxItems);
-
-            playlistItems.innerHTML = visibleItems.map((item, idx) => {
-                const actualIndex = startIndex + idx;
+            // 전체 목록을 렌더링 (길면 자동 스크롤 루프로 모두 노출)
+            const itemsHtml = currentPlaylist.map((item, actualIndex) => {
                 const isActive = actualIndex === currentPlayingIndex;
                 const videoId = item.videoId || item.mr_youtube_video_id || '';
                 const title = item.songTitle || item.song_title || '';
@@ -619,7 +627,49 @@
                 `;
             }).join('');
 
+            playlistItems.innerHTML = `<div class="playlist-scroll"><div class="playlist-copy">${itemsHtml}</div></div>`;
             playlistBox.classList.add('visible');
+
+            // 렌더 후 높이 측정 → 넘치면 끊김 없는 세로 루프 시작
+            requestAnimationFrame(() => setupPlaylistScroll());
+        }
+
+        // 재생목록이 표시 높이를 넘치면 동일 목록을 복제해 끊김 없이 위로 흐르게 한다.
+        const PLAYLIST_GAP = 6;        // .playlist-scroll gap(px)
+        const PLAYLIST_SPEED = 40;     // 스크롤 속도(px/초) — 행 수와 무관하게 균일
+        function setupPlaylistScroll() {
+            const scroll = playlistItems.querySelector('.playlist-scroll');
+            if (!scroll) return;
+            const copy = scroll.querySelector('.playlist-copy');
+            const items = copy ? copy.querySelectorAll('.playlist-item') : [];
+            if (!items.length) return;
+
+            const maxItems = settings.playlist_max_items || 5;
+            const rowH = items[0].getBoundingClientRect().height;
+            const visibleCount = Math.min(maxItems, items.length);
+            const maxHeight = rowH * visibleCount + PLAYLIST_GAP * (visibleCount - 1);
+            playlistItems.style.maxHeight = maxHeight + 'px';
+
+            const copyH = copy.getBoundingClientRect().height;
+            // 표시 영역에 다 들어오면 스크롤 불필요 (정적 표시)
+            if (items.length <= maxItems || copyH <= maxHeight + 1) {
+                scroll.classList.remove('is-scrolling');
+                scroll.style.removeProperty('--pl-shift');
+                return;
+            }
+
+            // 한 카피만큼(+카피 간 gap) 위로 이동하면 복제본이 원위치 → 매끄러운 루프
+            if (!scroll.querySelector('.playlist-copy:nth-child(2)')) {
+                scroll.appendChild(copy.cloneNode(true));
+            }
+            const shift = copyH + PLAYLIST_GAP;
+            const dur = Math.max(8, shift / PLAYLIST_SPEED);
+            scroll.style.setProperty('--pl-shift', `-${shift}px`);
+            scroll.style.setProperty('--pl-dur', `${dur}s`);
+            // 애니메이션 재시작 (강제 reflow)
+            scroll.classList.remove('is-scrolling');
+            void scroll.offsetWidth;
+            scroll.classList.add('is-scrolling');
         }
 
         function escapeHtml(text) {

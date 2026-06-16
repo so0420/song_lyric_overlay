@@ -2638,8 +2638,48 @@
         }
 
         function savePlaylist() {
+            // localStorage 는 빠른 초기 페인트용 캐시 (DB가 원본)
             localStorage.setItem('overlay_playlist', JSON.stringify(state.playlist));
             syncPlaylistToOBS();
+            persistPlaylist();
+        }
+
+        // 재생목록을 서버(DB)에 영속화 — 잦은 변경을 묶기 위해 디바운스
+        let persistPlaylistTimer = null;
+        function persistPlaylist() {
+            clearTimeout(persistPlaylistTimer);
+            persistPlaylistTimer = setTimeout(() => {
+                fetch('/api/v1/overlay/playlist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+                    body: JSON.stringify({
+                        playlist: state.playlist,
+                        // 재생목록 탭이 아닐 때(즐겨찾기 재생 등)는 하이라이트 인덱스 미저장
+                        currentIndex: state.currentTab === 'playlist' ? state.currentPlayingIndex : -1
+                    })
+                }).catch(err => console.log('Playlist persist error:', err));
+            }, 500);
+        }
+
+        // 서버(DB)에서 재생목록 로드 — 노래하기 페이지 최초 진입/다른 기기 동기화
+        async function loadPlaylistFromServer() {
+            try {
+                const res = await fetch('/api/v1/overlay/playlist');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (Array.isArray(data.playlist)) {
+                    state.playlist = data.playlist;
+                    const idx = Number.isInteger(data.current_index) ? data.current_index : -1;
+                    // 인덱스 복원(하이라이트/시청자 표시용). 자동 재생은 하지 않음.
+                    state.currentPlayingIndex = (idx >= 0 && idx < state.playlist.length) ? idx : -1;
+                    localStorage.setItem('overlay_playlist', JSON.stringify(state.playlist));
+                    renderPlaylist();
+                    updateControlButtons();
+                    syncPlaylistToOBS();
+                }
+            } catch (err) {
+                console.log('Playlist load error:', err);
+            }
         }
 
         function renderPlaylist() {
@@ -2857,6 +2897,7 @@
             renderPlaylist();
             updateControlButtons();
             syncPlaylistToOBS();
+            persistPlaylist();  // 현재 재생 인덱스 변경 DB 반영 (시청자 '지금 부르는 곡' 표시)
         }
 
         // Lyrics Sync with requestAnimationFrame
@@ -3884,14 +3925,15 @@
         }
 
         // Initialize
-        function init() {
+        async function init() {
             initEventListeners();
-            renderPlaylist();
+            renderPlaylist();           // localStorage 캐시로 즉시 페인트
             loadFavorites();
-            updateControlButtons();
             updateVolumeIcon();
-            // 초기 재생목록 동기화
-            setTimeout(syncPlaylistToOBS, 1000);
+
+            // DB(원본)에서 재생목록 로드 — URL/신청 곡 추가보다 먼저 끝내야 추가분이 덮어써지지 않음
+            await loadPlaylistFromServer();
+            updateControlButtons();
 
             // URL 파라미터로 곡 추가
             handleUrlParams();

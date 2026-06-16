@@ -13,6 +13,7 @@ from app.schemas.users import CurrentUserSchema
 from app.schemas.songbook import SongbookEntryCreateSchema, SongbookEntryUpdateSchema
 from app.database.streamer_repository import StreamerRepository, get_streamer_repository
 from app.database.songbook_repository import SongbookRepository, get_songbook_repository
+from app.database.overlay_repository import OverlayRepository, get_overlay_repository
 from app.database.song_repository import SongRepository, get_song_repository
 from app.database.lyrics_repository import LyricsRepository, get_lyrics_repository
 from app.utils.csrf import verify_csrf
@@ -103,6 +104,38 @@ async def get_public_songbook(
             "request_enabled": bool(streamer.get("request_enabled")),
             "request_web_enabled": bool(streamer.get("request_web_enabled")),
         },
+    }
+
+
+def _serialize_playlist_item(item: dict) -> dict:
+    """저장된 재생목록 아이템 → 공개 노출용 최소 필드 (제목/아티스트/커버/영상ID)"""
+    return {
+        "song_title": item.get("songTitle") or item.get("song_title") or "",
+        "artist_name": item.get("artistName") or item.get("artist_name") or "",
+        "cover_image_url": item.get("coverImageUrl") or item.get("coverUrl") or "",
+        "video_id": item.get("videoId") or item.get("mr_youtube_video_id") or "",
+    }
+
+
+@router.get("/{streamer_id}/playlist")
+@limiter.limit(RATE_LIMITS["api"])
+async def get_public_playlist(
+    request: Request,
+    streamer_id: str,
+    streamer_repo: StreamerRepository = Depends(get_streamer_repository),
+    overlay_repo: OverlayRepository = Depends(get_overlay_repository),
+):
+    """공개 재생목록 조회 — 스트리머가 지금 부르고 있는/예정인 곡 목록 (미승인/탈퇴는 404)"""
+    streamer = await streamer_repo.get_public_by_external_id(streamer_id)
+    if not streamer:
+        raise HTTPException(status_code=404, detail="노래책을 찾을 수 없습니다.")
+
+    data = await overlay_repo.get_playlist(streamer["user_id"])
+    items = [_serialize_playlist_item(it) for it in data.get("playlist", []) if isinstance(it, dict)]
+    return {
+        "items": items,
+        "current_index": data.get("current_index", -1),
+        "total": len(items),
     }
 
 

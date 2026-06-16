@@ -192,6 +192,21 @@ CREATE TABLE IF NOT EXISTS `user_overlay_presets` (
 CREATE INDEX idx_preset_user_id ON user_overlay_presets(user_id);
 
 -- -------------------------------------------------------------------------------------------------------------
+-- User Playlist (노래하기 재생목록 — 시청자 노래책 페이지/오버레이에서 조회)
+-- -------------------------------------------------------------------------------------------------------------
+
+-- 사용자별 재생목록 (한 행). playlist_json 은 [{lyricsId, songId, songTitle, artistName, videoId, coverImageUrl, ...}]
+CREATE TABLE IF NOT EXISTS `user_playlists` (
+    `user_id` BIGINT NOT NULL PRIMARY KEY COMMENT 'users 테이블 참조 ID',
+    `playlist_json` TEXT NOT NULL COMMENT '재생목록 JSON 배열',
+    `current_index` INT NOT NULL DEFAULT -1 COMMENT '현재 재생 중 인덱스 (-1=없음)',
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    -- 외래 키 설정: 사용자 삭제 시 재생목록도 삭제
+    CONSTRAINT `fk_playlist_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------------------------------------------------------
 -- Overlay Access Requests
 -- -------------------------------------------------------------------------------------------------------------
 

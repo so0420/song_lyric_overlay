@@ -96,6 +96,120 @@
     color: var(--accent);
 }
 
+/* ===== 현재 재생목록 (스트리머가 지금 부르는/예정 곡) ===== */
+.sb-playlist {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-bottom: 24px;
+}
+
+.sb-playlist-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.sb-playlist-title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+}
+
+.sb-playlist-count {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-sub);
+}
+
+.sb-playlist-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sb-pl-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    transition: background 0.2s;
+}
+
+.sb-pl-item.playing {
+    background: var(--accent-light);
+}
+
+.sb-pl-num {
+    width: 22px;
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-dim);
+}
+
+.sb-pl-item.playing .sb-pl-num {
+    color: var(--accent);
+}
+
+.sb-pl-thumb,
+.sb-pl-thumb-fallback {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.sb-pl-thumb {
+    object-fit: cover;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.sb-pl-thumb-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.sb-pl-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.sb-pl-title {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sb-pl-artist {
+    font-size: 0.8rem;
+    color: var(--text-sub);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sb-pl-now {
+    flex-shrink: 0;
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 3px 9px;
+    border-radius: 100px;
+    background: var(--accent);
+    color: white;
+}
+
 /* 신청 마감 안내 배너 */
 .sb-closed-notice {
     display: flex;
@@ -571,6 +685,18 @@
             </div>
             {% endif %}
         </div>
+    </div>
+
+    <!-- 현재 재생목록 (스트리머가 지금 부르는/예정 곡) — 곡이 있을 때만 표시 -->
+    <div class="sb-playlist" id="sbPlaylist" style="display: none;">
+        <div class="sb-playlist-head">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="flex-shrink:0;">
+                <path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle>
+            </svg>
+            <span class="sb-playlist-title">재생 목록</span>
+            <span class="sb-playlist-count" id="sbPlaylistCount"></span>
+        </div>
+        <div class="sb-playlist-list" id="sbPlaylistList"></div>
     </div>
 
     <!-- 신청 마감 안내 (request_enabled && request_web_enabled가 아닐 때) -->
@@ -1134,8 +1260,80 @@ document.getElementById('sbRequesterName').addEventListener('keydown', (e) => {
     }
 });
 
+// ===== 현재 재생목록 (스트리머가 지금 부르는/예정 곡) =====
+const PLAYLIST_POLL_MS = 8000;  // 8초마다 갱신
+let playlistPollTimer = null;
+
+function plThumbFallback() {
+    return `<div class="sb-pl-thumb-fallback"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>`;
+}
+
+function renderPlaylist(items, currentIndex) {
+    const box = document.getElementById('sbPlaylist');
+    const list = document.getElementById('sbPlaylistList');
+    if (!items || items.length === 0) {
+        box.style.display = 'none';
+        list.innerHTML = '';
+        return;
+    }
+    document.getElementById('sbPlaylistCount').textContent = `${items.length}곡`;
+    list.innerHTML = items.map((item, idx) => {
+        const isPlaying = idx === currentIndex;
+        const title = item.song_title || '';
+        const artist = item.artist_name || '';
+        // 커버 우선, 없으면 유튜브 썸네일, 그것도 없으면 폴백
+        let thumb;
+        if (item.cover_image_url) {
+            const fb = item.video_id ? `this.src='https://img.youtube.com/vi/${encodeURIComponent(item.video_id)}/default.jpg'` : `this.outerHTML=plThumbFallback()`;
+            thumb = `<img class="sb-pl-thumb" src="${escapeHtml(item.cover_image_url)}" alt="" loading="lazy" onerror="${fb}">`;
+        } else if (item.video_id) {
+            thumb = `<img class="sb-pl-thumb" src="https://img.youtube.com/vi/${encodeURIComponent(item.video_id)}/default.jpg" alt="" loading="lazy" onerror="this.outerHTML=plThumbFallback()">`;
+        } else {
+            thumb = plThumbFallback();
+        }
+        return `
+            <div class="sb-pl-item ${isPlaying ? 'playing' : ''}">
+                <span class="sb-pl-num">${idx + 1}</span>
+                ${thumb}
+                <div class="sb-pl-info">
+                    <div class="sb-pl-title">${escapeHtml(title)}</div>
+                    ${artist ? `<div class="sb-pl-artist">${escapeHtml(artist)}</div>` : ''}
+                </div>
+                ${isPlaying ? '<span class="sb-pl-now">지금 부르는 중</span>' : ''}
+            </div>
+        `;
+    }).join('');
+    box.style.display = 'block';
+}
+
+async function loadPlaylist() {
+    try {
+        const res = await fetch(`/api/v1/songbook/${encodeURIComponent(STREAMER.id)}/playlist`);
+        if (!res.ok) return;
+        const data = await res.json();
+        renderPlaylist(data.items || [], data.current_index ?? -1);
+    } catch (e) {
+        // 폴링 실패는 조용히 무시 (다음 주기에 재시도)
+    }
+}
+
+// 탭이 보일 때만 폴링 (백그라운드 탭에서는 중단해 부하 절감)
+function startPlaylistPoll() {
+    stopPlaylistPoll();
+    loadPlaylist();
+    playlistPollTimer = setInterval(loadPlaylist, PLAYLIST_POLL_MS);
+}
+function stopPlaylistPoll() {
+    if (playlistPollTimer) { clearInterval(playlistPollTimer); playlistPollTimer = null; }
+}
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopPlaylistPoll();
+    else startPlaylistPoll();
+});
+
 // 초기 로드
 renderTagFilters();
 loadSongbook(true);
+startPlaylistPoll();
 </script>
 {% endblock %}

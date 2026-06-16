@@ -15,6 +15,7 @@ from app.schemas.overlay import (
     LyricsInitSchema,
     LyricsTimeSyncSchema,
     PlaylistSyncSchema,
+    PlaylistSaveSchema,
     OverlayPresetCreateSchema,
     OverlayPresetUpdateSchema,
     OverlayPresetResponseSchema
@@ -92,6 +93,27 @@ async def sync_playlist(
         "data": data.model_dump()
     })
     return {"success": True}
+
+@router.get("/playlist")
+async def get_playlist(
+    user=Depends(get_current_user_api),
+    overlay_repo: OverlayRepository = Depends(get_overlay_repository)
+):
+    """본인 재생목록 조회 (노래하기 페이지 초기 로드용)"""
+    return await overlay_repo.get_playlist(user['id'])
+
+
+@router.post("/playlist", dependencies=[Depends(verify_csrf)])
+async def save_playlist(
+    data: PlaylistSaveSchema,
+    user=Depends(get_current_user_api),
+    overlay_repo: OverlayRepository = Depends(get_overlay_repository)
+):
+    """재생목록 DB 저장 (변경 시 영속화). OBS 동기화는 별도 WS/sync-playlist 가 담당."""
+    playlist = [item.model_dump() for item in data.playlist]
+    await overlay_repo.save_playlist(user['id'], playlist, data.currentIndex)
+    return {"success": True}
+
 
 @router.get("/ws-token")
 async def get_ws_token(user=Depends(get_current_user_api)):

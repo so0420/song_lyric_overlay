@@ -37,6 +37,15 @@ class PlaylistSyncSchema(BaseModel):
         extra = "allow"
 
 
+class PlaylistSaveSchema(BaseModel):
+    """재생목록 DB 저장 데이터 (노래하기 페이지 → 서버 영속화)"""
+    playlist: List[PlaylistItemSchema] = Field(default_factory=list, max_length=1000)
+    currentIndex: int = -1
+
+    class Config:
+        extra = "allow"
+
+
 class OverlaySettingsSchema(BaseModel):
     # 가사 스타일
     font_family: str = "Pretendard"

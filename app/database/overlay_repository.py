@@ -156,6 +156,41 @@ class OverlayRepository:
 
         return True
 
+    # ============ Playlist Methods ============
+
+    async def get_playlist(self, user_id: int) -> Dict[str, Any]:
+        """사용자의 재생목록 조회. 없으면 빈 목록 반환."""
+        result = await self.db.fetch_one(
+            "SELECT playlist_json, current_index FROM user_playlists WHERE user_id = %s",
+            (user_id,)
+        )
+        if not result:
+            return {"playlist": [], "current_index": -1}
+        try:
+            playlist = json.loads(result['playlist_json']) if result['playlist_json'] else []
+        except (ValueError, TypeError):
+            playlist = []
+        if not isinstance(playlist, list):
+            playlist = []
+        return {
+            "playlist": playlist,
+            "current_index": result['current_index'] if result['current_index'] is not None else -1,
+        }
+
+    async def save_playlist(self, user_id: int, playlist: List[Dict[str, Any]], current_index: int = -1) -> bool:
+        """사용자의 재생목록 저장 (UPSERT)"""
+        playlist_json = json.dumps(playlist, ensure_ascii=False)
+        await self.db.execute_query(
+            """INSERT INTO user_playlists (user_id, playlist_json, current_index)
+               VALUES (%s, %s, %s)
+               ON DUPLICATE KEY UPDATE
+                   playlist_json = VALUES(playlist_json),
+                   current_index = VALUES(current_index),
+                   updated_at = CURRENT_TIMESTAMP""",
+            (user_id, playlist_json, current_index)
+        )
+        return True
+
     async def get_active_preset(self, user_id: int) -> Optional[Dict[str, Any]]:
         """현재 활성화된 프리셋 조회"""
         result = await self.db.fetch_one(

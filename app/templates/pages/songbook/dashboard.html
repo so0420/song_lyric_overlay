@@ -434,6 +434,16 @@
 .request-row { cursor: grab; }
 .request-row.dragging { opacity: 0.5; border-style: dashed; }
 
+/* 재생목록 느낌: 지금 부르는 중인 신청곡 하이라이트 (노래하기 재생목록 active 항목과 동일 결) */
+.request-row.playing {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.request-row.done { opacity: 0.55; }
+.request-row.done .row-title { text-decoration: line-through; }
+
 .drag-handle {
     color: var(--text-dim);
     flex-shrink: 0;
@@ -2030,12 +2040,32 @@ const TYPE_CHIP = {
     MANUAL: '<span class="chip chip-manual">수동</span>',
 };
 
+// 커버 로드 실패 시 끼워 넣을 플레이스홀더 (함수 호출로 인라인 onerror 의 따옴표 중첩 회피)
+function reqCoverPh() { return '<div class="row-cover cover-ph"></div>'; }
+
+// 신청곡 커버 썸네일 — 노래책/곡 커버 우선, 없으면 MR 유튜브 썸네일, 그것도 없으면 플레이스홀더
+// (노래하기 재생목록 항목과 동일한 모습을 위해 신청 목록에도 커버를 노출)
+function requestCoverHtml(item) {
+    const vid = item.mr_video_id || '';
+    if (item.ref_song_cover) {
+        // 커버 실패 → (영상 있으면) 유튜브 썸네일, 그것도 실패 → 플레이스홀더
+        const fb = vid
+            ? `this.onerror=function(){this.outerHTML=reqCoverPh()};this.src='https://img.youtube.com/vi/${encodeURIComponent(vid)}/default.jpg'`
+            : `this.outerHTML=reqCoverPh()`;
+        return `<img class="row-cover" src="${escapeHtml(item.ref_song_cover)}" alt="" loading="lazy" onerror="${fb}">`;
+    }
+    if (vid) {
+        return `<img class="row-cover" src="https://img.youtube.com/vi/${encodeURIComponent(vid)}/default.jpg" alt="" loading="lazy" onerror="this.outerHTML=reqCoverPh()">`;
+    }
+    return reqCoverPh();
+}
+
 function requestRowHtml(item) {
     const title = item.ref_song_title || item.title || '(제목 없음)';
     const artist = item.ref_artist_name || item.artist || '';
     const status = item.status || 'waiting';
     return `
-        <div class="list-row request-row" draggable="true" data-request-id="${item.id}">
+        <div class="list-row request-row ${status === 'playing' ? 'playing' : ''} ${status === 'done' ? 'done' : ''}" draggable="true" data-request-id="${item.id}">
             <span class="drag-handle" title="드래그로 순서 변경">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                     <circle cx="9" cy="5" r="1.6"/><circle cx="15" cy="5" r="1.6"/>
@@ -2043,6 +2073,7 @@ function requestRowHtml(item) {
                     <circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="19" r="1.6"/>
                 </svg>
             </span>
+            ${requestCoverHtml(item)}
             <span class="status-badge status-${escapeHtml(status)}">${STATUS_LABEL[status] || status}</span>
             <div class="row-info">
                 <div class="row-title">${escapeHtml(title)}</div>

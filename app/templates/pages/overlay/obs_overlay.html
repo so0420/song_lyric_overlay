@@ -311,6 +311,13 @@
             flex-shrink: 0;
         }
 
+        .playlist-item-thumb--empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
         .playlist-item-info {
             flex: 1;
             min-width: 0;
@@ -599,20 +606,27 @@
             const itemsHtml = currentPlaylist.map((item, actualIndex) => {
                 const isActive = actualIndex === currentPlayingIndex;
                 const videoId = item.videoId || item.mr_youtube_video_id || '';
+                const coverImageUrl = item.coverImageUrl || item.cover_image_url || '';
                 const title = item.songTitle || item.song_title || '';
                 const artist = item.artistName || item.artist_name || '';
+
+                // 영상 없을 때 에러난 이미지 대신 기본 이미지(음표 아이콘) 노출
+                const emptyThumb = `
+                    <div class="playlist-item-thumb playlist-item-thumb--empty">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                    </div>`;
+                const thumbHtml = coverImageUrl
+                    ? `<img class="playlist-item-thumb" src="${coverImageUrl}" alt=""${videoId ? ` onerror="this.src='https://img.youtube.com/vi/${videoId}/default.jpg'"` : ''}>`
+                    : (videoId
+                        ? `<img class="playlist-item-thumb" src="https://img.youtube.com/vi/${videoId}/default.jpg" alt="">`
+                        : emptyThumb);
 
                 return `
                     <div class="playlist-item ${isActive ? 'active' : ''}">
                         <span class="playlist-item-number" style="color: ${isActive ? (settings.playlist_highlight_color || '#FFE500') : 'rgba(255,255,255,0.5)'}">
                             ${actualIndex + 1}
                         </span>
-                        ${settings.playlist_show_thumbnail ? `
-                            <img class="playlist-item-thumb"
-                                 src="https://img.youtube.com/vi/${videoId}/default.jpg"
-                                 alt=""
-                                 onerror="this.style.background='linear-gradient(135deg,#667eea,#764ba2)';this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'">
-                        ` : ''}
+                        ${settings.playlist_show_thumbnail ? thumbHtml : ''}
                         <div class="playlist-item-info">
                             <div class="playlist-item-title" style="color: ${isActive ? (settings.playlist_highlight_color || '#FFE500') : (settings.playlist_text_color || '#FFFFFF')}; font-size: ${settings.playlist_font_size || 16}px;">
                                 ${escapeHtml(title)}

@@ -60,6 +60,12 @@ pub fn download_audio(
     cmd.arg(dest_dir.join("%(title)s.%(ext)s"));
     cmd.arg(url);
 
+    // 한국어(cp949) Windows에서 yt-dlp가 stdout에 유니코드(제목/이모지 등)를
+    // 출력하다 `OSError: [Errno 22]`로 죽는 문제를 막기 위해 Python을 UTF-8
+    // 모드로 강제한다.
+    cmd.env("PYTHONUTF8", "1");
+    cmd.env("PYTHONIOENCODING", "utf-8");
+
     cmd.stdin(Stdio::null());
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());

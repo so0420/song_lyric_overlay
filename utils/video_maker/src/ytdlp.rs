@@ -35,13 +35,14 @@ pub fn download_audio(
     tx: &Sender<Progress>,
 ) -> Result<DownloadResult> {
     std::fs::create_dir_all(dest_dir)?;
-    let ffmpeg_dir = ffmpeg.parent().context("ffmpeg 상위 폴더 없음")?;
 
     let _ = tx.send(Progress::Percent(0.0));
     let _ = tx.send(Progress::Status("유튜브 정보 가져오는 중…".into()));
 
     let mut cmd = Command::new(yt_dlp);
-    cmd.arg("--ffmpeg-location").arg(ffmpeg_dir);
+    // 내장 ffmpeg는 캐시에 `ffmpeg-<stamp>.exe`처럼 풀려 있어 표준 이름이 아니다.
+    // 따라서 폴더가 아니라 ffmpeg 실행 파일 "경로"를 직접 넘겨야 yt-dlp가 찾는다.
+    cmd.arg("--ffmpeg-location").arg(ffmpeg);
     cmd.args([
         "--no-mtime",
         "--newline",

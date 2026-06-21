@@ -83,8 +83,20 @@ pub fn download_audio(
         buf
     });
 
-    for line in BufReader::new(stdout).lines().map_while(|l| l.ok()) {
-        if let Some(pct) = parse_progress(&line) {
+    // 콘솔이 없는 GUI 환경에서 yt-dlp는 stdout(파이프)에 cp949 등 로케일 인코딩으로
+    // 출력할 수 있다. UTF-8이 아닌 줄에서 멈추면 파이프가 막혀 yt-dlp가 stdout 쓰기에서
+    // [Errno 22]로 죽으므로, 바이트 단위로 끝까지 읽고 lossy 디코딩한다.
+    let mut reader = BufReader::new(stdout);
+    let mut bytes = Vec::new();
+    loop {
+        bytes.clear();
+        match reader.read_until(b'\n', &mut bytes) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {}
+        }
+        let line = String::from_utf8_lossy(&bytes);
+        let line = line.trim_end();
+        if let Some(pct) = parse_progress(line) {
             let _ = tx.send(Progress::Status(format!("유튜브 음원 다운로드 {:.0}%", pct * 100.0)));
         } else if line.contains("[ExtractAudio]") {
             let _ = tx.send(Progress::Status("음원 추출 중…".into()));

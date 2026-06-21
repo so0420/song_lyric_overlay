@@ -64,7 +64,7 @@ impl App {
             url_input: String::new(),
             audio_files: Vec::new(),
             yt_input: String::new(),
-            use_yt_thumbnail: true,
+            use_yt_thumbnail: false,
             output_dir: None,
             state: JobState::Idle,
             rx: None,

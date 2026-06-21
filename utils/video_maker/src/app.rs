@@ -429,7 +429,7 @@ impl eframe::App for App {
                 ui.label(egui::RichText::new("출력 폴더").strong());
                 ui.label(match &self.output_dir {
                     Some(p) => format!("{}", p.display()),
-                    None => "(지정 안 함 — 오디오 파일 옆 / 유튜브는 다운로드 폴더에 저장)".to_string(),
+                    None => "(지정 안 함 — 프로그램(exe)과 같은 폴더에 저장)".to_string(),
                 });
                 ui.horizontal(|ui| {
                     if ui.button("폴더 선택…").clicked() {
@@ -485,27 +485,27 @@ impl eframe::App for App {
     }
 }
 
-/// 로컬 오디오의 출력 mp4 경로(출력 폴더 지정 시 그 폴더, 아니면 오디오 옆).
-fn output_path_for(output_dir: &Option<PathBuf>, audio: &PathBuf) -> PathBuf {
-    match output_dir {
-        Some(dir) => {
-            let stem = audio
-                .file_stem()
-                .map(|s| s.to_string_lossy().into_owned())
-                .unwrap_or_else(|| "output".to_string());
-            dir.join(format!("{stem}.mp4"))
-        }
-        None => audio.with_extension("mp4"),
-    }
+/// 실행 파일(exe)이 있는 폴더. 기본 출력 위치로 쓴다.
+fn exe_dir() -> PathBuf {
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        .unwrap_or_else(|| PathBuf::from("."))
 }
 
-/// 유튜브 결과 mp4를 저장할 폴더(지정 폴더 → 다운로드 폴더 → 홈).
+/// 로컬 오디오의 출력 mp4 경로(출력 폴더 지정 시 그 폴더, 아니면 exe 폴더).
+fn output_path_for(output_dir: &Option<PathBuf>, audio: &PathBuf) -> PathBuf {
+    let stem = audio
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "output".to_string());
+    let dir = output_dir.clone().unwrap_or_else(exe_dir);
+    dir.join(format!("{stem}.mp4"))
+}
+
+/// 유튜브 결과 mp4를 저장할 폴더(지정 폴더 → exe 폴더).
 fn youtube_output_dir(output_dir: &Option<PathBuf>) -> PathBuf {
-    output_dir
-        .clone()
-        .or_else(dirs::download_dir)
-        .or_else(dirs::home_dir)
-        .unwrap_or_else(|| PathBuf::from("."))
+    output_dir.clone().unwrap_or_else(exe_dir)
 }
 
 fn source_label(source: &JobSource) -> String {

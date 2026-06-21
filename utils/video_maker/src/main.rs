@@ -1,16 +1,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app;
+mod binaries;
 mod encoder;
-mod ffmpeg;
+mod ytdlp;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let ffmpeg_path = match ffmpeg::extract_ffmpeg() {
-        Ok(p) => p,
+    let bins = match binaries::extract() {
+        Ok(b) => b,
         Err(e) => {
             rfd::MessageDialog::new()
                 .set_title("초기화 실패")
-                .set_description(format!("ffmpeg 준비 중 오류: {e}"))
+                .set_description(format!("내장 도구(ffmpeg/yt-dlp) 준비 중 오류: {e}"))
                 .set_level(rfd::MessageLevel::Error)
                 .show();
             return Err(e.into());
@@ -19,8 +20,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
-            .with_inner_size([680.0, 640.0])
-            .with_min_inner_size([520.0, 480.0])
+            .with_inner_size([680.0, 760.0])
+            .with_min_inner_size([520.0, 540.0])
             .with_title("앨범 커버 영상 생성기"),
         ..Default::default()
     };
@@ -30,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         options,
         Box::new(move |cc| {
             app::setup_fonts(&cc.egui_ctx);
-            Ok(Box::new(app::App::new(ffmpeg_path)))
+            Ok(Box::new(app::App::new(bins.ffmpeg, bins.yt_dlp)))
         }),
     )?;
 

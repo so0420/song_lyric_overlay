@@ -1,10 +1,11 @@
 use std::fs;
 use std::io::{self, Cursor, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 const FFMPEG_URL: &str =
     "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip";
+const YTDLP_URL: &str = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -19,6 +20,12 @@ fn main() {
         );
     }
 
+    prepare_ffmpeg(&resources);
+    prepare_ytdlp(&resources);
+}
+
+/// ffmpeg.exe를 받아 zip에서 추출 후 zstd로 압축해 resources/ffmpeg.exe.zst 생성.
+fn prepare_ffmpeg(resources: &Path) {
     let compressed_path = resources.join("ffmpeg.exe.zst");
     if compressed_path.exists() {
         return;
@@ -31,14 +38,47 @@ fn main() {
     let exe_bytes = extract_ffmpeg_from_zip(&zip_bytes).expect("zip에서 ffmpeg.exe 추출 실패");
 
     eprintln!(
-        "[video_maker build] Compressing {}MB with zstd level 22 (slow, once)...",
+        "[video_maker build] Compressing ffmpeg {}MB with zstd level 22 (slow, once)...",
         exe_bytes.len() / 1_000_000
     );
-    let compressed = zstd::encode_all(Cursor::new(&exe_bytes), 22).expect("zstd 압축 실패");
+    let compressed = zstd::encode_all(Cursor::new(&exe_bytes), 22).expect("ffmpeg zstd 압축 실패");
 
-    fs::write(&compressed_path, &compressed).expect("compressed 파일 쓰기 실패");
+    fs::write(&compressed_path, &compressed).expect("ffmpeg compressed 파일 쓰기 실패");
     eprintln!(
         "[video_maker build] Done. ffmpeg.exe: {}MB -> {}MB",
+        exe_bytes.len() / 1_000_000,
+        compressed.len() / 1_000_000
+    );
+}
+
+/// yt-dlp.exe를 (resources/yt-dlp.exe가 있으면 그걸, 없으면 다운로드해서) zstd로
+/// 압축해 resources/yt-dlp.exe.zst 생성.
+fn prepare_ytdlp(resources: &Path) {
+    let compressed_path = resources.join("yt-dlp.exe.zst");
+    if compressed_path.exists() {
+        return;
+    }
+
+    let raw_path = resources.join("yt-dlp.exe");
+    let exe_bytes = if raw_path.exists() {
+        eprintln!("[video_maker build] Using bundled resources/yt-dlp.exe...");
+        fs::read(&raw_path).expect("yt-dlp.exe 읽기 실패")
+    } else {
+        eprintln!("[video_maker build] Downloading yt-dlp.exe (~18MB, once)...");
+        download(YTDLP_URL).expect("yt-dlp 다운로드 실패")
+    };
+
+    // yt-dlp.exe는 이미 PyInstaller로 압축된 실행 파일이라 추가 압축률은 낮다.
+    // 빌드 속도를 위해 level 19를 쓴다.
+    eprintln!(
+        "[video_maker build] Compressing yt-dlp {}MB with zstd level 19 (once)...",
+        exe_bytes.len() / 1_000_000
+    );
+    let compressed = zstd::encode_all(Cursor::new(&exe_bytes), 19).expect("yt-dlp zstd 압축 실패");
+
+    fs::write(&compressed_path, &compressed).expect("yt-dlp compressed 파일 쓰기 실패");
+    eprintln!(
+        "[video_maker build] Done. yt-dlp.exe: {}MB -> {}MB",
         exe_bytes.len() / 1_000_000,
         compressed.len() / 1_000_000
     );

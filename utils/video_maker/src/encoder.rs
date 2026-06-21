@@ -9,7 +9,7 @@ pub enum Progress {
     Status(String),
     Percent(f32),
     JobSucceeded(PathBuf),
-    JobFailed { audio: PathBuf, message: String },
+    JobFailed { label: String, message: String },
     AllDone,
 }
 

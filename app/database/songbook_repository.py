@@ -7,18 +7,31 @@ import json
 # 공통 SELECT: 수록곡 + 노래/아티스트/연결 가사 메타데이터
 # (soft delete 된 가사는 FK SET NULL 이 발동하지 않으므로 JOIN 조건으로 걸러 lyrics_id 가 NULL 로 나온다)
 # 커버는 수록곡별 지정 커버가 없으면 곡 자체의 커버로 폴백한다
+# recent_request_count: 최근 1달간 이 곡(같은 스트리머)의 신청 횟수 (상관 서브쿼리)
 _SONGBOOK_SELECT = """
     SELECT sb.id AS entry_id, sb.sort_order, sb.difficulty, sb.memo, sb.tags AS song_tags,
            sb.mr_youtube_video_id,
            COALESCE(sb.cover_image_url, s.cover_image_url) AS cover_image_url,
            s.id AS song_id, s.song_external_id, s.title, s.length_ms,
            a.name AS artist_name,
-           l.id AS lyrics_id, l.title AS lyrics_title, l.mr_youtube_video_id AS lyrics_mr_video_id
+           l.id AS lyrics_id, l.title AS lyrics_title, l.mr_youtube_video_id AS lyrics_mr_video_id,
+           (SELECT COUNT(*) FROM song_request_logs rl
+            WHERE rl.song_id = sb.song_id AND rl.streamer_id = sb.streamer_id
+              AND rl.requested_at >= NOW() - INTERVAL 1 MONTH) AS recent_request_count
     FROM streamer_songbooks sb
     JOIN songs s ON sb.song_id = s.id
     LEFT JOIN artists a ON s.artist_id = a.id
     LEFT JOIN song_lyrics l ON sb.lyrics_id = l.id AND l.deleted_at IS NULL
 """
+
+
+# 정렬 옵션 → ORDER BY 절 (화이트리스트; 항상 마지막에 sb.id 로 안정 정렬)
+# recent_request_count 는 _SONGBOOK_SELECT 의 별칭이라 ORDER BY 에서 참조 가능
+_SORT_ORDERS = {
+    "default": "sb.sort_order ASC, sb.id DESC",
+    "requests": "recent_request_count DESC, sb.sort_order ASC, sb.id DESC",
+    "requests_asc": "recent_request_count ASC, sb.sort_order ASC, sb.id DESC",
+}
 
 
 def _build_filters(q: Optional[str], tags: Optional[List[str]], has_lyrics: Optional[bool] = None):
@@ -59,14 +72,19 @@ class SongbookRepository:
         limit: int = 500,
         offset: int = 0,
         has_lyrics: Optional[bool] = None,
+        sort: str = "default",
     ) -> List[Dict[str, Any]]:
-        """노래책 수록곡 목록 조회 (검색어/태그/가사보유 필터, 페이지네이션)"""
+        """노래책 수록곡 목록 조회 (검색어/태그/가사보유 필터, 정렬, 페이지네이션)
+
+        sort: default=등록/정렬순, requests=최근 1달 신청 많은 순, requests_asc=적은 순
+        """
         filter_sql, filter_params = _build_filters(q, tags, has_lyrics)
+        order_by = _SORT_ORDERS.get(sort, _SORT_ORDERS["default"])
         query = (
             _SONGBOOK_SELECT
             + " WHERE sb.streamer_id = %s"
             + filter_sql
-            + " ORDER BY sb.sort_order ASC, sb.id DESC LIMIT %s OFFSET %s"
+            + f" ORDER BY {order_by} LIMIT %s OFFSET %s"
         )
         params = (streamer_internal_id, *filter_params, limit, offset)
         rows = await self.db.fetch_all(query, params)

@@ -458,6 +458,83 @@ class TestSongbookOwnership:
 
 
 # ===============================================================
+# 2-b. 공개 노래책 조회 — 신청 횟수/정렬 (GET /songbook/{id})
+# ===============================================================
+class TestPublicSongbookGet:
+    @pytest.mark.asyncio
+    async def test_default_sort_passed_through(self):
+        """정렬 미지정 → 리포지토리에 sort='default' 전달"""
+        repos = make_repos()
+        repos.streamer.get_public_by_external_id.return_value = make_streamer_row()
+        repos.songbook.get_songbook.return_value = []
+        repos.songbook.count_songbook.return_value = 0
+
+        async with api_client(repos) as client:
+            response = await client.get(f"/api/v1/songbook/{STREAMER_UUID}")
+
+        assert response.status_code == 200
+        assert repos.songbook.get_songbook.await_args.kwargs["sort"] == "default"
+
+    @pytest.mark.asyncio
+    async def test_requests_sort_passed_through(self):
+        """sort=requests → 리포지토리에 그대로 전달"""
+        repos = make_repos()
+        repos.streamer.get_public_by_external_id.return_value = make_streamer_row()
+        repos.songbook.get_songbook.return_value = []
+        repos.songbook.count_songbook.return_value = 0
+
+        async with api_client(repos) as client:
+            response = await client.get(f"/api/v1/songbook/{STREAMER_UUID}?sort=requests")
+
+        assert response.status_code == 200
+        assert repos.songbook.get_songbook.await_args.kwargs["sort"] == "requests"
+
+    @pytest.mark.asyncio
+    async def test_invalid_sort_422(self):
+        """허용되지 않은 정렬 값 → 422 (화이트리스트 패턴 검증)"""
+        repos = make_repos()
+        repos.streamer.get_public_by_external_id.return_value = make_streamer_row()
+
+        async with api_client(repos) as client:
+            response = await client.get(f"/api/v1/songbook/{STREAMER_UUID}?sort=drop_table")
+
+        assert response.status_code == 422
+        repos.songbook.get_songbook.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_recent_request_count_serialized(self):
+        """recent_request_count 가 응답 아이템에 정수로 노출 (없으면 0)"""
+        repos = make_repos()
+        repos.streamer.get_public_by_external_id.return_value = make_streamer_row()
+        repos.songbook.get_songbook.return_value = [
+            {
+                "entry_id": 1, "song_id": 45, "song_external_id": "custom_it_1",
+                "title": "노래", "artist_name": "가수", "cover_image_url": None,
+                "mr_youtube_video_id": None, "lyrics_id": None, "lyrics_title": None,
+                "lyrics_mr_video_id": None, "has_lyrics": False, "tags": [],
+                "difficulty": None, "memo": None, "recent_request_count": 5,
+            },
+            # recent_request_count 누락 row → 0 으로 폴백
+            {
+                "entry_id": 2, "song_id": 46, "song_external_id": "custom_it_2",
+                "title": "노래2", "artist_name": "가수2", "cover_image_url": None,
+                "mr_youtube_video_id": None, "lyrics_id": None, "lyrics_title": None,
+                "lyrics_mr_video_id": None, "has_lyrics": False, "tags": [],
+                "difficulty": None, "memo": None,
+            },
+        ]
+        repos.songbook.count_songbook.return_value = 2
+
+        async with api_client(repos) as client:
+            response = await client.get(f"/api/v1/songbook/{STREAMER_UUID}")
+
+        assert response.status_code == 200
+        items = response.json()["items"]
+        assert items[0]["recent_request_count"] == 5
+        assert items[1]["recent_request_count"] == 0
+
+
+# ===============================================================
 # 3. 노래 신청 검증 (POST /song-requests/)
 # ===============================================================
 class TestSongRequestCreate:
@@ -961,6 +1038,25 @@ class TestSongRequestRepositoryStateMachine:
         insert = db.tx.executed()[0]
         assert "INSERT INTO song_requests" in insert[1]
         assert insert[2] == (10, "닉", "WEB", "Web", 4, 45, None, None)
+        # 곡이 특정된 신청 → 통계용 영구 로그에도 적재
+        log_insert = db.tx.executed()[1]
+        assert "INSERT INTO song_request_logs" in log_insert[1]
+        assert log_insert[2] == (10, 45)
+
+    @pytest.mark.asyncio
+    async def test_add_request_without_song_id_skips_log(self):
+        """곡 미특정(제목만) 신청 → song_request_logs 에 적재하지 않는다"""
+        db = FakeDB(tx_fetch_one=[{"next_sort": 1}], lastrowid=50)
+        repo = SongRequestRepository(db=db)
+
+        await repo.add_request(
+            streamer_id=10, requester="닉", requester_type="WEB",
+            song_id=None, title="제목만 신청",
+        )
+
+        executed = db.tx.executed()
+        assert len(executed) == 1  # song_requests INSERT 만
+        assert "INSERT INTO song_request_logs" not in executed[0][1]
 
     @pytest.mark.asyncio
     async def test_update_request_ignores_non_whitelisted_fields(self):

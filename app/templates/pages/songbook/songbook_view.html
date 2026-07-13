@@ -357,10 +357,33 @@
     opacity: 0.7;
 }
 
+.sb-stats-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
 .sb-stats {
     color: var(--text-sub);
     font-size: 0.85rem;
-    margin-bottom: 16px;
+}
+.sb-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-sub);
+    font-size: 0.85rem;
+}
+.sb-sort select {
+    font-size: 0.85rem;
+    padding: 5px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text-main);
+    cursor: pointer;
 }
 
 /* ===== 곡 카드 그리드 ===== */
@@ -457,6 +480,7 @@
 .sb-badge.lv-hard { background: #fee2e2; color: #991b1b; }
 .sb-badge.lyrics  { background: var(--accent-light); color: var(--accent); }
 .sb-badge.tag     { background: #f1f5f9; color: #475569; }
+.sb-badge.requests { background: #ffedd5; color: #c2410c; }
 
 .sb-mr-link {
     display: inline-flex;
@@ -793,7 +817,17 @@
     <!-- 태그 필터 칩 -->
     <div class="sb-tag-filters" id="sbTagFilters"></div>
 
-    <div class="sb-stats" id="sbStats"></div>
+    <div class="sb-stats-row">
+        <div class="sb-stats" id="sbStats"></div>
+        <label class="sb-sort">
+            정렬
+            <select id="sbSortSelect">
+                <option value="default">기본순</option>
+                <option value="requests">신청 많은 순</option>
+                <option value="requests_asc">신청 적은 순</option>
+            </select>
+        </label>
+    </div>
 
     <!-- 곡 카드 그리드 -->
     <div class="sb-song-grid" id="sbSongGrid">
@@ -883,6 +917,7 @@ const NICKNAME_STORAGE_KEY = 'songbook_requester_name';
 let allSongs = [];          // 전체 수록곡 (서버 정렬 순서 유지)
 let activeTag = null;       // 선택된 태그 필터 (null = 전체)
 let lyricsFilter = null;    // 가사 보유 필터 (null=전체, true=있음, false=없음)
+let sortMode = 'default';   // 정렬 (default | requests | requests_asc)
 let searchQuery = '';
 let canRequest = false;     // request_enabled && request_web_enabled
 let selectedSong = null;    // 신청 모달에 띄운 곡
@@ -935,6 +970,7 @@ async function loadSongbook(reset = true) {
         if (searchQuery) params.set('q', searchQuery);
         if (activeTag) params.set('tags', activeTag);
         if (lyricsFilter !== null) params.set('has_lyrics', String(lyricsFilter));
+        if (sortMode !== 'default') params.set('sort', sortMode);
         const res = await fetch(`/api/v1/songbook/${encodeURIComponent(STREAMER.id)}?${params.toString()}`);
         if (!res.ok) throw new Error(`load failed (${res.status})`);
         const data = await res.json();
@@ -1042,6 +1078,10 @@ function renderSongCard(s) {
     const lv = Number(s.difficulty);
     if (s.difficulty !== null && s.difficulty !== undefined && lv) {
         badges.push(`<span class="sb-badge ${difficultyClass(lv)}">Lv.${lv}</span>`);
+    }
+    const reqCount = Number(s.recent_request_count) || 0;
+    if (reqCount > 0) {
+        badges.push(`<span class="sb-badge requests" title="최근 1달간 신청 ${reqCount}회">🔥 ${reqCount}</span>`);
     }
     if (s.has_lyrics) {
         badges.push(`<span class="sb-badge lyrics" title="${escapeHtml(s.lyrics_title || '가사 연결됨')}">가사</span>`);
@@ -1320,6 +1360,11 @@ document.getElementById('sbSearchInput').addEventListener('input', (e) => {
         searchQuery = e.target.value.trim();
         loadSongbook(true);
     }, 300);
+});
+
+document.getElementById('sbSortSelect').addEventListener('change', (e) => {
+    sortMode = e.target.value;
+    loadSongbook(true);
 });
 
 // 무한 스크롤: 센티넬이 보이면 다음 페이지 로드

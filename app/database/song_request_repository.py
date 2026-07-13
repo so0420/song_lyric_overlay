@@ -95,7 +95,11 @@ class SongRequestRepository:
         title: Optional[str] = None,
         artist: Optional[str] = None,
     ) -> int:
-        """신청 추가 (sort_order = MAX+1). 신규 신청 id(lastrowid) 반환."""
+        """신청 추가 (sort_order = MAX+1). 신규 신청 id(lastrowid) 반환.
+
+        곡이 특정된 신청(song_id NOT NULL)은 통계용 영구 로그(song_request_logs)에도 적재한다.
+        (song_requests 는 큐 정리로 삭제되지만, 신청 횟수 통계는 삭제와 무관해야 하므로 별도 로그)
+        """
         async with self.db.transaction() as tx:
             count_res = await tx.fetch_one(
                 "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_sort FROM song_requests WHERE streamer_id = %s",
@@ -112,6 +116,12 @@ class SongRequestRepository:
                 query,
                 (streamer_id, requester, requester_type, requester_platform, next_sort, song_id, title, artist),
             )
+
+            if song_id is not None:
+                await tx.execute_query(
+                    "INSERT INTO song_request_logs (streamer_id, song_id) VALUES (%s, %s)",
+                    (streamer_id, song_id),
+                )
         return request_id
 
     async def update_request(self, request_id: int, streamer_id: int, **fields) -> int:

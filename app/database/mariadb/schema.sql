@@ -349,6 +349,20 @@ CREATE TABLE IF NOT EXISTS `song_requests` (
     CONSTRAINT `fk_song_request_song` FOREIGN KEY (`song_id`) REFERENCES `songs` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 노래 신청 이력 로그 (통계 전용, append-only)
+-- song_requests 는 신청 큐라서 '이미 부름' 정리/전체 삭제로 물리 삭제된다.
+-- 최근 N일 신청 횟수 같은 통계는 삭제에 영향받지 않도록 이 로그에 영구 적재한다.
+-- (곡이 특정되는 신청만 기록 — song_id NOT NULL)
+CREATE TABLE IF NOT EXISTS `song_request_logs` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `streamer_id` BIGINT NOT NULL COMMENT 'streamers 테이블 참조 ID',
+    `song_id` BIGINT NOT NULL COMMENT 'songs 테이블 참조 ID',
+    `requested_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '신청 시각',
+    INDEX `idx_reqlog_streamer_song_time` (`streamer_id`, `song_id`, `requested_at`),
+    CONSTRAINT `fk_reqlog_streamer` FOREIGN KEY (`streamer_id`) REFERENCES `streamers` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_reqlog_song` FOREIGN KEY (`song_id`) REFERENCES `songs` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============================================
 -- 치지직(Chzzk) 연동 — 유저별 채널 uid 매핑 (OAuth/토큰은 jamkubot 위임)
 -- ============================================

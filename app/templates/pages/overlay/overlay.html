@@ -2442,17 +2442,18 @@
             state.searchLoading = true;
 
             try {
-                // 가사가 등록된 노래만 검색 (가사 목록/편집 페이지의 공개 가사 검색과 동일 동작)
-                const response = await fetch(`/api/v1/lyrics/search?q=${encodeURIComponent(query)}&limit=20&offset=${state.searchOffset}`);
+                // 전체 노래 검색 (가사 없는 곡도 포함, 서버가 가사 있는 곡을 우선 정렬).
+                // 노래책에 곡 추가할 때(/songbook)의 검색과 동일한 엔드포인트/로직을 사용한다.
+                const response = await fetch(`/api/v1/songs/search?q=${encodeURIComponent(query)}&limit=20&offset=${state.searchOffset}`);
                 const data = await response.json();
                 if (requestId !== searchRequestId) return; // 더 새로운 검색이 있으면 결과 폐기
                 const rawItems = data.items || [];
                 const items = rawItems.map(item => ({
-                    id: item.song_id,
+                    id: item.id,
                     song_external_id: item.song_external_id,
-                    title: item.track_name,
+                    title: item.title,
                     artist_name: item.artist_name,
-                    cover_image_url: item.artwork_url,
+                    cover_image_url: item.cover_image_url,
                     lyrics_count: item.lyrics_count,
                 }));
 

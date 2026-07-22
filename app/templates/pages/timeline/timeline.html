@@ -1,0 +1,222 @@
+{% extends "base/base.html" %}
+
+{% block title %}노래 타임라인 - Jamku Song{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .tl-container { max-width: 760px; margin: 0 auto; padding: 8px 0 40px; }
+    .tl-head { margin-bottom: 20px; }
+    .tl-title { font-size: 1.6rem; font-weight: 700; color: var(--text-main); margin: 0 0 6px; }
+    .tl-desc { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+
+    .tl-broadcast {
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        background: var(--bg-card);
+        padding: 16px 18px;
+        margin-bottom: 16px;
+    }
+    .tl-bc-head {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
+    }
+    .tl-bc-date { font-weight: 700; font-size: 1.02rem; color: var(--text-main); }
+    .tl-bc-count { font-size: 0.82rem; color: var(--text-dim); font-weight: 500; margin-left: 8px; }
+    .tl-copy-btn {
+        border: 1px solid var(--accent); background: var(--accent); color: #fff;
+        border-radius: 8px; padding: 7px 14px; font-size: 0.85rem; font-weight: 600;
+        cursor: pointer; transition: background 0.15s, opacity 0.15s;
+    }
+    .tl-copy-btn:hover { background: var(--accent-hover); }
+    .tl-copy-btn.copied { background: #059669; border-color: #059669; }
+
+    .tl-rows { display: flex; flex-direction: column; gap: 2px; }
+    .tl-row {
+        display: flex; align-items: center; gap: 12px;
+        padding: 8px 10px; border-radius: 8px;
+    }
+    .tl-row:hover { background: var(--accent-light); }
+    .tl-time {
+        font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent);
+        min-width: 74px; font-size: 0.95rem;
+    }
+    .tl-song { flex: 1; color: var(--text-main); font-size: 0.95rem; word-break: break-word; }
+    .tl-del {
+        border: none; background: none; color: var(--text-dim); cursor: pointer;
+        font-size: 1.1rem; line-height: 1; padding: 2px 6px; border-radius: 6px; opacity: 0;
+        transition: opacity 0.15s, color 0.15s;
+    }
+    .tl-row:hover .tl-del { opacity: 1; }
+    .tl-del:hover { color: #dc2626; }
+
+    .tl-empty { text-align: center; color: var(--text-dim); padding: 60px 20px; }
+    .tl-empty a { color: var(--accent); font-weight: 600; }
+
+    .tl-toast {
+        position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%) translateY(20px);
+        background: #0f172a; color: #fff; padding: 10px 18px; border-radius: 10px;
+        font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+        z-index: 1000;
+    }
+    .tl-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tl-container">
+    <div class="tl-head">
+        <h1 class="tl-title">🎵 노래 타임라인</h1>
+        <p class="tl-desc">노래하기 페이지에서 기록한 방송별 타임라인입니다. 최근 1달치가 보관되며, 방송별로 복사해 사용하세요.</p>
+    </div>
+
+    <div id="tlList">
+        <p style="color: var(--text-dim); text-align: center; padding: 40px 0;">로딩 중...</p>
+    </div>
+</div>
+
+<div class="tl-toast" id="tlToast"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    const csrfHeaders = csrfToken ? { 'X-CSRF-Token': csrfToken } : {};
+
+    // 경과 초 → "[M:SS]" 또는 "[H:MM:SS]" (시간이 있으면 분/초 2자리)
+    function formatElapsed(sec) {
+        sec = Math.max(0, Math.floor(sec));
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        const pad = (n) => String(n).padStart(2, '0');
+        if (h > 0) return `${h}:${pad(m)}:${pad(s)}`;
+        return `${m}:${pad(s)}`;
+    }
+
+    // "2026-07-22 20:00:00" → "2026년 7월 22일 (수) 오후 8:00"
+    function formatOpenDate(str) {
+        const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/.exec(str);
+        if (!m) return str;
+        const date = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
+        const days = ['일', '월', '화', '수', '목', '금', '토'];
+        const hour = Number(m[4]);
+        const ampm = hour < 12 ? '오전' : '오후';
+        let h12 = hour % 12; if (h12 === 0) h12 = 12;
+        return `${m[1]}년 ${Number(m[2])}월 ${Number(m[3])}일 (${days[date.getDay()]}) ${ampm} ${h12}:${m[5]}`;
+    }
+
+    function toast(msg) {
+        const el = document.getElementById('tlToast');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(el._t);
+        el._t = setTimeout(() => el.classList.remove('show'), 1800);
+    }
+
+    function esc(s) {
+        return String(s).replace(/[&<>"']/g, (c) => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+        ));
+    }
+
+    let _data = { broadcasts: [] };
+
+    async function loadTimeline() {
+        const list = document.getElementById('tlList');
+        try {
+            const res = await fetch('/api/v1/timeline/records', { credentials: 'same-origin' });
+            if (!res.ok) throw new Error('불러오기 실패');
+            _data = await res.json();
+        } catch (e) {
+            list.innerHTML = '<p class="tl-empty">타임라인을 불러오지 못했습니다.</p>';
+            return;
+        }
+        render();
+    }
+
+    function render() {
+        const list = document.getElementById('tlList');
+        const bcs = _data.broadcasts || [];
+        if (bcs.length === 0) {
+            list.innerHTML = '<div class="tl-empty">아직 기록된 타임라인이 없습니다.<br>' +
+                '<a href="/overlay">노래하기 페이지</a>에서 방송 중 곡을 기록해보세요.</div>';
+            return;
+        }
+        list.innerHTML = bcs.map((bc, bi) => {
+            const rows = bc.records.map((r) => `
+                <div class="tl-row" data-id="${r.id}">
+                    <span class="tl-time">[${formatElapsed(r.elapsed_seconds)}]</span>
+                    <span class="tl-song">${esc(r.title)}</span>
+                    <button class="tl-del" title="삭제" data-id="${r.id}">&times;</button>
+                </div>
+            `).join('');
+            return `
+                <div class="tl-broadcast" data-bi="${bi}">
+                    <div class="tl-bc-head">
+                        <div class="tl-bc-date">${esc(formatOpenDate(bc.open_date))}<span class="tl-bc-count">${bc.records.length}곡</span></div>
+                        <button class="tl-copy-btn" data-bi="${bi}">복사</button>
+                    </div>
+                    <div class="tl-rows">${rows}</div>
+                </div>
+            `;
+        }).join('');
+
+        list.querySelectorAll('.tl-copy-btn').forEach((btn) => {
+            btn.addEventListener('click', () => copyBroadcast(Number(btn.dataset.bi), btn));
+        });
+        list.querySelectorAll('.tl-del').forEach((btn) => {
+            btn.addEventListener('click', () => deleteRecord(Number(btn.dataset.id)));
+        });
+    }
+
+    function buildText(bc) {
+        return bc.records
+            .map((r) => `[${formatElapsed(r.elapsed_seconds)}] ${r.title}`)
+            .join('\n');
+    }
+
+    async function copyBroadcast(bi, btn) {
+        const bc = _data.broadcasts[bi];
+        if (!bc) return;
+        const text = buildText(bc);
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch (e) {
+            // 폴백: 임시 textarea 로 복사
+            const ta = document.createElement('textarea');
+            ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); } catch {}
+            document.body.removeChild(ta);
+        }
+        btn.textContent = '복사됨!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 1500);
+        toast(`${bc.records.length}곡을 복사했습니다`);
+    }
+
+    async function deleteRecord(id) {
+        if (!confirm('이 기록을 삭제할까요?')) return;
+        try {
+            const res = await fetch(`/api/v1/timeline/records/${id}`, {
+                method: 'DELETE',
+                headers: csrfHeaders,
+                credentials: 'same-origin'
+            });
+            if (!res.ok) throw new Error();
+        } catch (e) {
+            toast('삭제에 실패했습니다');
+            return;
+        }
+        // 로컬 상태에서 제거 후 재렌더 (빈 방송은 제거)
+        for (const bc of _data.broadcasts) {
+            bc.records = bc.records.filter((r) => r.id !== id);
+        }
+        _data.broadcasts = _data.broadcasts.filter((bc) => bc.records.length > 0);
+        render();
+        toast('삭제했습니다');
+    }
+
+    loadTimeline();
+</script>
+{% endblock %}

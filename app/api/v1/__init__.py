@@ -17,6 +17,7 @@ from .song_requests import router as song_requests_router
 from .integrations import router as integrations_router
 from .auto_lyrics import router as auto_lyrics_router
 from .admin_auto_lyrics import router as admin_auto_lyrics_router
+from .timeline import router as timeline_router
 
 router = APIRouter()
 router.include_router(oauth_router, prefix="/oauth", tags=["oauth"])
@@ -36,5 +37,6 @@ router.include_router(song_requests_router, prefix="/song-requests", tags=["song
 router.include_router(integrations_router, prefix="/integrations", tags=["integrations"])
 router.include_router(auto_lyrics_router, prefix="/auto-lyrics", tags=["auto-lyrics"])
 router.include_router(admin_auto_lyrics_router, prefix="/admin", tags=["admin-auto-lyrics"])
+router.include_router(timeline_router, prefix="/timeline", tags=["timeline"])
 
 __all__ = ["router"]

@@ -284,6 +284,14 @@
                 <h3 class="action-title">가사 편집기</h3>
                 <p class="action-desc">유튜브 영상과 동기화되는 가사 자막을 직접 만들어보세요.</p>
             </a>
+
+            <a href="/timeline" class="action-card" id="timelineCard" style="text-decoration: none; display: none;">
+                <span class="action-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                </span>
+                <h3 class="action-title">노래 타임라인</h3>
+                <p class="action-desc">방송 중 기록한 곡 타임라인을 방송별로 조회하고 복사하세요.</p>
+            </a>
         </div>
     </div>
 
@@ -448,6 +456,19 @@
     }
 
     loadSocialAccounts();
+
+    // 치지직 연동 유저에게만 '노래 타임라인' 카드 노출
+    (async function revealTimelineCard() {
+        try {
+            const res = await fetch('/api/v1/integrations/chzzk/status', { credentials: 'same-origin' });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.is_connected) {
+                const card = document.getElementById('timelineCard');
+                if (card) card.style.display = '';
+            }
+        } catch (e) { /* 무시 */ }
+    })();
 
     // URL 파라미터로 탭 지정 시 해당 탭 활성화
     const urlParams = new URLSearchParams(window.location.search);

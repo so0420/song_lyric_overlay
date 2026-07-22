@@ -1960,13 +1960,18 @@
     <!-- Right Panel - Playlist -->
     <div class="playlist-panel">
         <style>
-            .request-remote {
+            /* 노래 신청 받기 + 노래 타임라인을 하나의 둥근 패널로 묶고 가로선으로 구분 */
+            .remote-panel {
                 border: 1px solid var(--border-color, #e2e8f0);
                 border-radius: 10px;
-                padding: 12px 14px;
                 margin-bottom: 12px;
                 background: #f8fafc;
+                overflow: hidden;
             }
+            .remote-section { padding: 12px 14px; }
+            /* 앞 섹션이 보일 때만(=display:none 이 아닐 때만) 아래 구분선이 나타남 */
+            .remote-section:not(:last-child) { border-bottom: 1px solid var(--border-color, #e2e8f0); }
+
             .rr-main { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
             .rr-title { font-weight: 700; font-size: 0.95rem; }
             .rr-subs { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
@@ -1976,8 +1981,54 @@
             .rr-status { font-size: 0.78rem; font-weight: 600; }
             .rr-status.on { color: #059669; }
             .rr-status.off { color: #94a3b8; }
+
+            .tr-main { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+            .tr-title { font-weight: 700; font-size: 0.95rem; }
+            .tr-actions { display: flex; gap: 6px; }
+            .tr-btn {
+                border: 1px solid var(--border-color, #e2e8f0); background: #fff;
+                color: var(--text-main, #0f172a); border-radius: 8px; padding: 6px 12px;
+                font-size: 0.82rem; font-weight: 600; cursor: pointer; text-decoration: none;
+                display: inline-flex; align-items: center; transition: background 0.15s, opacity 0.15s;
+            }
+            .tr-btn:hover { background: #f1f5f9; }
+            .tr-btn.tr-record { border-color: var(--accent, #2563eb); background: var(--accent, #2563eb); color: #fff; }
+            .tr-btn.tr-record:hover { background: var(--accent-hover, #1d4ed8); }
+            .tr-btn:disabled { opacity: 0.55; cursor: default; }
+            .tr-form { display: flex; gap: 6px; margin-top: 10px; }
+            .tr-input {
+                flex: 1; min-width: 0; padding: 7px 10px; font-size: 0.9rem;
+                border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px;
+            }
+            .tr-btn.tr-save { border-color: var(--accent, #2563eb); background: var(--accent, #2563eb); color: #fff; }
+            .tr-btn.tr-save:hover { background: var(--accent-hover, #1d4ed8); }
+            .tr-hint { font-size: 0.85rem; color: var(--text-sub, #475569); margin-top: 8px; }
+            .tr-hint a { color: var(--accent, #2563eb); font-weight: 600; }
         </style>
-        <div class="request-remote" id="requestRemote" style="display:none;"></div>
+        <div class="remote-panel">
+            <div class="request-remote remote-section" id="requestRemote" style="display:none;"></div>
+            <div class="timeline-remote remote-section" id="timelineRemote">
+                {% if chzzk_connected %}
+                <div class="tr-main">
+                    <span class="tr-title">🎵 노래 타임라인</span>
+                    <div class="tr-actions">
+                        <button class="tr-btn tr-record" id="tlRecordBtn">타임라인 기록</button>
+                        <a class="tr-btn tr-view" href="/timeline" target="_blank" rel="noopener">조회</a>
+                    </div>
+                </div>
+                <div class="tr-form" id="tlForm" style="display:none;">
+                    <input type="text" id="tlTitleInput" class="tr-input" placeholder="곡 제목" maxlength="255">
+                    <button class="tr-btn tr-save" id="tlSaveBtn">저장</button>
+                    <button class="tr-btn" id="tlCancelBtn">취소</button>
+                </div>
+                {% else %}
+                <div class="tr-main">
+                    <span class="tr-title" style="opacity:0.75;">🎵 노래 타임라인</span>
+                </div>
+                <div class="tr-hint">치지직 연결 후 타임라인 기능을 사용 가능합니다 · <a href="/api/v1/oauth/chzzk/login?redirect_to=/overlay">치지직 연결</a></div>
+                {% endif %}
+            </div>
+        </div>
         <div class="playlist-header">
             <span class="playlist-title">재생 목록</span>
             <div class="playlist-actions">
@@ -3555,6 +3606,72 @@
             }
             inputEl.disabled = false;
         }
+
+        // ===== 노래 타임라인 기록 (치지직 연동 유저 전용) =====
+        (function initTimelineRemote() {
+            const recordBtn = $('#tlRecordBtn');
+            if (!recordBtn) return; // 치지직 미연동 시 영역 자체가 렌더되지 않음
+
+            const form = $('#tlForm');
+            const input = $('#tlTitleInput');
+            const saveBtn = $('#tlSaveBtn');
+            const cancelBtn = $('#tlCancelBtn');
+
+            function fmtElapsed(sec) {
+                sec = Math.max(0, Math.floor(sec));
+                const h = Math.floor(sec / 3600);
+                const m = Math.floor((sec % 3600) / 60);
+                const s = sec % 60;
+                const pad = (n) => String(n).padStart(2, '0');
+                return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+            }
+
+            function openForm() {
+                // 현재 틀어둔 곡 제목을 기본값으로 채우고, 저장 전 편집할 수 있게 한다.
+                input.value = state.currentSongTitle || '';
+                form.style.display = 'flex';
+                input.focus();
+                input.select();
+            }
+
+            function closeForm() {
+                form.style.display = 'none';
+                input.value = '';
+            }
+
+            async function save() {
+                const title = input.value.trim();
+                if (!title) { input.focus(); showToast('곡 제목을 입력해주세요', 'error'); return; }
+                saveBtn.disabled = true;
+                try {
+                    const res = await fetch('/api/v1/timeline/record', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ title })
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.detail || '기록에 실패했습니다');
+                    closeForm();
+                    showToast(`[${fmtElapsed(data.elapsed_seconds)}] ${data.title} 기록됨`, 'success');
+                } catch (e) {
+                    showToast(typeof e.message === 'string' ? e.message : '기록에 실패했습니다', 'error');
+                } finally {
+                    saveBtn.disabled = false;
+                }
+            }
+
+            recordBtn.addEventListener('click', () => {
+                if (form.style.display === 'none') openForm();
+                else closeForm();
+            });
+            saveBtn.addEventListener('click', save);
+            cancelBtn.addEventListener('click', closeForm);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); save(); }
+                else if (e.key === 'Escape') { e.preventDefault(); closeForm(); }
+            });
+        })();
 
         // 신청 곡 전달 완료 마킹 (실패해도 addToPlaylist 중복 체크가 안전망)
         async function markRequestsDelivered(ids) {

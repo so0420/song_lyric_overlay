@@ -4,6 +4,7 @@ from app.utils.templates import templates
 from app.core.auth import get_current_user
 from app.database.overlay_repository import get_overlay_repository
 from app.database.access_request_repository import get_access_request_repository
+from app.database.chzzk_repository import get_chzzk_channel_repository
 from app.utils.ws_token import get_or_create_overlay_token, verify_overlay_token_async
 
 router = APIRouter()
@@ -34,9 +35,14 @@ async def overlay_page(
     if access_check:
         return access_check
 
+    # 치지직 연동 여부 (노래 타임라인 기록 영역 노출 조건)
+    chzzk_repo = get_chzzk_channel_repository()
+    chzzk_connected = bool(await chzzk_repo.get(user['id']))
+
     return templates.TemplateResponse("pages/overlay/overlay.html", {
         "request": request,
-        "user": user
+        "user": user,
+        "chzzk_connected": chzzk_connected
     })
 
 

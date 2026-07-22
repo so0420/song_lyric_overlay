@@ -153,7 +153,7 @@ async def add_security_headers(request: Request, call_next):
         "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
         "img-src 'self' data: https: blob:",
         "frame-src 'self' https://www.youtube.com",
-        "connect-src 'self' ws: wss: https://www.googleapis.com",
+        "connect-src 'self' ws: wss: https://www.googleapis.com https://lrclib.net",
         "media-src 'self' https:",
         "object-src 'none'",
         "base-uri 'self'",

@@ -27,6 +27,8 @@ class AuditAction:
     LYRICS_DELETE = "lyrics_delete"
     LYRICS_VISIBILITY_CHANGE = "lyrics_visibility_change"
     LYRICS_WHITELIST_CHANGE = "lyrics_whitelist_change"
+    LYRICS_IMPORT_REGISTER = "lyrics_import_register"  # 자동 가사(LRCLIB) 기록을 정식 가사로 등록
+    LYRICS_IMPORT_IGNORE = "lyrics_import_ignore"      # 자동 가사 기록 무시 처리
 
     # 관리자 작업
     ADMIN_BROADCAST = "admin_broadcast"

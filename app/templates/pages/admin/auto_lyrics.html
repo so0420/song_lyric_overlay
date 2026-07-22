@@ -1,0 +1,215 @@
+{% extends "base/base.html" %}
+
+{% block title %}자동 가사 기록 - 관리자{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .page-title { font-size: 1.5rem; font-weight: 700; }
+    .back-link {
+        color: var(--text-sub); text-decoration: none;
+        display: flex; align-items: center; gap: 8px; font-size: 0.9rem;
+    }
+    .back-link:hover { color: var(--accent); }
+
+    .filter-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filter-tab {
+        padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0);
+        background: transparent; cursor: pointer; font-size: 0.85rem; font-weight: 600;
+        color: var(--text-sub, #475569);
+    }
+    .filter-tab.active { background: var(--accent, #2563eb); color: #fff; border-color: var(--accent, #2563eb); }
+
+    .import-list { display: flex; flex-direction: column; gap: 14px; }
+    .import-card {
+        border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px;
+        padding: 16px; background: var(--card-bg, #fff);
+    }
+    .import-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+    .import-song { font-weight: 700; font-size: 1.02rem; }
+    .import-artist { color: var(--text-sub, #475569); font-size: 0.9rem; }
+    .import-meta { font-size: 0.78rem; color: var(--text-sub, #64748b); margin-top: 6px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .offset-chip {
+        display: inline-block; padding: 2px 8px; border-radius: 6px; font-weight: 700;
+        background: #eef2ff; color: #4338ca; font-size: 0.78rem;
+    }
+    .import-preview {
+        margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--bg-subtle, #f8fafc);
+        font-size: 0.82rem; line-height: 1.6; white-space: pre-wrap; max-height: 140px; overflow-y: auto;
+        color: var(--text-main, #1e293b);
+    }
+    .import-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .btn {
+        padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer;
+        font-size: 0.82rem; font-weight: 700; color: #fff;
+    }
+    .btn-ignore { background: #94a3b8; }
+    .btn:disabled { opacity: 0.5; cursor: default; }
+    .btn-editor { background: #2563eb; }
+    .status-badge { font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+    .status-badge.registered { background: #dcfce7; color: #166534; }
+    .status-badge.ignored { background: #f1f5f9; color: #64748b; }
+    .status-badge.editing { background: #fef3c7; color: #92400e; }
+    .empty { text-align: center; color: var(--text-sub, #64748b); padding: 48px 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">자동 가사 기록 (LRCLIB)</h1>
+        <a href="/admin" class="back-link">← 관리자 대시보드</a>
+    </div>
+
+    <p class="import-artist" style="margin-bottom: 16px;">
+        노래하기 탭에서 사용자가 자동 가사를 적용하고 '이 곡만 오프셋'으로 맞춘 기록입니다.
+        <strong>편집기에서 보기</strong>를 누르면 이 목록에서 빠지고, 자동가사와 맞춘 오프셋·영상이 반영된
+        가사 편집기로 이동합니다. 편집기에서 수정 후 <strong>저장</strong>하면 검증된 공개 가사로 정식 등록됩니다.
+    </p>
+
+    <div class="filter-tabs" id="filterTabs">
+        <button class="filter-tab active" data-status="pending">등록 대기</button>
+        <button class="filter-tab" data-status="editing">편집 중</button>
+        <button class="filter-tab" data-status="registered">등록됨</button>
+        <button class="filter-tab" data-status="ignored">무시됨</button>
+        <button class="filter-tab" data-status="all">전체</button>
+    </div>
+
+    <div class="import-list" id="importList">
+        <div class="empty">불러오는 중...</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+let currentStatus = 'pending';
+
+function fmtOffset(ms) {
+    if (!ms) return '0ms';
+    return (ms > 0 ? '+' : '') + ms + 'ms';
+}
+
+function previewLyrics(lyricsData) {
+    try {
+        const segs = JSON.parse(lyricsData || '[]');
+        if (!segs.length) return '(가사 없음)';
+        return segs.slice(0, 6).map(s => s.text).join('\n') + (segs.length > 6 ? '\n…' : '');
+    } catch (e) {
+        return '(파싱 불가)';
+    }
+}
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+}
+
+function renderItems(items) {
+    const list = document.getElementById('importList');
+    if (!items.length) {
+        list.innerHTML = '<div class="empty">해당 상태의 기록이 없습니다.</div>';
+        return;
+    }
+    list.innerHTML = items.map(it => {
+        const actionable = it.status === 'pending' || it.status === 'editing';
+        const badgeMap = {
+            registered: '<span class="status-badge registered">등록됨</span>',
+            ignored: '<span class="status-badge ignored">무시됨</span>',
+            editing: '<span class="status-badge editing">편집 중</span>',
+        };
+        const statusBadge = badgeMap[it.status] || '';
+        const source = escapeHtml(it.source || 'lrclib') +
+            (it.track_name ? ' · ' + escapeHtml(it.track_name) : '') +
+            (it.artist_name ? ' - ' + escapeHtml(it.artist_name) : '');
+        const appliedBy = it.applied_by_name ? escapeHtml(it.applied_by_name) : '익명/삭제된 사용자';
+        return `
+        <div class="import-card" data-id="${it.id}">
+            <div class="import-head">
+                <div>
+                    <div class="import-song">${escapeHtml(it.song_title)} ${statusBadge}</div>
+                    <div class="import-artist">${escapeHtml(it.song_artist || '아티스트 미상')}</div>
+                    <div class="import-meta">
+                        <span>출처: ${source}</span>
+                        <span>적용자: ${appliedBy}</span>
+                        <span>맞춘 오프셋: <span class="offset-chip">${fmtOffset(it.offset_ms)}</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="import-preview">${escapeHtml(previewLyrics(it.lyrics_data))}</div>
+            ${actionable ? `
+            <div class="import-actions">
+                <button class="btn btn-editor" onclick="openInEditor(${it.id}, this)">${it.status === 'editing' ? '편집기에서 이어보기' : '편집기에서 보기'}</button>
+                <button class="btn btn-ignore" onclick="ignoreItem(${it.id}, this)">무시</button>
+            </div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+async function loadItems() {
+    const list = document.getElementById('importList');
+    list.innerHTML = '<div class="empty">불러오는 중...</div>';
+    try {
+        const res = await fetch(`/api/v1/admin/auto-lyrics?status=${currentStatus}&limit=100`);
+        if (!res.ok) throw new Error('load failed');
+        const data = await res.json();
+        renderItems(data.items || []);
+    } catch (e) {
+        list.innerHTML = '<div class="empty">목록을 불러오지 못했습니다.</div>';
+    }
+}
+
+async function openInEditor(id, btn) {
+    btn.disabled = true;
+    try {
+        const res = await fetch(`/api/v1/admin/auto-lyrics/${id}/claim-edit`, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || '편집기 열기 실패');
+        // 검토 리스트에서 빠지고(=editing) 편집기로 이동
+        window.location.href = data.editor_url || `/lyrics/?auto_import_id=${id}`;
+    } catch (e) {
+        alert(e.message || '편집기를 여는 데 실패했습니다.');
+        btn.disabled = false;
+    }
+}
+
+async function ignoreItem(id, btn) {
+    if (!confirm('이 기록을 목록에서 숨깁니다(무시). 계속할까요?')) return;
+    btn.disabled = true;
+    try {
+        const res = await fetch(`/api/v1/admin/auto-lyrics/${id}/ignore`, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken },
+        });
+        if (!res.ok) throw new Error('무시 처리 실패');
+        loadItems();
+    } catch (e) {
+        alert(e.message || '처리에 실패했습니다.');
+        btn.disabled = false;
+    }
+}
+
+document.getElementById('filterTabs').addEventListener('click', (e) => {
+    const tab = e.target.closest('.filter-tab');
+    if (!tab) return;
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentStatus = tab.dataset.status;
+    loadItems();
+});
+
+loadItems();
+</script>
+{% endblock %}

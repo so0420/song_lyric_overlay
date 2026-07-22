@@ -236,6 +236,18 @@ class LyricsRepository:
         await self.db.execute_query(query, (lyrics_id, owner_id))
         return True
 
+    async def set_verified(self, lyrics_id: int, verified: bool = True) -> bool:
+        """관리자 전용: 가사 검증(is_verified) 플래그 설정"""
+        query = """
+            UPDATE song_lyrics
+            SET is_verified = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s AND deleted_at IS NULL
+        """
+        async with self.db.session() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(query, (1 if verified else 0, lyrics_id))
+                return cursor.rowcount > 0
+
     async def update_visibility(self, lyrics_id: int, visibility: str) -> bool:
         """관리자 전용: 가사 visibility 변경"""
         if visibility not in ("public", "private", "whitelist"):

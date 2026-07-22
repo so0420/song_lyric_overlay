@@ -78,8 +78,8 @@ class OverlaySettingsSchema(BaseModel):
     show_lyrics_line1: bool = True   # 원문 (1번째 줄)
     show_lyrics_line2: bool = True   # 발음 (2번째 줄)
     show_lyrics_line3: bool = True   # 해석 (3번째 줄)
-    # 여러 줄 가사일 때 이전/다음 가사 숨기기
-    hide_adj_lines_for_multiline: bool = False
+    # 여러 줄 가사(외국어 등)일 때 이전/다음 가사 숨기기 — 신규 유저 기본값 ON
+    hide_adj_lines_for_multiline: bool = True
     # 노래 정보
     show_song_title: bool = True
     show_artist: bool = True

@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Nanum+Gothic:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+    <script src="/static/js/overlay_fonts.js"></script>
     <style>
         @font-face {
             font-family: 'OngleipParkDahyeon';
@@ -498,7 +499,8 @@
         function applySettings(s) {
             settings = { ...defaultSettings, ...s };
 
-            // Font family
+            // Font family (눈누 웹폰트면 @font-face 를 주입한 뒤 적용)
+            if (typeof ensureOverlayFont === 'function') ensureOverlayFont(settings.font_family);
             document.body.style.fontFamily = settings.font_family + ', sans-serif';
 
             // Song title styles

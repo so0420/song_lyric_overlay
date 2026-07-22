@@ -1601,6 +1601,7 @@ input:checked + .toggle-slider:before {
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="/static/js/overlay_fonts.js"></script>
 <script>
 const userId = {{ user.id }};
 const overlayToken = "{{ overlay_token }}";
@@ -2410,6 +2411,9 @@ document.getElementById('presetNameInput').addEventListener('keydown', (e) => {
 });
 
 // Initialize
+// 눈누 웹폰트를 드롭다운 옵션으로 추가 + @font-face 주입 (loadSettings 로 현재 폰트를 적용하기 전에 실행)
+buildOverlayFontOptions(document.getElementById('fontSelectDropdown'));
+injectAllOverlayFonts();
 restoreCollapsedState();
 loadSettings();
 loadPresets();

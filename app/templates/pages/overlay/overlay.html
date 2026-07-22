@@ -476,6 +476,50 @@
         transition: background 0.15s;
     }
     .auto-lyrics-research:hover { background: rgba(59, 130, 246, 0.3); }
+    /* 검색어 입력 + 다시 검색 */
+    .auto-lyrics-search-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        text-align: left;
+    }
+    .auto-lyrics-search-box label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.7);
+        white-space: nowrap;
+    }
+    .auto-lyrics-query {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        font-size: 0.82rem;
+    }
+    .auto-lyrics-query::placeholder { color: rgba(255, 255, 255, 0.4); }
+    .auto-lyrics-query:focus { outline: none; border-color: rgba(59, 130, 246, 0.7); }
+    /* 커서를 따라다니는 후보 미리보기 툴팁 */
+    .auto-lyrics-tooltip {
+        position: fixed;
+        display: none;
+        z-index: 10000;
+        max-width: 340px;
+        padding: 8px 12px;
+        background: rgba(15, 23, 42, 0.97);
+        color: #f1f5f9;
+        font-size: 0.82rem;
+        line-height: 1.55;
+        border-radius: 8px;
+        white-space: pre-wrap;
+        text-align: left;
+        pointer-events: none;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
     .auto-lyrics-list {
         display: flex;
         flex-direction: column;
@@ -2134,6 +2178,7 @@
             currentAutoImportId: null,   // 자동 가사 적용 기록 id (오프셋 로그 갱신용)
             currentSongExternalId: null, // 현재 재생 곡 외부 ID(song_external_id) — 서버가 songs.id 로 해석
             currentAutoResults: [],      // 현재 곡의 LRCLIB 검색 결과 캐시
+            autoQuery: '',               // 자동가사 검색어(수정 가능) — 재검색 입력창 값
             playToken: 0,                // 재생 전환 토큰 — 비동기 결과가 이전 곡에 잘못 적용되는 것 방지
             autoPending: null,           // 적용했지만 아직 로그 안 남긴 자동가사 {r, lyricsDataStr}
             autoPlaySeconds: 0,          // 위 자동가사로 재생한 누적 초 (60초 넘으면 로그 기록)
@@ -3963,22 +4008,31 @@
             return null;
         }
 
-        async function autoSearchLyrics(title, artist) {
+        async function autoSearchLyrics(title, artist, customQuery) {
             const reqToken = state.playToken;
+            // 검색어 입력창에 채울 값 저장 (수정 후 재검색 가능)
+            state.autoQuery = (customQuery != null && customQuery !== '')
+                ? customQuery
+                : `${title || ''} ${artist || ''}`.trim();
             elements.lyricsDisplay.innerHTML = `
                 <div class="auto-lyrics-panel">
                     <div class="auto-lyrics-title">자동 가사 검색 중… <span style="opacity:.6">(LRCLIB)</span></div>
                 </div>`;
 
             let results = null;
-            // 1) 제목 + 아티스트 (가장 정확)
-            if (title && artist) {
-                results = await lrclibSearch({ track_name: title, artist_name: artist });
-            }
-            // 2) 결과가 없으면 제목만으로 재검색 (아티스트 표기 불일치: 방탄소년단↔BTS, 아이유↔IU 등)
-            if ((!Array.isArray(results) || results.length === 0) && title) {
-                const r2 = await lrclibSearch({ track_name: title });
-                if (Array.isArray(r2) && r2.length) results = r2;
+            if (customQuery != null && customQuery !== '') {
+                // 사용자가 수정한 검색어: 자유(q) 검색
+                results = await lrclibSearch({ q: customQuery });
+            } else {
+                // 1) 제목 + 아티스트 (가장 정확)
+                if (title && artist) {
+                    results = await lrclibSearch({ track_name: title, artist_name: artist });
+                }
+                // 2) 결과가 없으면 제목만으로 재검색 (아티스트 표기 불일치: 방탄소년단↔BTS, 아이유↔IU 등)
+                if ((!Array.isArray(results) || results.length === 0) && title) {
+                    const r2 = await lrclibSearch({ track_name: title });
+                    if (Array.isArray(r2) && r2.length) results = r2;
+                }
             }
 
             // 재생 곡이 이미 바뀌었으면 무시 (곡 id 가 null 이어도 안전하게 구분)
@@ -4015,6 +4069,30 @@
             }
         }
 
+        // 검색어(수정 가능) 입력 + 다시 검색 버튼
+        function autoSearchBoxHtml() {
+            return `
+                <div class="auto-lyrics-search-box">
+                    <label for="autoLyricsQuery">검색어</label>
+                    <input type="text" id="autoLyricsQuery" class="auto-lyrics-query" value="${escapeAuto(state.autoQuery || '')}" placeholder="곡명 가수" autocomplete="off" spellcheck="false">
+                    <button type="button" class="auto-lyrics-research" data-auto-action="search" title="입력한 검색어로 다시 검색">↻ 다시 검색</button>
+                </div>`;
+        }
+
+        // 후보 가사 앞 3줄 미리보기 (마우스 호버 툴팁용)
+        function autoPreviewText(r) {
+            let text = (r.plainLyrics || '').trim();
+            if (!text && r.syncedLyrics) {
+                text = r.syncedLyrics.split('\n')
+                    .map(l => l.replace(/^\[\d+:\d+(?:\.\d+)?\]/, '').trim())
+                    .filter(Boolean).join('\n');
+            }
+            const lines = text.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 3);
+            if (!lines.length) return '';
+            // 맨 윗줄에 헤더, 가사들은 앞에 공백 2칸 들여쓰기
+            return '가사 3줄 미리보기:\n' + lines.map(l => '  ' + l).join('\n');
+        }
+
         function renderNoAutoLyrics() {
             elements.lyricsDisplay.innerHTML = `
                 <div class="auto-lyrics-panel" style="opacity:.85;">
@@ -4026,9 +4104,9 @@
         function renderAutoResults(list, title, artist) {
             if (!list.length) {
                 elements.lyricsDisplay.innerHTML = `
-                    <div class="auto-lyrics-panel" style="opacity:.85;">
-                        <p class="lyrics-line" style="font-size:1.05rem; margin-bottom:10px;">자동 가사를 찾지 못했습니다</p>
-                        <button type="button" class="auto-lyrics-search-btn" data-auto-action="search">다시 검색</button>
+                    <div class="auto-lyrics-panel">
+                        <p class="lyrics-line" style="font-size:1.02rem; margin-bottom:12px; opacity:.85;">자동 가사를 찾지 못했습니다 — 검색어를 바꿔보세요</p>
+                        ${autoSearchBoxHtml()}
                     </div>`;
                 return;
             }
@@ -4042,12 +4120,18 @@
             }).join('');
             elements.lyricsDisplay.innerHTML = `
                 <div class="auto-lyrics-panel">
-                    <div class="auto-lyrics-head">
-                        <div class="auto-lyrics-title">자동 가사 선택 <span style="opacity:.6; font-weight:500;">— 곡을 선택하면 적용됩니다</span></div>
-                        <button type="button" class="auto-lyrics-research" data-auto-action="search" title="같은 곡으로 다시 검색">↻ 다시 검색</button>
-                    </div>
+                    <div class="auto-lyrics-title" style="margin-bottom:10px;">자동 가사 선택 <span style="opacity:.6; font-weight:500;">— 곡을 선택하면 적용됩니다 (가사 미리보기는 마우스를 올려보세요)</span></div>
+                    ${autoSearchBoxHtml()}
                     <div class="auto-lyrics-list">${rows}</div>
                 </div>`;
+        }
+
+        // 검색어 입력창의 현재 값으로 검색 (비어있으면 곡 제목/가수로 기본 검색)
+        function runAutoSearchFromInput() {
+            const input = elements.lyricsDisplay.querySelector('.auto-lyrics-query');
+            const q = input ? input.value.trim() : '';
+            if (q) autoSearchLyrics(null, null, q);
+            else autoSearchLyrics(state.currentSongTitle, state.currentArtist);
         }
 
         // 자동 가사 패널 버튼 클릭 위임 (IIFE 스코프라 inline onclick 불가)
@@ -4056,10 +4140,41 @@
             if (!btn) return;
             const action = btn.dataset.autoAction;
             if (action === 'search') {
-                autoSearchLyrics(state.currentSongTitle, state.currentArtist);
+                runAutoSearchFromInput();
             } else if (action === 'apply') {
                 applyAutoLyrics(parseInt(btn.dataset.index, 10));
             }
+        }
+
+        // 검색어 입력창에서 Enter → 검색
+        function handleAutoLyricsKeydown(e) {
+            if (e.key !== 'Enter') return;
+            if (!e.target.classList || !e.target.classList.contains('auto-lyrics-query')) return;
+            e.preventDefault();
+            runAutoSearchFromInput();
+        }
+
+        // 후보 목록 마우스 호버 시 커서를 따라다니는 커스텀 툴팁(가사 앞 3줄)
+        let autoTooltipEl = null;
+        function handleAutoLyricsHover(e) {
+            if (!autoTooltipEl) return;
+            const item = e.target.closest ? e.target.closest('.auto-lyrics-item') : null;
+            if (!item) { autoTooltipEl.style.display = 'none'; return; }
+            const r = state.currentAutoResults[parseInt(item.dataset.index, 10)];
+            const preview = r ? autoPreviewText(r) : '';
+            if (!preview) { autoTooltipEl.style.display = 'none'; return; }
+            autoTooltipEl.textContent = preview;
+            autoTooltipEl.style.display = 'block';
+            const pad = 16;
+            const rect = autoTooltipEl.getBoundingClientRect();
+            let x = e.clientX + pad, y = e.clientY + pad;
+            if (x + rect.width > window.innerWidth) x = e.clientX - rect.width - pad;
+            if (y + rect.height > window.innerHeight) y = e.clientY - rect.height - pad;
+            autoTooltipEl.style.left = Math.max(4, x) + 'px';
+            autoTooltipEl.style.top = Math.max(4, y) + 'px';
+        }
+        function hideAutoTooltip() {
+            if (autoTooltipEl) autoTooltipEl.style.display = 'none';
         }
 
         function escapeAuto(s) {
@@ -4314,6 +4429,13 @@
             elements.autoLyricsToggle.checked = state.autoLyricsEnabled;
             elements.autoLyricsToggle.addEventListener('change', (e) => toggleAutoLyrics(e.target.checked));
             elements.lyricsDisplay.addEventListener('click', handleAutoLyricsClick);
+            elements.lyricsDisplay.addEventListener('keydown', handleAutoLyricsKeydown);
+            // 후보 미리보기 툴팁 (커서 추적)
+            autoTooltipEl = document.createElement('div');
+            autoTooltipEl.className = 'auto-lyrics-tooltip';
+            document.body.appendChild(autoTooltipEl);
+            elements.lyricsDisplay.addEventListener('mousemove', handleAutoLyricsHover);
+            elements.lyricsDisplay.addEventListener('mouseleave', hideAutoTooltip);
             elements.offsetReset.addEventListener('click', resetOffsets);
             document.getElementById('changeVideoBtn').addEventListener('click', openVideoReplaceForCurrent);
 

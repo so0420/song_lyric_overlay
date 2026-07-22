@@ -271,6 +271,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 10px 14px;
         flex-shrink: 0;
     }
 
@@ -613,6 +614,24 @@
         transform: translateY(-1px);
     }
     .lrclib-result { transition: all 0.12s; }
+    /* 커서를 따라다니는 후보 가사 미리보기 툴팁 */
+    .lrclib-tooltip {
+        position: fixed;
+        display: none;
+        z-index: 100000;
+        max-width: 340px;
+        padding: 8px 12px;
+        background: rgba(15, 23, 42, 0.97);
+        color: #f1f5f9;
+        font-size: 0.82rem;
+        line-height: 1.55;
+        border-radius: 8px;
+        white-space: pre-wrap;
+        text-align: left;
+        pointer-events: none;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
 
     .video-result-thumb {
         width: 50px;
@@ -937,8 +956,6 @@
         <div class="timeline-header">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <h3 style="font-size: 1rem; font-weight: 800; color: #1e293b;">타임라인</h3>
-                <span id="segment-count"
-                    style="font-size: 0.75rem; font-weight: 700; color: white; background: var(--accent); padding: 2px 10px; border-radius: 20px; box-shadow: 0 2px 6px rgba(139, 92, 246, 0.3);">0</span>
             </div>
             <div style="display: flex; align-items: center; gap: 4px;">
                 <span style="font-size: 0.7rem; font-weight: 700; color: #64748b;">오프셋</span>
@@ -947,6 +964,11 @@
                 <button onclick="shiftAllTimes('both', 100)" class="btn btn-outline"
                     style="padding: 3px 6px; font-size: 0.7rem; font-weight: 700; border-radius: 6px; min-width: 0;" title="전체 시간 +0.1초">▶</button>
             </div>
+            <button onclick="syncFirstLyricToNow()" class="btn btn-outline"
+                style="padding: 6px 12px; font-size: 0.75rem; font-weight: 700; border-radius: 8px; border-color:#7dd3fc; color:#0284c7; background:#f0f9ff; white-space:nowrap;"
+                title="첫 가사가 시작하는 순간 눌러 전체 싱크를 자동으로 맞춥니다">
+                첫 가사로 싱크 맞추기
+            </button>
             <button onclick="showModal('modal-sort-confirm')" class="btn btn-outline"
                 style="padding: 6px 12px; font-size: 0.75rem; font-weight: 700; border-radius: 8px;" title="다시 정렬">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
@@ -1495,7 +1517,6 @@
 
             container.appendChild(div);
         });
-        document.getElementById('segment-count').innerText = segments.length;
     }
 
     function shiftAllTimes(field, deltaMs) {
@@ -1876,13 +1897,11 @@
         }
         box.innerHTML = list.map((r, i) => {
             const dur = r.duration ? ` · ${Math.floor(r.duration / 60)}:${String(Math.round(r.duration % 60)).padStart(2, '0')}` : '';
-            const preview = escapeHtml((r.plainLyrics || '').split('\n').map(l => l.trim()).filter(Boolean).slice(0, 2).join(' / '));
             return `
-                <div class="lrclib-result" onclick="loadLrclibCandidate(${i})"
+                <div class="lrclib-result" onclick="loadLrclibCandidate(${i})" onmousemove="lrclibHover(event, ${i})" onmouseleave="lrclibHideTip()"
                      style="border:1px solid var(--border-color,#e2e8f0); border-radius:10px; padding:12px 14px; cursor:pointer;">
                     <div style="font-weight:700;">${escapeHtml(r.trackName || r.name || '')}</div>
                     <div style="font-size:0.85rem; color:var(--text-dim); margin-top:2px;">${escapeHtml(r.artistName || '')}${escapeHtml(r.albumName ? ' · ' + r.albumName : '')}${dur}</div>
-                    ${preview ? `<div style="font-size:0.8rem; color:var(--text-dim); margin-top:6px;">${preview}</div>` : ''}
                 </div>`;
         }).join('');
     }
@@ -1899,8 +1918,54 @@
         pushUndo();
         segments = parsed;
         renderTimeline();
+        lrclibHideTip();
         hideModals();
         alert(`${segments.length}개의 가사 구간을 LRCLIB에서 불러왔습니다. 영상에 맞게 싱크를 확인해 주세요.`);
+    }
+
+    // 후보 가사 앞 3줄 미리보기 — 노래하기 페이지처럼 커서를 따라다니는 커스텀 툴팁
+    let lrclibTipEl = null;
+    function lrclibPreviewText(r) {
+        let t = (r.plainLyrics || '').trim();
+        if (!t && r.syncedLyrics) {
+            t = r.syncedLyrics.split('\n').map(l => l.replace(/^\[\d+:\d+(?:\.\d+)?\]/, '').trim()).filter(Boolean).join('\n');
+        }
+        const lines = t.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 3);
+        if (!lines.length) return '';
+        return '가사 3줄 미리보기:\n' + lines.map(l => '  ' + l).join('\n');
+    }
+    function lrclibHover(e, i) {
+        if (!lrclibTipEl) {
+            lrclibTipEl = document.createElement('div');
+            lrclibTipEl.className = 'lrclib-tooltip';
+            document.body.appendChild(lrclibTipEl);
+        }
+        const r = lrclibResults[i];
+        const text = r ? lrclibPreviewText(r) : '';
+        if (!text) { lrclibTipEl.style.display = 'none'; return; }
+        lrclibTipEl.textContent = text;
+        lrclibTipEl.style.display = 'block';
+        const pad = 16, rect = lrclibTipEl.getBoundingClientRect();
+        let x = e.clientX + pad, y = e.clientY + pad;
+        if (x + rect.width > window.innerWidth) x = e.clientX - rect.width - pad;
+        if (y + rect.height > window.innerHeight) y = e.clientY - rect.height - pad;
+        lrclibTipEl.style.left = Math.max(4, x) + 'px';
+        lrclibTipEl.style.top = Math.max(4, y) + 'px';
+    }
+    function lrclibHideTip() {
+        if (lrclibTipEl) lrclibTipEl.style.display = 'none';
+    }
+
+    // 첫 가사가 시작하는 순간 눌러 전체 타임라인을 현재 재생 위치에 맞춘다
+    function syncFirstLyricToNow() {
+        if (segments.length === 0) return alert('먼저 가사를 입력해 주세요.');
+        if (!player || typeof player.getCurrentTime !== 'function') return alert('영상이 준비되지 않았습니다.');
+        const currentMs = Math.round(player.getCurrentTime() * 1000);
+        const firstStart = segments[0].start;
+        const delta = currentMs - firstStart;
+        if (delta === 0) { alert('이미 첫 가사가 현재 위치에 맞춰져 있습니다.'); return; }
+        shiftAllTimes('both', delta);  // pushUndo + renderTimeline 포함
+        alert(`첫 가사를 현재 위치(${(currentMs / 1000).toFixed(2)}초)에 맞췄습니다. (Ctrl+Z 로 되돌리기)`);
     }
 
     // New Features: Sync Mode

@@ -606,11 +606,13 @@
     }
 
     .video-result-item:hover,
-    .public-song-card:hover {
+    .public-song-card:hover,
+    .lrclib-result:hover {
         background: #f1f5f9;
         border-color: #cbd5e1;
         transform: translateY(-1px);
     }
+    .lrclib-result { transition: all 0.12s; }
 
     .video-result-thumb {
         width: 50px;
@@ -739,6 +741,15 @@
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
                 <span class="btn-text">가사 검색</span>
+            </button>
+            <button id="btn-lrclib" class="btn btn-outline" style="height: 42px;"
+                onclick="showLrclibModal()" title="LRCLIB에서 싱크 가사 불러오기">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span class="btn-text">LRCLIB 불러오기</span>
             </button>
             {% if user %}
             <button id="btn-load-history" class="btn btn-outline" style="height: 42px;" onclick="showHistoryModal()" title="내 작업 목록">
@@ -1019,6 +1030,24 @@
             <button onclick="searchPublicSongs()" class="btn btn-primary" id="public-search-btn" style="flex-shrink: 0; white-space: nowrap;">검색</button>
         </div>
         <div id="public-lyrics-search-results" style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto;">
+            <!-- Results will appear here -->
+        </div>
+    </div>
+</div>
+
+<div id="modal-lrclib" class="search-modal">
+    <div class="modal-content" style="width: 650px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h3 style="font-size: 1.25rem;">LRCLIB 자동 가사 불러오기</h3>
+            <button onclick="hideModals()" class="btn-icon" style="font-size: 1.5rem;">&times;</button>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 16px;">싱크(타임코드)가 있는 가사를 검색해 타임라인으로 불러옵니다. 불러온 뒤 영상에 맞게 싱크를 확인/보정하세요.</p>
+        <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+            <input type="text" id="lrclib-search-input" class="text-input" placeholder="곡 제목 가수 (예: 밤편지 아이유)"
+                onkeydown="if(event.key==='Enter') lrclibEditorSearch()">
+            <button onclick="lrclibEditorSearch()" class="btn btn-primary" style="flex-shrink: 0; white-space: nowrap;">검색</button>
+        </div>
+        <div id="lrclib-search-results" style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto;">
             <!-- Results will appear here -->
         </div>
     </div>
@@ -1751,6 +1780,43 @@
         alert(`${parsedLines.length}개의 가사 구간이 생성되었습니다. 실시간 싱크 모드로 박자를 맞춰보세요!`);
     }
 
+    // LRC 텍스트([MM:SS.ss]가사)를 segments 배열로 변환 (파일/LRCLIB 공용)
+    function parseLrcToSegments(text) {
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+        const timeRegex = /^\[(\d+):(\d+(?:\.\d+)?)\](.*)$/;
+        const groups = [];
+        let lastTime = null;
+        let lastGroup = null;
+
+        for (const line of lines) {
+            if (line.startsWith('@')) continue;  // 메타데이터 줄(@KEY:) 무시
+            const match = line.match(timeRegex);
+            if (!match) continue;
+            const min = parseInt(match[1]);
+            const sec = parseFloat(match[2]);
+            const ms = Math.round((min * 60 + sec) * 1000);
+            const content = match[3].trim();
+            if (!content) continue;
+
+            if (lastTime !== null && ms === lastTime && lastGroup) {
+                lastGroup.lines.push(content);  // 같은 타임스탬프 → 같은 구간
+            } else {
+                lastGroup = { time: ms, lines: [content] };
+                groups.push(lastGroup);
+                lastTime = ms;
+            }
+        }
+
+        // 각 구간 end 는 다음 구간 start, 마지막은 +3초
+        const segs = [];
+        for (let i = 0; i < groups.length; i++) {
+            const g = groups[i];
+            const nextTime = (i + 1 < groups.length) ? groups[i + 1].time : g.time + 3000;
+            segs.push({ id: Date.now() + i, start: g.time, end: nextTime, text: g.lines.join('\\n') });
+        }
+        return segs;
+    }
+
     function importLyricFile(input) {
         const file = input.files[0];
         if (!file) return;
@@ -1760,62 +1826,81 @@
         reader.onload = (e) => {
             const text = e.target.result;
             if (!confirm('현재 작업 중인 타임라인이 초기화됩니다. 계속하시겠습니까?')) return;
-            pushUndo();
-
-            const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-
-            // 타임스탬프별로 그룹핑: [MM:SS.ss]텍스트
-            const timeRegex = /^\[(\d+):(\d+(?:\.\d+)?)\](.*)$/;
-            const groups = [];
-            let lastTime = null;
-            let lastGroup = null;
-
-            for (const line of lines) {
-                // 메타데이터 줄 무시 (@KEY: 등)
-                if (line.startsWith('@')) continue;
-
-                const match = line.match(timeRegex);
-                if (!match) continue;
-
-                const min = parseInt(match[1]);
-                const sec = parseFloat(match[2]);
-                const ms = Math.round((min * 60 + sec) * 1000);
-                const content = match[3].trim();
-                if (!content) continue;
-
-                if (lastTime !== null && ms === lastTime && lastGroup) {
-                    // 같은 타임스탬프 → 같은 구간에 추가
-                    lastGroup.lines.push(content);
-                } else {
-                    // 새 구간
-                    lastGroup = { time: ms, lines: [content] };
-                    groups.push(lastGroup);
-                    lastTime = ms;
-                }
-            }
-
-            if (groups.length === 0) {
+            const parsed = parseLrcToSegments(text);
+            if (!parsed.length) {
                 alert('파싱할 수 있는 가사가 없습니다. [MM:SS.ss]텍스트 형식인지 확인해주세요.');
                 return;
             }
-
-            // segments 생성: 각 구간의 end는 다음 구간의 start, 마지막은 +3초
-            segments = [];
-            for (let i = 0; i < groups.length; i++) {
-                const g = groups[i];
-                const nextTime = (i + 1 < groups.length) ? groups[i + 1].time : g.time + 3000;
-                segments.push({
-                    id: Date.now() + i,
-                    start: g.time,
-                    end: nextTime,
-                    text: g.lines.join('\\n')
-                });
-            }
-
+            pushUndo();
+            segments = parsed;
             renderTimeline();
             alert(`${segments.length}개의 가사 구간이 파일에서 불러와졌습니다.`);
         };
         reader.readAsText(file, 'UTF-8');
+    }
+
+    // ── LRCLIB 자동 가사 불러오기 ─────────────────────────────
+    let lrclibResults = [];
+
+    function showLrclibModal() {
+        const title = (document.getElementById('target-song-title').innerText || '').trim();
+        const artist = (document.getElementById('target-song-artist').innerText || '').trim();
+        const input = document.getElementById('lrclib-search-input');
+        input.value = `${title} ${artist}`.trim();
+        showModal('modal-lrclib');
+        const box = document.getElementById('lrclib-search-results');
+        if (input.value) {
+            lrclibEditorSearch();
+        } else {
+            box.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-dim);">곡을 먼저 선택하거나 검색어를 입력하세요.</div>';
+        }
+        setTimeout(() => input.focus(), 100);
+    }
+
+    async function lrclibEditorSearch() {
+        const q = (document.getElementById('lrclib-search-input').value || '').trim();
+        const box = document.getElementById('lrclib-search-results');
+        if (!q) { box.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-dim);">검색어를 입력하세요.</div>'; return; }
+        box.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-dim);">LRCLIB 검색 중…</div>';
+        let data = null;
+        try {
+            const res = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(q)}`);
+            if (res.ok) data = await res.json();
+        } catch (e) { console.log('LRCLIB search error:', e); }
+
+        const list = (Array.isArray(data) ? data : []).filter(r => r.syncedLyrics).slice(0, 30);
+        lrclibResults = list;
+        if (!list.length) {
+            box.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-dim);">싱크 가사가 있는 결과가 없습니다. 검색어를 바꿔보세요.</div>';
+            return;
+        }
+        box.innerHTML = list.map((r, i) => {
+            const dur = r.duration ? ` · ${Math.floor(r.duration / 60)}:${String(Math.round(r.duration % 60)).padStart(2, '0')}` : '';
+            const preview = escapeHtml((r.plainLyrics || '').split('\n').map(l => l.trim()).filter(Boolean).slice(0, 2).join(' / '));
+            return `
+                <div class="lrclib-result" onclick="loadLrclibCandidate(${i})"
+                     style="border:1px solid var(--border-color,#e2e8f0); border-radius:10px; padding:12px 14px; cursor:pointer;">
+                    <div style="font-weight:700;">${escapeHtml(r.trackName || r.name || '')}</div>
+                    <div style="font-size:0.85rem; color:var(--text-dim); margin-top:2px;">${escapeHtml(r.artistName || '')}${escapeHtml(r.albumName ? ' · ' + r.albumName : '')}${dur}</div>
+                    ${preview ? `<div style="font-size:0.8rem; color:var(--text-dim); margin-top:6px;">${preview}</div>` : ''}
+                </div>`;
+        }).join('');
+    }
+
+    function loadLrclibCandidate(index) {
+        const r = lrclibResults[index];
+        if (!r || !r.syncedLyrics) return;
+        if (segments.length > 0 && !confirm('현재 작업 중인 타임라인이 초기화됩니다. 계속하시겠습니까?')) return;
+        const parsed = parseLrcToSegments(r.syncedLyrics);
+        if (!parsed.length) {
+            alert('이 가사에는 불러올 싱크 정보가 없습니다.');
+            return;
+        }
+        pushUndo();
+        segments = parsed;
+        renderTimeline();
+        hideModals();
+        alert(`${segments.length}개의 가사 구간을 LRCLIB에서 불러왔습니다. 영상에 맞게 싱크를 확인해 주세요.`);
     }
 
     // New Features: Sync Mode

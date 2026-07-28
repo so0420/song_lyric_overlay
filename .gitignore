@@ -11,8 +11,12 @@ secrets/
 
 # ===== DB 덤프 (개인정보 포함 — 커밋 금지) =====
 *.sql
+*.sql.gz
 !app/database/mariadb/schema.sql
 !app/database/mariadb/migration_*.sql
+
+# ===== Meilisearch (바이너리 + 인덱스 데이터) =====
+meilisearch/
 
 # ===== Python =====
 __pycache__/

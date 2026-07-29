@@ -208,8 +208,8 @@ async def create_lyrics(
         request.session['anon_lyrics_ids'] = anon_ids
 
     # 이 곡을 노래책에 보유하고 가사가 연결되지 않은 항목에 새 가사를 자동 연결
-    # (다른 스트리머도 쓸 수 있어야 하므로 공개 가사만 대상)
-    if lyrics_id and visibility == "public":
+    # (다른 스트리머도 쓸 수 있어야 하므로 공개 가사만 대상, 편집기 토글로 끌 수 있음)
+    if lyrics_id and visibility == "public" and data.autolink_songbook:
         try:
             linked = await get_songbook_repository().autolink_song_lyrics(data.song_id, lyrics_id)
             if linked:

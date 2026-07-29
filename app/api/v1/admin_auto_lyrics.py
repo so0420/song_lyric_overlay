@@ -129,12 +129,13 @@ async def link_auto_lyrics(
         raise HTTPException(status_code=400, detail="이미 정식 등록된 기록입니다.")
 
     await lyrics_repo.set_verified(data.lyrics_id, True)
-    try:
-        linked = await get_songbook_repository().autolink_song_lyrics(rec["song_id"], data.lyrics_id)
-        if linked:
-            logger.info(f"자동 가사 편집 등록 후 노래책 연결: lyrics_id={data.lyrics_id}, {linked}건")
-    except Exception as e:
-        logger.warning(f"노래책 자동 연결 실패 (lyrics_id={data.lyrics_id}): {e}")
+    if data.autolink_songbook:  # 편집기의 '노래책 자동 연결' 토글
+        try:
+            linked = await get_songbook_repository().autolink_song_lyrics(rec["song_id"], data.lyrics_id)
+            if linked:
+                logger.info(f"자동 가사 편집 등록 후 노래책 연결: lyrics_id={data.lyrics_id}, {linked}건")
+        except Exception as e:
+            logger.warning(f"노래책 자동 연결 실패 (lyrics_id={data.lyrics_id}): {e}")
 
     await repo.set_registered_lyrics(import_id, data.lyrics_id)
 

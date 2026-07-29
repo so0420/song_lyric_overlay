@@ -169,6 +169,57 @@
         gap: 12px;
     }
 
+    /* 노래책 자동 연결 토글 */
+    .editor-switch {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+    }
+
+    .editor-switch .switch-label {
+        font-size: 0.8rem;
+        color: #64748b;
+        font-weight: 700;
+    }
+
+    .editor-switch input {
+        display: none;
+    }
+
+    .editor-switch .switch-slider {
+        position: relative;
+        width: 36px;
+        height: 20px;
+        background: #e2e8f0;
+        border-radius: 20px;
+        transition: all 0.3s;
+        flex-shrink: 0;
+    }
+
+    .editor-switch .switch-slider::before {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        background: white;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s;
+    }
+
+    .editor-switch input:checked+.switch-slider {
+        background: var(--accent);
+    }
+
+    .editor-switch input:checked+.switch-slider::before {
+        transform: translateX(16px);
+    }
+
     .version-title-box {
         display: flex;
         align-items: center;
@@ -779,6 +830,12 @@
             </button>
             {% endif %}
         </div>
+        <label class="editor-switch" id="autolink-switch"
+            title="이 곡을 노래책에 넣어둔 항목 중 가사가 비어 있는 곡에, 저장한 가사를 자동으로 연결합니다.">
+            <span class="switch-label btn-text">노래책 자동 연결</span>
+            <input type="checkbox" id="autolink-songbook-toggle" checked onchange="saveAutolinkSetting()">
+            <span class="switch-slider"></span>
+        </label>
         <div class="version-title-box">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -1312,6 +1369,27 @@
         const el = document.getElementById('auto-save-indicator');
         if (el) el.textContent = '';
     }
+
+    // 노래책 자동 연결 토글 (기본값 ON, 브라우저에 기억)
+    const AUTOLINK_KEY = 'lyrics_autolink_songbook';
+
+    function isAutolinkEnabled() {
+        const el = document.getElementById('autolink-songbook-toggle');
+        return el ? el.checked : true;
+    }
+
+    function saveAutolinkSetting() {
+        try { localStorage.setItem(AUTOLINK_KEY, isAutolinkEnabled() ? '1' : '0'); }
+        catch (e) { console.warn('설정 저장 실패:', e); }
+    }
+
+    function restoreAutolinkSetting() {
+        const el = document.getElementById('autolink-songbook-toggle');
+        if (!el) return;
+        try { el.checked = localStorage.getItem(AUTOLINK_KEY) !== '0'; }
+        catch (e) { /* localStorage 사용 불가 시 기본값(ON) 유지 */ }
+    }
+    restoreAutolinkSetting();
 
     function pushUndo() {
         undoStack.push({ segments: JSON.parse(JSON.stringify(segments)), activeIndex });
@@ -2782,7 +2860,8 @@
             song_id: currentSongId,
             title: lyricsTitle,
             mr_youtube_video_id: currentVideoId,
-            lyrics_data: JSON.stringify(segments)
+            lyrics_data: JSON.stringify(segments),
+            autolink_songbook: isAutolinkEnabled()
         };
 
         const url = currentLyricsId ? `/api/v1/lyrics/${currentLyricsId}` : '/api/v1/lyrics/';
@@ -2806,7 +2885,7 @@
                     fetch(`/api/v1/admin/auto-lyrics/${window.__autoImportId}/link`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}) },
-                        body: JSON.stringify({ lyrics_id: data.id })
+                        body: JSON.stringify({ lyrics_id: data.id, autolink_songbook: isAutolinkEnabled() })
                     })
                         .then(r => r.json().catch(() => ({})).then(body => ({ ok: r.ok, body })))
                         .then(({ ok, body }) => {

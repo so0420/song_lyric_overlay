@@ -34,3 +34,4 @@ class OffsetPatchSchema(BaseModel):
 class AutoLyricsLinkSchema(BaseModel):
     """관리자가 편집기에서 저장해 만든 정식 가사를 자동가사 기록에 연결."""
     lyrics_id: int
+    autolink_songbook: bool = True  # 가사 없는 노래책 수록곡에 자동 연결할지 (편집기 토글)

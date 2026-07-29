@@ -11,6 +11,7 @@ class LyricsCreateSchema(BaseModel):
     mr_youtube_video_id: str
     lyrics_data: str  # JSON string or structured data
     visibility: Optional[VisibilityT] = None  # 관리자만 지정 가능, 그 외 무시
+    autolink_songbook: bool = True  # 가사 없는 노래책 수록곡에 자동 연결할지 (편집기 토글)
 
 
 class LyricsUpdateSchema(BaseModel):

@@ -1669,8 +1669,31 @@
         t = t.split('\n').map(l => l.trim()).join('\n');
         // 전체 앞뒤 공백 제거
         t = t.trim();
+        // 일본어 줄(= 새 구간의 원문) 위에 빈 줄이 없으면 자동 삽입
+        t = insertBlankLineBeforeJapanese(t);
         textarea.value = t;
         alert('가사 텍스트가 정리되었습니다.');
+    }
+
+    // 한글이 없고 히라가나/가타카나/한자가 포함된 줄 = 일본어 원문 줄로 판단
+    const RE_HANGUL = /[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]/;
+    const RE_JAPANESE = /[\u3040-\u30FF\u31F0-\u31FF\uFF66-\uFF9D\u4E00-\u9FFF\uF900-\uFAFF]/;
+
+    function isJapaneseOnlyLine(line) {
+        if (!line.trim()) return false;
+        return !RE_HANGUL.test(line) && RE_JAPANESE.test(line);
+    }
+
+    function insertBlankLineBeforeJapanese(text) {
+        const lines = text.split('\n');
+        const result = [];
+        lines.forEach((line, i) => {
+            if (i > 0 && isJapaneseOnlyLine(line) && lines[i - 1].trim()) {
+                result.push('');
+            }
+            result.push(line);
+        });
+        return result.join('\n');
     }
 
     function formatMs(ms) {

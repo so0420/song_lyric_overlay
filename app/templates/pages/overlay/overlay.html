@@ -441,6 +441,36 @@
         color: rgba(255, 255, 255, 0.3);
     }
 
+    /* 다음 가사까지 남은 시간 (가사 영역 우측 하단) */
+    .lyrics-display-wrap {
+        position: relative;
+    }
+
+    .lyrics-countdown {
+        position: absolute;
+        right: 12px;
+        bottom: 10px;
+        z-index: 2;
+        display: none;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(15, 23, 42, 0.55);
+        color: rgba(255, 255, 255, 0.45);
+        font-size: 0.75rem;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        pointer-events: none;
+    }
+
+    .lyrics-countdown.active {
+        display: block;
+    }
+
+    .lyrics-countdown.imminent {
+        color: #fbbf24;
+    }
+
     /* 자동 가사(LRCLIB) 선택 패널 */
     .auto-lyrics-panel {
         width: 100%;
@@ -1870,8 +1900,11 @@
                     <div id="player" style="width: 100%; height: 100%;"></div>
                 </div>
             </div>
-            <div class="lyrics-display" id="lyricsDisplay">
-                <p class="lyrics-display-empty">가사가 여기에 표시됩니다</p>
+            <div class="lyrics-display-wrap">
+                <div class="lyrics-display" id="lyricsDisplay">
+                    <p class="lyrics-display-empty">가사가 여기에 표시됩니다</p>
+                </div>
+                <div class="lyrics-countdown" id="lyricsCountdown" title="다음 가사까지 남은 시간"></div>
             </div>
             <div class="controls-bar">
                 <button class="control-btn" id="prevBtn" title="이전 곡 (←)" disabled>
@@ -2258,6 +2291,7 @@
             lyricsListContainer: $('#lyricsListContainer'),
             modalSongTitle: $('#modalSongTitle'),
             lyricsDisplay: $('#lyricsDisplay'),
+            lyricsCountdown: $('#lyricsCountdown'),
             nowPlayingInfo: $('#nowPlayingInfo'),
             nowPlayingTitle: $('#nowPlayingTitle'),
             playBtn: $('#playBtn'),
@@ -3299,6 +3333,11 @@
                         state.lastLyricsIndex = localIndex;
                         renderLocalLyrics(localIndex, lyrics, localTime);
                     }
+
+                    // 다음 가사까지 남은 시간
+                    updateLyricsCountdown(lyrics, localTime);
+                } else {
+                    hideLyricsCountdown();
                 }
 
                 // OBS 시간 동기화 (500ms 쓰로틀)
@@ -3343,7 +3382,33 @@
             }
         }
 
+        // ===== 다음 가사까지 남은 시간 표시 =====
+        function hideLyricsCountdown() {
+            const el = elements.lyricsCountdown;
+            if (!el || !el.classList.contains('active')) return;
+            el.classList.remove('active', 'imminent');
+            el.textContent = '';
+        }
+
+        function updateLyricsCountdown(lyrics, time) {
+            const el = elements.lyricsCountdown;
+            if (!el) return;
+
+            const { nextIdx } = findGapNeighbors(lyrics, time);
+            if (nextIdx === -1) {  // 마지막 가사 이후 — 표시할 다음 가사 없음
+                hideLyricsCountdown();
+                return;
+            }
+
+            const remain = (lyrics[nextIdx].start - time) / 1000;
+            const text = `다음 ${remain.toFixed(1)}초`;
+            if (el.textContent !== text) el.textContent = text;
+            el.classList.add('active');
+            el.classList.toggle('imminent', remain <= 1.5);
+        }
+
         function stopLyricsSync() {
+            hideLyricsCountdown();
             if (state.animationFrameId) {
                 cancelAnimationFrame(state.animationFrameId);
                 state.animationFrameId = null;

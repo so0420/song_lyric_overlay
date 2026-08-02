@@ -175,37 +175,9 @@
             font-weight: 500;
         }
 
-        /* ===== PiP(작은 창) 모드: 노래하기 페이지 안의 iframe 으로 열렸을 때 =====
-           사이드바/헤더/푸터는 부모 페이지가 이미 갖고 있으므로 숨기고 내용만 보여준다. */
-        html.embedded .mobile-header,
-        html.embedded .sidebar,
-        html.embedded .sidebar-overlay,
-        html.embedded .impersonation-banner,
-        html.embedded .page-footer {
-            display: none !important;
-        }
-
-        html.embedded main {
-            margin-left: 0;
-            padding: 20px 20px 48px;
-            min-height: 100vh;
-        }
-
-        /* 노래하기의 작은 창이 덮는 쪽만큼 내용을 비켜준다 (부모가 실측해서 알려준다) */
-        html.embedded body {
-            padding-right: var(--pip-reserve-right, 0px);
-            padding-left: var(--pip-reserve-left, 0px);
-            transition: padding 0.15s ease;
-        }
-
-        /* position:fixed 인 토스트는 body 패딩을 받지 않아 작은 창에 그대로 가려진다.
-           (저장 성공/실패 피드백이 통째로 사라진다) → 예약 폭만큼 직접 밀어준다.
-           right/left 를 덮어쓰지 않으므로 가운데 정렬한 토스트는 영향받지 않는다. */
-        html.embedded .toast-container,
-        html.embedded .toast {
-            margin-right: var(--pip-reserve-right, 0px);
-            margin-left: var(--pip-reserve-left, 0px);
-        }
+        /* PiP(작은 창) 패널 안에서 열려도 페이지는 평소와 똑같이 보여야 한다.
+           사이드바·푸터를 숨기거나 여백을 조정하지 않는다 — 작은 창은 그 위에 떠 있을 뿐이다.
+           (html.embedded 는 페이지별 예외가 필요할 때 쓰는 훅으로만 남겨둔다) */
 
     </style>
     <script>
@@ -339,16 +311,6 @@
                 if (url.pathname !== '/overlay') return;
                 e.preventDefault();
                 toParent({ type: 'jamku-pip-close' });
-            });
-
-            // 부모가 알려준 '작은 창이 덮는 영역'만큼 본문을 비켜준다
-            window.addEventListener('message', function (e) {
-                if (e.origin !== location.origin) return;
-                const d = e.data;
-                if (!d || d.type !== 'jamku-pip-reserve') return;
-                const s = document.documentElement.style;
-                s.setProperty('--pip-reserve-right', (d.side === 'right' ? d.px : 0) + 'px');
-                s.setProperty('--pip-reserve-left', (d.side === 'left' ? d.px : 0) + 'px');
             });
 
             // 재생 조작 단축키를 상위 페이지로 전달한다.

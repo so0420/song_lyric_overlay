@@ -1505,10 +1505,13 @@
         position: fixed;
         bottom: 24px;
         right: 24px;
-        z-index: 2000;
+        z-index: 4300;   /* PiP 패널(4000)·작은 창(4100)보다 위 */
         display: flex;
         flex-direction: column;
         gap: 8px;
+        /* 작은 창과 같은 우하단이라 토스트가 떠 있는 동안 '다음 곡'·진행바 클릭이 막힌다.
+           토스트는 클릭할 일이 없으므로(3초 뒤 자동 소멸) 통째로 통과시킨다. */
+        pointer-events: none;
     }
 
     .toast {
@@ -1790,6 +1793,295 @@
         font-size: 0.85rem;
         color: var(--text-sub);
     }
+
+    /* ============================================================
+       PiP(작은 창) 모드
+       재생 중 다른 페이지를 볼 때 영상 카드를 작게 띄우고
+       나머지 화면은 iframe 패널로 덮는다. 페이지 이동이 없으므로
+       유튜브 재생과 OBS 연결이 끊기지 않는다.
+       ============================================================ */
+
+    .pip-browser {
+        position: fixed;
+        inset: 0;
+        z-index: 4000;
+        background: var(--bg-body);
+        display: none;
+        flex-direction: column;
+    }
+
+    body.pip-active .pip-browser {
+        display: flex;
+    }
+
+    .pip-bar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        background: #0f172a;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    .pip-bar-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #f8fafc;
+        font-weight: 700;
+        font-size: 0.9rem;
+        padding-right: 8px;
+        margin-right: 4px;
+        border-right: 1px solid rgba(255, 255, 255, 0.12);
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .pip-tab {
+        padding: 7px 12px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.06);
+        color: #cbd5e1;
+        font-size: 0.85rem;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: all 0.15s ease;
+    }
+
+    .pip-tab:hover {
+        background: rgba(255, 255, 255, 0.16);
+        color: #fff;
+    }
+
+    .pip-tab.active {
+        background: var(--accent);
+        color: #fff;
+    }
+
+    .pip-bar-spacer {
+        flex: 1;
+        min-width: 8px;
+    }
+
+    .pip-bar-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 8px;
+        background: transparent;
+        color: #e2e8f0;
+        font-size: 0.85rem;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: all 0.15s ease;
+    }
+
+    .pip-bar-btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+    }
+
+    .pip-bar-btn.primary {
+        background: #22c55e;
+        border-color: #22c55e;
+        color: #052e16;
+    }
+
+    .pip-bar-btn.primary:hover {
+        background: #16a34a;
+        color: #fff;
+    }
+
+    .pip-frame {
+        flex: 1;
+        width: 100%;
+        border: 0;
+        background: #fff;
+    }
+
+    /* --- 작은 창으로 변한 영상 카드 --- */
+    body.pip-active .video-card {
+        position: fixed;
+        z-index: 4100;
+        width: 420px;
+        max-width: calc(100vw - 24px);
+        /* 패널 상단 바를 덮지 않도록 바 높이만큼 뺀다 */
+        max-height: calc(100vh - var(--pip-bar-h, 52px) - 24px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        border-radius: 14px;
+        border-color: rgba(15, 23, 42, 0.25);
+        box-shadow: 0 20px 55px rgba(0, 0, 0, 0.45);
+    }
+
+    body.pip-active .video-card::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    body.pip-active .video-card::-webkit-scrollbar-thumb {
+        background: rgba(100, 116, 139, 0.5);
+        border-radius: 3px;
+    }
+
+    .pip-handle {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        background: #0f172a;
+        color: #e2e8f0;
+        cursor: grab;
+        user-select: none;
+        touch-action: none;
+        /* 카드가 길어져 내부 스크롤이 생겨도 닫기·이동 수단이 사라지면 안 된다 */
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .pip-handle:active {
+        cursor: grabbing;
+    }
+
+    body.pip-active .pip-handle {
+        display: flex;
+    }
+
+    .pip-handle-label {
+        flex: 1;
+        min-width: 0;
+        font-size: 0.8rem;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .pip-handle-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border: none;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        color: #e2e8f0;
+        font-size: 0.85rem;
+        font-weight: 700;
+        font-family: inherit;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: background 0.15s ease;
+    }
+
+    .pip-handle-btn:hover {
+        background: rgba(255, 255, 255, 0.24);
+    }
+
+    .pip-handle-btn.close:hover {
+        background: #ef4444;
+        color: #fff;
+    }
+
+    .pip-handle-btn.on {
+        background: var(--accent);
+        color: #fff;
+    }
+
+    /* 작은 창에서의 압축 레이아웃 */
+    body.pip-active .video-card .now-playing-info.active {
+        padding: 8px 12px;
+        gap: 10px;
+    }
+
+    body.pip-active .video-card .now-playing-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+    }
+
+    body.pip-active .video-card .now-playing-label {
+        display: none;
+    }
+
+    body.pip-active .video-card .now-playing-title {
+        font-size: 0.85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    body.pip-active .video-card .lyrics-display {
+        padding: 14px 16px;
+        min-height: 84px;
+        /* 가사 줄 수·자동 가사 후보 패널 때문에 카드가 무한정 자라면
+           재생 컨트롤이 카드 스크롤 밖으로 밀려난다 → 가사 쪽만 스크롤시킨다 */
+        max-height: 168px;
+        overflow-y: auto;
+        /* justify-content:center 인 채로 넘치면 위쪽이 스크롤로도 닿지 않는 영역이 된다
+           (자동 가사 후보의 검색창·'다시 검색' 버튼이 잘려나감) */
+        justify-content: center;
+        justify-content: safe center;
+    }
+
+    body.pip-active .video-card .controls-bar {
+        padding: 8px 10px;
+        gap: 8px;
+        /* 카드가 스크롤될 만큼 길어져도 재생 컨트롤은 항상 보이게 */
+        position: sticky;
+        bottom: 0;
+        z-index: 1;
+    }
+
+    body.pip-active .video-card .volume-control {
+        display: none;
+    }
+
+    body.pip-active .video-card .offset-controls {
+        display: none;
+    }
+
+    body.pip-active .video-card.pip-expanded .offset-controls {
+        display: flex;
+    }
+
+    body.pip-active .video-card.pip-expanded .volume-control {
+        display: flex;
+    }
+
+    /* 영상 접기 — 가사/컨트롤만 남긴다 */
+    body.pip-active .video-card.pip-video-hidden .video-wrapper {
+        display: none;
+    }
+
+    /* 모달은 패널(4000)·작은 창(4100)보다 위로 — 아니면 눌러도 반응이 없는 것처럼 보인다 */
+    body.pip-active .modal-overlay {
+        z-index: 4200;
+    }
+
+    @media (max-width: 640px) {
+        /* !important 로 폭·위치를 고정하면 '창 작게/크게'와 드래그가 통째로 무효가 된다.
+           JS(applyPipLayout)가 이미 화면 폭에 맞게 clamp 하므로 상한만 둔다. */
+        body.pip-active .video-card {
+            max-width: calc(100vw - 16px);
+        }
+
+        .pip-bar-title {
+            display: none;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -1861,7 +2153,30 @@
 <div class="overlay-container">
     <!-- Main Section -->
     <div class="main-section">
-        <div class="video-card">
+        <div class="video-card" id="videoCard">
+            <!-- PiP(작은 창) 모드 전용 헤더 — 드래그 손잡이 겸 컨트롤 -->
+            <div class="pip-handle" id="pipHandle">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="opacity: 0.6; flex-shrink: 0;">
+                    <circle cx="9" cy="6" r="1.6"></circle><circle cx="15" cy="6" r="1.6"></circle>
+                    <circle cx="9" cy="12" r="1.6"></circle><circle cx="15" cy="12" r="1.6"></circle>
+                    <circle cx="9" cy="18" r="1.6"></circle><circle cx="15" cy="18" r="1.6"></circle>
+                </svg>
+                <span class="pip-handle-label">작은 창</span>
+                <button class="pip-handle-btn" id="pipShrinkBtn" title="창 작게" type="button">−</button>
+                <button class="pip-handle-btn" id="pipGrowBtn" title="창 크게" type="button">+</button>
+                <button class="pip-handle-btn" id="pipVideoToggleBtn" title="영상 접기/펼치기" type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                    </svg>
+                </button>
+                <button class="pip-handle-btn" id="pipExpandBtn" title="오프셋·볼륨 펼치기" type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V15z"></path>
+                    </svg>
+                </button>
+                <button class="pip-handle-btn close" id="pipHandleCloseBtn" title="노래하기 화면으로 돌아가기" type="button">✕</button>
+            </div>
             <div class="now-playing-info" id="nowPlayingInfo" style="position: relative;">
                 <div class="now-playing-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -2213,6 +2528,47 @@
         </div>
     </div>
 </div>
+
+<!-- PiP(작은 창) 브라우징 패널 — 재생을 유지한 채 다른 페이지를 본다 -->
+<div class="pip-browser" id="pipBrowser">
+    <div class="pip-bar">
+        <span class="pip-bar-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                <rect x="12" y="12" width="8" height="6" rx="1" fill="currentColor"></rect>
+            </svg>
+            작은 창 모드
+        </span>
+        <button class="pip-tab" data-pip-url="/songs" type="button">가사 목록</button>
+        <button class="pip-tab" data-pip-url="/overlay/settings" type="button">OBS 오버레이 설정</button>
+        <button class="pip-tab" data-pip-url="/songbook" type="button">노래책 관리</button>
+        <button class="pip-tab" data-pip-url="/lyrics" type="button">가사 편집기</button>
+        <button class="pip-tab" data-pip-url="/timeline" type="button">노래 타임라인</button>
+        <button class="pip-tab" data-pip-url="/" type="button">홈</button>
+        <span class="pip-bar-spacer"></span>
+        <button class="pip-bar-btn" id="pipReloadBtn" type="button" title="새로고침">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+        </button>
+        <button class="pip-bar-btn" id="pipNewTabBtn" type="button" title="새 탭에서 열기">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+        </button>
+        <button class="pip-bar-btn primary" id="pipCloseBtn" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            노래하기로
+        </button>
+    </div>
+    <iframe class="pip-frame" id="pipFrame" title="작은 창 브라우징" src="about:blank"></iframe>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -2220,6 +2576,23 @@
 <script>
     (function () {
         'use strict';
+
+        // PiP 패널 안에서 노래하기 페이지가 열린 경우(패널 내부 링크·리다이렉트 등)
+        // 플레이어와 OBS WebSocket 이 두 벌 뜨지 않도록 아무것도 초기화하지 않고
+        // 상위 창에 패널을 닫으라고 알린다.
+        if (window.__pipEmbedded) {
+            try {
+                // 쿼리(?lyrics_id=...)를 부모로 넘긴다. 패널 안 '가사 목록'의 재생목록 추가처럼
+                // 앵커가 아닌 JS 이동(/overlay?lyrics_id=N)이 여기로 들어오기 때문에,
+                // 넘기지 않으면 패널만 닫히고 곡이 조용히 유실된다.
+                parent.postMessage({ type: 'jamku-pip-close', search: location.search }, location.origin);
+            } catch (e) { /* 다른 오리진이면 무시 */ }
+            document.addEventListener('DOMContentLoaded', () => {
+                document.body.innerHTML =
+                    '<p style="padding:40px;text-align:center;color:#475569;font-weight:600;">노래하기 화면으로 돌아갑니다…</p>';
+            });
+            return;
+        }
 
         // CSRF Token
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -3460,6 +3833,15 @@
                 ${nextLine ? `<p class="lyrics-line next">${formatLyrics(nextLine.text)}</p>` : ''}
             </div>
         `;
+
+            // 작은 창에서는 가사 영역 높이가 제한돼 있고 넘치면 'safe center' 가 start 로
+            // 폴백한다 → 이미 부른 prev 줄이 위를 차지하고 정작 필요한 current/next 가 잘린다.
+            // 넘칠 때만 current 줄을 가운데로 맞춘다.
+            const ld = elements.lyricsDisplay;
+            if (ld.scrollHeight > ld.clientHeight) {
+                const curEl = ld.querySelector('.lyrics-line.current');
+                if (curEl) ld.scrollTop = curEl.offsetTop + curEl.offsetHeight / 2 - ld.clientHeight / 2;
+            }
         }
 
         // ===== WebSocket 연결 (OBS 동기화용) =====
@@ -4812,9 +5194,374 @@
             });
         }
 
+        /* ==========================================================
+           PiP(작은 창) 모드
+           재생 중 다른 페이지로 이동하면 유튜브 플레이어와 OBS 연결이
+           끊기므로, 페이지를 떠나지 않고 iframe 패널로 열어준다.
+           영상 카드는 CSS 로만 작은 창이 된다(DOM 을 옮기면 유튜브
+           iframe 이 리로드되어 재생이 끊기므로 절대 옮기지 않는다).
+           ========================================================== */
+        const PIP_WIDTH_MIN = 300;
+        const PIP_WIDTH_MAX = 760;
+        const PIP_WIDTH_STEP = 60;
+        const PIP_MARGIN = 16;
+
+        // 작은 창으로 열 수 없는 경로 (현재 페이지 / API / 인증 / OBS 오버레이)
+        const PIP_BLOCKED = ['/api', '/overlay/obs', '/overlay/access-request', '/login', '/logout', '/register', '/forgot-password'];
+
+        const pip = {
+            active: false,
+            pushedHistory: false,
+            width: parseInt(localStorage.getItem('overlay_pip_width') || '420', 10) || 420,
+            pos: null,
+            drag: null,
+            barHeight: 52,   // 패널 상단 바 높이 — 열릴 때 실측값으로 갱신
+            lastHeight: 0,
+            hintShown: localStorage.getItem('overlay_pip_hint') === 'shown'
+        };
+
+        try {
+            pip.pos = JSON.parse(localStorage.getItem('overlay_pip_pos') || 'null');
+        } catch (e) {
+            pip.pos = null;
+        }
+
+        function isPipEligible(pathname) {
+            if (pathname === '/overlay') return false;
+            return !PIP_BLOCKED.some(p => pathname === p || pathname.startsWith(p + '/'));
+        }
+
+        // 영상이 올라와 있을 때만 가로챈다 — 아무것도 안 틀었으면 평소처럼 페이지 이동
+        function isVideoLoaded() {
+            return !!state.pendingVideoId || $('#playerContainer').style.display === 'block';
+        }
+
+        // 작은 창이 패널 상단 바를 덮으면 '노래하기로'/새 탭 버튼을 누를 수 없게 되므로
+        // 바 높이만큼 위쪽 여백을 확보한다. (바는 좁은 화면에서 줄바꿈되므로 실측값을 쓴다)
+        function pipTopLimit() {
+            return pip.barHeight + PIP_MARGIN;
+        }
+
+        function clampPipPos(left, top, w, h) {
+            const minTop = pipTopLimit();
+            const maxLeft = Math.max(PIP_MARGIN, window.innerWidth - w - PIP_MARGIN);
+            const maxTop = Math.max(minTop, window.innerHeight - h - PIP_MARGIN);
+            return {
+                left: Math.min(Math.max(PIP_MARGIN, left), maxLeft),
+                top: Math.min(Math.max(minTop, top), maxTop)
+            };
+        }
+
+        function applyPipLayout() {
+            if (!pip.active) return;
+            const card = $('#videoCard');
+
+            pip.barHeight = $('.pip-bar').offsetHeight || pip.barHeight;
+            document.documentElement.style.setProperty('--pip-bar-h', pip.barHeight + 'px');
+
+            const width = Math.min(pip.width, Math.max(PIP_WIDTH_MIN, window.innerWidth - PIP_MARGIN * 2));
+            card.style.width = width + 'px';
+
+            const height = card.getBoundingClientRect().height;
+            const base = pip.pos || {
+                left: window.innerWidth - width - PIP_MARGIN,
+                top: window.innerHeight - height - PIP_MARGIN
+            };
+            const pos = clampPipPos(base.left, base.top, width, height);
+            card.style.left = pos.left + 'px';
+            card.style.top = pos.top + 'px';
+            pip.pos = pos;
+            pip.lastHeight = height;
+            sendPipReserve();
+        }
+
+        // 작은 창이 패널 내용을 가리지 않도록, 카드가 차지하는 쪽 여백을 패널 안 페이지에 알려준다.
+        // (기본 위치인 우하단은 오버레이 설정 페이지의 오른쪽 설정 컬럼과 거의 그대로 겹친다)
+        function sendPipReserve() {
+            const frame = $('#pipFrame');
+            if (!frame || !frame.contentWindow) return;
+
+            let side = 'right', px = 0;
+            if (pip.active) {
+                const r = $('#videoCard').getBoundingClientRect();
+                side = (r.left + r.width / 2) > (window.innerWidth / 2) ? 'right' : 'left';
+                px = Math.round(side === 'right' ? window.innerWidth - r.left : r.right);
+                px += PIP_MARGIN;
+                // 카드가 화면 절반 이상을 차지하면(좁은 화면) 여백을 비우는 편이 낫다
+                if (px > window.innerWidth * 0.5) px = 0;
+            }
+            try {
+                frame.contentWindow.postMessage({ type: 'jamku-pip-reserve', side, px }, location.origin);
+            } catch (e) { /* 아직 로드 전이거나 다른 오리진 */ }
+        }
+
+        // 가사 줄 수 변화·자동 가사 후보 패널 등으로 카드가 세로로 자라면
+        // top 고정이라 재생 컨트롤이 화면 밖으로 밀려난다 → 크기 변화를 감시해 다시 배치한다.
+        function observePipSize(card) {
+            if (typeof ResizeObserver !== 'function') return;
+            let scheduled = false;
+            new ResizeObserver(() => {
+                if (!pip.active || pip.drag || scheduled) return;
+                if (Math.abs(card.getBoundingClientRect().height - pip.lastHeight) < 2) return;
+                scheduled = true;
+                requestAnimationFrame(() => {
+                    scheduled = false;
+                    applyPipLayout();
+                });
+            }).observe(card);
+        }
+
+        function setPipWidth(width) {
+            pip.width = Math.min(PIP_WIDTH_MAX, Math.max(PIP_WIDTH_MIN, width));
+            localStorage.setItem('overlay_pip_width', String(pip.width));
+            applyPipLayout();
+        }
+
+        // 상단 탭 활성화 — 탭에 없는 주소면 임시 탭을 만들어 보여준다
+        function markPipTab(url, label) {
+            const path = url.split('?')[0];
+            let matched = false;
+            // 임시 탭은 매칭 대상에서 뺀다 — 자기 자신에 매칭되면 방금 만든 탭을 지워버린다
+            $$('.pip-tab[data-pip-url]:not(#pipDynamicTab)').forEach(tab => {
+                const on = tab.dataset.pipUrl === path;
+                tab.classList.toggle('active', on);
+                if (on) matched = true;
+            });
+
+            let dynamic = $('#pipDynamicTab');
+            if (matched) {
+                if (dynamic) dynamic.remove();
+                return;
+            }
+            if (!dynamic) {
+                dynamic = document.createElement('button');
+                dynamic.id = 'pipDynamicTab';
+                dynamic.type = 'button';
+                dynamic.className = 'pip-tab';
+                $('.pip-bar-spacer').before(dynamic);
+            }
+            dynamic.dataset.pipUrl = url;
+            dynamic.textContent = label || path;
+            dynamic.classList.add('active');
+        }
+
+        function pipNavigate(url) {
+            const frame = $('#pipFrame');
+            // location.replace 로 이동해야 브라우저 히스토리에 항목이 쌓이지 않는다
+            try {
+                frame.contentWindow.location.replace(url);
+            } catch (e) {
+                frame.src = url;
+            }
+        }
+
+        function pipOpen(url, label) {
+            const frame = $('#pipFrame');
+            pipNavigate(url);
+            markPipTab(url, label);
+            $('#pipBrowser').dataset.currentUrl = url;
+
+            if (!pip.active) {
+                pip.active = true;
+                document.body.classList.add('pip-active');
+                applyPipLayout();
+
+                // 뒤로가기로 실수로 페이지를 떠나 재생이 끊기는 것 방지
+                if (!pip.pushedHistory) {
+                    try {
+                        history.pushState({ jamkuPip: 1 }, '', location.href);
+                        pip.pushedHistory = true;
+                    } catch (e) { /* 무시 */ }
+                }
+
+                if (!pip.hintShown) {
+                    pip.hintShown = true;
+                    localStorage.setItem('overlay_pip_hint', 'shown');
+                    showToast('작은 창 모드 — 재생을 유지한 채 둘러볼 수 있어요. 헤더를 끌어 옮기세요.');
+                }
+            }
+            frame.focus();
+        }
+
+        function pipClose() {
+            if (!pip.active) return;
+            pip.active = false;
+            document.body.classList.remove('pip-active');
+
+            const card = $('#videoCard');
+            card.style.left = '';
+            card.style.top = '';
+            card.style.width = '';
+
+            pipNavigate('about:blank');   // 패널 안 페이지의 타이머/요청 정리
+            $('#pipBrowser').dataset.currentUrl = '';
+        }
+
+        function initPipMode() {
+            const card = $('#videoCard');
+            const handle = $('#pipHandle');
+
+            observePipSize(card);
+
+            // --- 페이지 이동 가로채기 ---
+            document.addEventListener('click', (e) => {
+                if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+                const link = e.target.closest && e.target.closest('a[href]');
+                if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
+
+                let url;
+                try {
+                    url = new URL(link.getAttribute('href'), location.href);
+                } catch (err) {
+                    return;
+                }
+                if (url.origin !== location.origin) return;
+                if (url.pathname === location.pathname && url.hash) return;   // 페이지 내 앵커
+
+                // 지금 보고 있는 '노래하기'로 가는 링크(사이드바 등).
+                // 그냥 두면 문서가 리로드되어 재생과 OBS 연결이 끊긴다.
+                if (url.pathname === '/overlay') {
+                    if (!isVideoLoaded()) return;
+                    e.preventDefault();
+                    if (pip.active) pipClose();
+                    if (url.search) handleUrlParams(url.search);
+                    return;
+                }
+
+                if (!isPipEligible(url.pathname)) return;
+                if (!isVideoLoaded()) return;   // 재생 중이 아니면 원래대로 이동
+
+                e.preventDefault();
+                // 모달 안 앵커(예: 가사 선택 모달의 '가사 만들기')로 열면 모달이 남아
+                // 패널과 작은 창을 통째로 덮는다 → 먼저 닫는다
+                $$('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+                pipOpen(url.pathname + url.search, (link.textContent || '').trim());
+            });
+
+            // --- 패널 상단 바 ---
+            $('.pip-bar').addEventListener('click', (e) => {
+                const tab = e.target.closest('.pip-tab');
+                if (!tab) return;
+                pipOpen(tab.dataset.pipUrl, tab.textContent.trim());
+            });
+
+            $('#pipCloseBtn').addEventListener('click', pipClose);
+            $('#pipHandleCloseBtn').addEventListener('click', pipClose);
+
+            // 패널 안에서 링크로 이동하면 부모도 현재 주소를 따라가야 한다
+            // (안 그러면 새로고침이 처음 연 페이지로 되돌아가고 탭 표시도 어긋난다)
+            $('#pipFrame').addEventListener('load', function () {
+                try {
+                    const loc = this.contentWindow.location;
+                    if (!loc || loc.href === 'about:blank') return;
+                    const url = loc.pathname + loc.search;
+                    $('#pipBrowser').dataset.currentUrl = url;
+                    const title = (this.contentDocument.title || '').split('-')[0].trim();
+                    markPipTab(url, title || loc.pathname);
+                } catch (e) { /* 크로스 오리진으로 이동한 경우 */ }
+                sendPipReserve();
+            });
+
+            $('#pipReloadBtn').addEventListener('click', () => {
+                const url = $('#pipBrowser').dataset.currentUrl;
+                if (url) pipNavigate(url);
+            });
+
+            $('#pipNewTabBtn').addEventListener('click', () => {
+                let url = $('#pipBrowser').dataset.currentUrl;
+                try {
+                    url = $('#pipFrame').contentWindow.location.href;
+                } catch (e) { /* 접근 불가 시 마지막 주소 사용 */ }
+                if (url) window.open(url, '_blank', 'noopener');
+            });
+
+            // --- 작은 창 컨트롤 ---
+            $('#pipShrinkBtn').addEventListener('click', () => setPipWidth(pip.width - PIP_WIDTH_STEP));
+            $('#pipGrowBtn').addEventListener('click', () => setPipWidth(pip.width + PIP_WIDTH_STEP));
+
+            $('#pipVideoToggleBtn').addEventListener('click', function () {
+                const hidden = card.classList.toggle('pip-video-hidden');
+                this.classList.toggle('on', hidden);
+                this.title = hidden ? '영상 펼치기' : '영상 접기';
+                applyPipLayout();
+            });
+
+            $('#pipExpandBtn').addEventListener('click', function () {
+                const expanded = card.classList.toggle('pip-expanded');
+                this.classList.toggle('on', expanded);
+                applyPipLayout();
+            });
+
+            // --- 드래그로 위치 이동 ---
+            handle.addEventListener('pointerdown', (e) => {
+                if (!pip.active || e.button !== 0 || e.target.closest('button')) return;
+                const rect = card.getBoundingClientRect();
+                pip.drag = { dx: e.clientX - rect.left, dy: e.clientY - rect.top, w: rect.width, h: rect.height };
+                handle.setPointerCapture(e.pointerId);
+                e.preventDefault();
+            });
+
+            handle.addEventListener('pointermove', (e) => {
+                if (!pip.drag) return;
+                const pos = clampPipPos(e.clientX - pip.drag.dx, e.clientY - pip.drag.dy, pip.drag.w, pip.drag.h);
+                card.style.left = pos.left + 'px';
+                card.style.top = pos.top + 'px';
+                pip.pos = pos;
+            });
+
+            const endDrag = () => {
+                if (!pip.drag) return;
+                pip.drag = null;
+                localStorage.setItem('overlay_pip_pos', JSON.stringify(pip.pos));
+                sendPipReserve();
+            };
+            handle.addEventListener('pointerup', endDrag);
+            handle.addEventListener('pointercancel', endDrag);
+
+            // --- 패널 안에서 넘어온 재생 단축키 처리 ---
+            window.addEventListener('message', (e) => {
+                if (e.origin !== location.origin) return;
+                const data = e.data;
+                if (!data) return;
+                if (data.type === 'jamku-pip-close') {
+                    pipClose();
+                    // 패널 안에서 /overlay?lyrics_id=... 로 이동하려던 경우 여기서 대신 처리
+                    if (data.search) handleUrlParams(data.search);
+                    return;
+                }
+                if (data.type !== 'jamku-pip-key') return;
+                document.body.dispatchEvent(new KeyboardEvent('keydown', {
+                    code: data.code,
+                    shiftKey: !!data.shiftKey,
+                    bubbles: true
+                }));
+            });
+
+            // --- 창 크기 변경 / 뒤로가기 ---
+            window.addEventListener('resize', applyPipLayout);
+            window.addEventListener('popstate', () => {
+                // 더미 히스토리 항목이 소모됐으므로 플래그를 되돌린다.
+                // 이걸 빠뜨리면 다음 번 PiP 에서 pushState 가 되지 않아
+                // 뒤로가기가 페이지를 떠나 재생·OBS 연결이 끊긴다.
+                pip.pushedHistory = false;
+                if (pip.active) pipClose();
+            });
+
+            // 저장된 표시 옵션 복원
+            if (localStorage.getItem('overlay_pip_expanded') === 'true') {
+                card.classList.add('pip-expanded');
+                $('#pipExpandBtn').classList.add('on');
+            }
+            $('#pipExpandBtn').addEventListener('click', () => {
+                localStorage.setItem('overlay_pip_expanded', String(card.classList.contains('pip-expanded')));
+            });
+        }
+
         // Initialize
         async function init() {
             initEventListeners();
+            initPipMode();
             renderPlaylist();           // localStorage 캐시로 즉시 페인트
             loadFavorites();
             updateVolumeIcon();
@@ -4833,13 +5580,16 @@
             loadRequestRemote();
         }
 
-        async function handleUrlParams() {
-            const params = new URLSearchParams(window.location.search);
+        // searchStr 을 넘기면 그 쿼리로 처리한다 (PiP 패널 안에서 이동하려던 주소를 대신 처리할 때).
+        async function handleUrlParams(searchStr) {
+            const fromPip = typeof searchStr === 'string';
+            const params = new URLSearchParams(fromPip ? searchStr : window.location.search);
             const lyricsId = params.get('lyrics_id');
 
             if (lyricsId) {
                 // URL에서 파라미터 제거 (뒤로가기 시 중복 추가 방지)
-                window.history.replaceState({}, '', '/overlay');
+                // PiP 경유일 때는 현재 주소에 파라미터가 없으므로 건드리지 않는다
+                if (!fromPip) window.history.replaceState({}, '', '/overlay');
 
                 try {
                     const res = await fetch(`/api/v1/lyrics/${lyricsId}`);

@@ -1344,6 +1344,8 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<!-- 편집기는 Space/방향키를 자체 단축키로 쓰므로 PiP 모드에서 상위 페이지로 키를 넘기지 않는다 -->
+<script>window.__pipDisableKeyForward = true;</script>
 <script src="https://www.youtube.com/iframe_api"></script>
 {% autoescape false %}
 <script>

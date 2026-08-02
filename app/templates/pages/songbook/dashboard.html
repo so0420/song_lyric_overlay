@@ -2345,7 +2345,13 @@ async function loadChzzkStatus() {
 
 document.getElementById('chzzkConnectBtn').addEventListener('click', () => {
     // 연동 후 노래책 관리로 복귀
-    window.location.href = '/api/v1/oauth/chzzk/login?redirect_to=/songbook';
+    const url = '/api/v1/oauth/chzzk/login?redirect_to=/songbook';
+    // 노래하기의 PiP 패널 안이면 새 탭으로 — OAuth 페이지는 iframe 안에서 열리지 않는다
+    if (window.__pipEmbedded) {
+        window.open(url, '_blank', 'noopener');
+        return;
+    }
+    window.location.href = url;
 });
 
 document.getElementById('chzzkDisconnectBtn').addEventListener('click', async () => {

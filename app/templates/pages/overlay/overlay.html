@@ -1976,6 +1976,14 @@
         display: none;
     }
 
+    /* ✕ 로 작은 창만 끈 상태 — 보던 페이지는 그대로 두고 창만 사라진다.
+       display:none / visibility:hidden 은 브라우저가 유튜브 iframe 렌더링을 멈춰
+       재생이 끊길 수 있으므로 쓰지 않는다. */
+    body.pip-active .video-card.pip-card-hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+
     /* 모달은 패널(4000)·작은 창(4100)보다 위로 — 아니면 눌러도 반응이 없는 것처럼 보인다 */
     body.pip-active .modal-overlay {
         z-index: 4200;
@@ -2087,14 +2095,13 @@
                         <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                     </svg>
                 </button>
-                <button class="pip-handle-btn" id="pipNewTabBtn" title="보고 있는 페이지를 새 탭에서 열기" type="button">
+                <button class="pip-handle-btn" id="pipBackBtn" title="노래하기 화면으로 돌아가기" type="button">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                        <polyline points="15 3 21 3 21 9"></polyline>
-                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
                     </svg>
                 </button>
-                <button class="pip-handle-btn close" id="pipCloseBtn" title="노래하기 화면으로 돌아가기" type="button">✕</button>
+                <button class="pip-handle-btn close" id="pipHideBtn" title="작은 창 닫기 (재생은 계속되고 보던 페이지는 그대로)" type="button">✕</button>
             </div>
             <div class="now-playing-info" id="nowPlayingInfo" style="position: relative;">
                 <div class="now-playing-icon">
@@ -5185,6 +5192,7 @@
             if (!pip.active) {
                 pip.active = true;
                 document.body.classList.add('pip-active');
+                $('#videoCard').classList.remove('pip-card-hidden');   // 지난번에 ✕ 로 껐어도 다시 띄운다
                 applyPipLayout();
 
                 // 뒤로가기로 실수로 페이지를 떠나 재생이 끊기는 것 방지
@@ -5198,7 +5206,7 @@
                 if (!pip.hintShown) {
                     pip.hintShown = true;
                     localStorage.setItem('overlay_pip_hint2', 'shown');
-                    showToast('작은 창 모드 — 재생은 그대로 유지됩니다. 헤더를 끌어 옮기고, ✕ 로 노래하기 화면으로 돌아갑니다.');
+                    showToast('작은 창 모드 — 재생은 그대로 유지됩니다. 헤더를 끌어 옮기고, ← 로 노래하기 화면으로 돌아갑니다.');
                 }
             }
             frame.focus();
@@ -5210,6 +5218,7 @@
             document.body.classList.remove('pip-active');
 
             const card = $('#videoCard');
+            card.classList.remove('pip-card-hidden');
             card.style.left = '';
             card.style.top = '';
             card.style.width = '';
@@ -5260,7 +5269,14 @@
                 pipOpen(url.pathname + url.search);
             });
 
-            $('#pipCloseBtn').addEventListener('click', pipClose);
+            // ← : 패널을 닫고 노래하기 화면으로 복귀
+            $('#pipBackBtn').addEventListener('click', pipClose);
+
+            // ✕ : 작은 창만 끄고 보던 페이지는 그대로 둔다
+            $('#pipHideBtn').addEventListener('click', () => {
+                card.classList.add('pip-card-hidden');
+                showToast('작은 창을 닫았습니다. 재생은 계속됩니다 — 사이드바의 「노래하기」로 돌아갈 수 있어요.');
+            });
 
             // 패널 안에서 링크로 이동하면 부모도 현재 주소를 따라가야 한다
             // (안 그러면 새로고침이 처음 연 페이지로 되돌아간다)
@@ -5275,14 +5291,6 @@
             $('#pipReloadBtn').addEventListener('click', () => {
                 const url = $('#pipBrowser').dataset.currentUrl;
                 if (url) pipNavigate(url);
-            });
-
-            $('#pipNewTabBtn').addEventListener('click', () => {
-                let url = $('#pipBrowser').dataset.currentUrl;
-                try {
-                    url = $('#pipFrame').contentWindow.location.href;
-                } catch (e) { /* 접근 불가 시 마지막 주소 사용 */ }
-                if (url) window.open(url, '_blank', 'noopener');
             });
 
             // --- 작은 창 컨트롤 ---

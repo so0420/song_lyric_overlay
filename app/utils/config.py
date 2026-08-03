@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     chzzk_relay_url: str = "https://relay.jamkubot.com"
     chzzk_relay_token: str = ""               # 비어있으면 릴레이 연결 안 함
 
+    # 오버레이 사용 요청 알림용 디스코드 웹훅 — 비어있으면 알림을 보내지 않는다
+    discord_webhook_url: str = ""
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": False,

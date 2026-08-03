@@ -127,6 +127,45 @@
     color: var(--text-dim);
     margin-top: 6px;
 }
+.consent-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin: 4px 0 20px;
+    font-size: 0.83rem;
+    line-height: 1.6;
+    color: var(--text-sub);
+    cursor: pointer;
+}
+.consent-check input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 2px 0 0;
+    flex-shrink: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+.consent-check a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.consent-check em {
+    font-style: normal;
+    color: var(--text-dim);
+}
+.consent-notice {
+    margin: -12px 0 18px;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: var(--text-dim);
+    text-align: center;
+}
+.consent-notice a {
+    color: var(--text-sub);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
 
 .btn-register {
     width: 100%;
@@ -418,12 +457,27 @@
                         <input type="password" id="passwordConfirm" name="passwordConfirm" placeholder="비밀번호 재입력" required>
                     </div>
 
+                    <label class="consent-check" for="agreeTerms">
+                        <input type="checkbox" id="agreeTerms" name="agreeTerms" required>
+                        <span>
+                            <a href="/terms" target="_blank" rel="noopener">이용약관</a> 및
+                            <a href="/privacy" target="_blank" rel="noopener">개인정보 처리방침</a>에 동의합니다. <em>(필수)</em>
+                        </span>
+                    </label>
+
                     <button type="submit" class="btn-register" id="registerBtn">
                         회원가입
                     </button>
                 </form>
 
                 <div class="divider"><span>또는</span></div>
+
+                <p class="consent-notice">
+                    아래 계정으로 시작하시면
+                    <a href="/terms" target="_blank" rel="noopener">이용약관</a> 및
+                    <a href="/privacy" target="_blank" rel="noopener">개인정보 처리방침</a>에
+                    동의하신 것으로 봅니다.
+                </p>
 
                 <div class="auth-buttons">
                     <a href="/api/v1/oauth/naver/login" class="btn-auth btn-naver">

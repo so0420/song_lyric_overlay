@@ -193,7 +193,7 @@
 <div class="legal-table-wrap"><table>
 <thead><tr><th>외부 서비스</th><th>연동 내용</th></tr></thead>
 <tbody>
-<tr><td>YouTube (Google LLC)</td><td>MR 영상 검색(YouTube Data API v3), 영상 재생(YouTube IFrame Player API), 영상 썸네일 표시. <strong>API 사용량 한도를 초과한 경우, 검색 결과를 얻기 위해 서비스 서버가 YouTube 웹페이지를 직접 조회하는 대체 경로가 동작할 수 있습니다.</strong></td></tr>
+<tr><td>YouTube (Google LLC)</td><td>MR 영상 검색(YouTube Data API v3), 영상 재생(YouTube IFrame Player API), 영상 썸네일 표시</td></tr>
 <tr><td>Google 계정</td><td>소셜 로그인</td></tr>
 <tr><td>Google Gmail(SMTP)</td><td>이메일 인증번호·이메일 변경 인증번호·비밀번호 재설정 인증번호·오버레이 사용 승인 안내 메일 발송</td></tr>
 <tr><td>Naver 계정</td><td>소셜 로그인</td></tr>
@@ -220,7 +220,7 @@
 <li>Google 보안 설정: https://security.google.com/settings/security/permissions</li>
 <li>(동일 페이지) https://myaccount.google.com/permissions</li>
 </ul>
-<li>서비스는 이용자의 YouTube 계정 데이터에 접근하지 않으며(Google 로그인은 <code>openid</code>·이메일·프로필 범위만 사용), YouTube Data API는 서버 측 API 키 방식으로 호출됩니다. <strong>다만 제1항의 표에 적은 바와 같이 API 사용량 한도를 초과한 경우 서비스 서버가 YouTube 웹페이지를 직접 조회하는 대체 경로가 동작할 수 있으므로, 서비스가 모든 영상 정보를 공식 API로만 취득한다고 보증하지 않습니다.</strong></li>
+<li>서비스는 이용자의 YouTube 계정 데이터에 접근하지 않으며(Google 로그인은 <code>openid</code>·이메일·프로필 범위만 사용), <strong>영상 검색·조회에 필요한 정보는 오직 공식 YouTube API(YouTube Data API v3, YouTube IFrame Player API)를 통해서만 취득합니다.</strong> YouTube Data API는 서버 측 API 키 방식으로 호출되며, 이용자를 식별할 수 있는 정보는 전송되지 않습니다.</li>
 <li>이용자는 YouTube 약관이 금지하는 행위, 예컨대 영상의 다운로드·저장·재배포, 광고 우회, 영상에서 음성만 분리하여 재생·배포하는 행위 등을 하기 위해 서비스를 이용해서는 안 됩니다(제22조 제1항 제6호).</li>
 </ol>
 <p>③ 서비스가 화면에 표시하는 영상 썸네일, 앨범 커버 이미지 등은 각 외부 서비스가 제공하는 것으로, 그 권리는 각 권리자에게 있습니다.</p>

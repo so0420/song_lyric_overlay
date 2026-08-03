@@ -195,6 +195,20 @@
 }
 
 /* Divider */
+.consent-notice {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: var(--text-dim);
+    text-align: center;
+}
+.consent-notice a {
+    color: var(--text-sub);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
 .divider {
     display: flex;
     align-items: center;
@@ -533,6 +547,11 @@
                 </p>
                 <a href="/forgot-password" class="forgot-link">비밀번호를 잊으셨나요?</a>
             </div>
+
+            <p class="consent-notice">
+                로그인하시면 <a href="/terms">이용약관</a> 및
+                <a href="/privacy">개인정보 처리방침</a>에 동의하신 것으로 봅니다.
+            </p>
         </div>
     </div>
 </div>

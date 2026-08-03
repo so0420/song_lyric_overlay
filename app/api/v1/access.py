@@ -11,15 +11,17 @@ from app.schemas.access_request import (
 from app.utils.log import logger
 from app.utils.mailer import send_email
 from app.utils.email_templates import get_access_approved_email
-from app.utils.config import config
+from app.utils.config import config, settings
 
 router = APIRouter()
 
-DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1488261758002004229/sS_aOnHvsCqRdMMnDhZvCmA0wq8HFl6dgrW0JFS_n17HXUtnIs2wMxR92ZCDxZ910-or"
-
-
 async def send_discord_notification(user_name: str, user_email: str, platform_url: str, message: str | None):
-    """디스코드 웹훅으로 사용 요청 알림 전송"""
+    """디스코드 웹훅으로 사용 요청 알림 전송 (웹훅 URL 미설정 시 건너뜀)"""
+    webhook_url = settings.discord_webhook_url
+    if not webhook_url:
+        logger.info("Discord webhook URL not configured, skipping notification")
+        return
+
     embed = {
         "title": "새로운 오버레이 사용 요청",
         "color": 0x8B5CF6,
@@ -34,7 +36,7 @@ async def send_discord_notification(user_name: str, user_email: str, platform_ur
 
     try:
         async with httpx.AsyncClient() as client:
-            await client.post(DISCORD_WEBHOOK_URL, json={"embeds": [embed]}, timeout=10)
+            await client.post(webhook_url, json={"embeds": [embed]}, timeout=10)
     except Exception as e:
         logger.error(f"Discord webhook send failed: {e}")
 

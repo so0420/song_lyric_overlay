@@ -1978,8 +1978,10 @@
     }
 
     /* ✕ 로 노래하기를 끝낸 상태 — 재생을 이미 멈췄으므로 창을 완전히 치운다.
-       보던 페이지(패널)는 그대로 남는다. */
-    body.pip-active .video-card.pip-card-hidden {
+       보던 페이지(패널)는 그대로 남는다.
+       '숨김'은 다른 어떤 display 규칙보다 항상 이겨야 하므로(예: .pip-sized 의 flex)
+       id 선택자로 특이도를 높여 규칙 순서에 좌우되지 않게 한다. */
+    body.pip-active #videoCard.pip-card-hidden {
         display: none;
     }
 

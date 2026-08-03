@@ -6,13 +6,19 @@
 행을 지우면 연결된 데이터가 함께 사라지거나 깨지기 때문이다.
 
 지우는 항목 (개인정보 처리방침의 파기 조항과 같아야 한다):
-    이메일, 이름, 비밀번호 해시, 프로필 이미지 URL,
-    최근 로그인 IP, 최근 로그인 일시, 오버레이 토큰,
-    소셜 계정 연결 정보(social_accounts 행 삭제)
+    users 행에서 비우는 값
+        이메일, 이름, 비밀번호 해시, 프로필 이미지 URL,
+        최근 로그인 IP, 최근 로그인 일시, 오버레이 토큰
+    통째로 지우는 행
+        소셜 계정 연결, 가사 즐겨찾기, 가사별 개인 메모, 재생목록,
+        오버레이 설정·프리셋, 노래 타임라인 기록, 치지직 채널 연동,
+        노래책 프로필(수록곡·노래 신청 내역·신청 통계가 CASCADE 로 함께 삭제된다)
 
 남기는 항목:
     users.id, 가입 일시, 탈퇴 일시, 파기 일시, 관리자/승인 플래그
     → 통계와 연결 무결성을 위해 필요하고, 개인을 식별하지 않는다.
+    이용자가 작성한 가사(songs, song_lyrics)
+    → 다른 이용자가 이미 사용 중일 수 있어 함께 지우지 않는다.
 """
 from app.database.mariadb import db_handler
 from app.utils.log import logger
@@ -32,6 +38,21 @@ _PURGE_TARGET_SQL = """
      ORDER BY deleted_at
      LIMIT %s
 """
+
+# 사용자별 데이터를 담고 있어 행째로 지우는 테이블.
+# streamers 를 지우면 streamer_songbooks·song_requests·song_request_logs 가
+# ON DELETE CASCADE 로 함께 지워진다(노래책 프로필·수록곡·신청 내역·신청 통계).
+_PURGE_TABLES = (
+    ("social_accounts", "user_id"),            # 소셜 계정 연결 정보
+    ("user_lyrics_favorites", "user_id"),      # 가사 즐겨찾기
+    ("user_lyrics_memos", "user_id"),          # 가사별 개인 메모
+    ("user_playlists", "user_id"),             # 재생목록
+    ("user_overlay_settings", "user_id"),      # 오버레이 설정
+    ("user_overlay_presets", "user_id"),       # 오버레이 프리셋
+    ("singing_timeline_records", "user_id"),   # 노래 타임라인 기록
+    ("user_chzzk_channels", "user_id"),        # 치지직 채널 연동 정보
+    ("streamers", "user_id"),                  # 노래책 프로필 (하위는 CASCADE)
+)
 
 _PURGE_USER_SQL = """
     UPDATE users
@@ -71,8 +92,8 @@ async def purge_account(user_id: int) -> bool:
         if not target:
             return False
 
-        # 소셜 연결은 행 자체를 지운다 (provider uid·이메일·이름·프로필이 모두 개인정보)
-        await tx.execute_query("DELETE FROM social_accounts WHERE user_id = %s", (user_id,))
+        for table, column in _PURGE_TABLES:
+            await tx.execute_query(f"DELETE FROM {table} WHERE {column} = %s", (user_id,))
         await tx.execute_query(_PURGE_USER_SQL, (user_id,))
 
     logger.info(f"[account_purge] 계정 {user_id} 개인정보 파기 완료")

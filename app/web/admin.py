@@ -48,18 +48,6 @@ async def access_requests_page(request: Request, user=Depends(get_admin_user)):
     })
 
 
-@router.get("/auto-lyrics", response_class=HTMLResponse)
-async def auto_lyrics_page(request: Request, user=Depends(get_admin_user)):
-    """자동 가사(LRCLIB) 기록 검토 / 정식 등록 페이지"""
-    if not user:
-        return RedirectResponse(url="/login")
-
-    return templates.TemplateResponse("pages/admin/auto_lyrics.html", {
-        "request": request,
-        "user": user
-    })
-
-
 @router.get("/song-edit", response_class=HTMLResponse)
 async def song_edit_page(request: Request, user=Depends(get_admin_user)):
     """곡 정보 수정 페이지 (가사 있는 곡 + 노래책 등록 곡)"""

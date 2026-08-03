@@ -2598,13 +2598,10 @@
             songOffset: 0,
             // 자동 가사(LRCLIB): 가사 없는 곡에서 검색결과 자동 표시 여부 (기본 ON)
             autoLyricsEnabled: localStorage.getItem('overlay_auto_lyrics') !== 'false',
-            currentAutoImportId: null,   // 자동 가사 적용 기록 id (오프셋 로그 갱신용)
             currentSongExternalId: null, // 현재 재생 곡 외부 ID(song_external_id) — 서버가 songs.id 로 해석
             currentAutoResults: [],      // 현재 곡의 LRCLIB 검색 결과 캐시
             autoQuery: '',               // 자동가사 검색어(수정 가능) — 재검색 입력창 값
             playToken: 0,                // 재생 전환 토큰 — 비동기 결과가 이전 곡에 잘못 적용되는 것 방지
-            autoPending: null,           // 적용했지만 아직 로그 안 남긴 자동가사 {r, lyricsDataStr}
-            autoPlaySeconds: 0,          // 위 자동가사로 재생한 누적 초 (60초 넘으면 로그 기록)
             // Memo
             currentMemo: '',
             memoLyricsId: null,
@@ -3547,10 +3544,7 @@
 
             // '이 곡만' 오프셋/자동가사 상태를 곡마다 초기화 → 다음 곡으로 이월되지 않음
             state.songOffset = 0;
-            state.currentAutoImportId = null;
             state.currentAutoResults = [];
-            state.autoPending = null;
-            state.autoPlaySeconds = 0;
             // item.songId 는 (재생목록 구조상) 외부 ID 문자열이다. 숫자 songs.id 는 서버가 해석한다.
             state.currentSongExternalId = item.songId || item.song_external_id || null;
             state.currentVideoId = videoId || null;
@@ -4461,13 +4455,11 @@
         }
 
         // ── '이 곡만' 오프셋 (곡 바뀌면 리셋, 전역 저장 안 함) ──
-        let autoOffsetPatchTimer = null;
         function adjustSongOffset(delta) {
             state.songOffset += delta;
             updateOffsetDisplay();
             forceUpdateLyrics();
             syncTimeToOBS_force(state.isPlaying);
-            scheduleAutoOffsetLog();
             showToast(`이 곡만 오프셋: ${state.songOffset >= 0 ? '+' : ''}${state.songOffset}ms`);
         }
 
@@ -4490,43 +4482,9 @@
             updateOffsetDisplay();
             forceUpdateLyrics();
             syncTimeToOBS_force(state.isPlaying);
-            scheduleAutoOffsetLog();
             showToast(`첫 가사 기준 싱크 맞춤: ${state.songOffset >= 0 ? '+' : ''}${state.songOffset}ms`);
         }
 
-        // 자동가사 적용 기록의 오프셋을 서버에 반영(디바운스)
-        function scheduleAutoOffsetLog() {
-            if (!state.currentAutoImportId) return;  // 아직 기록 id 없으면 logAutoApply 가 끝난 뒤 flush
-            if (autoOffsetPatchTimer) clearTimeout(autoOffsetPatchTimer);
-            const importId = state.currentAutoImportId;
-            const offsetMs = state.songOffset;
-            autoOffsetPatchTimer = setTimeout(async () => {
-                try {
-                    const res = await fetch(`/api/v1/auto-lyrics/${importId}/offset`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json', ...csrfHeaders },
-                        body: JSON.stringify({ offset_ms: offsetMs })
-                    });
-                    if (!res.ok) showToast('오프셋 기록 저장 실패 — 관리자 등록 시 반영되지 않을 수 있어요', 'error');
-                } catch (err) {
-                    console.log('auto-offset log error:', err);
-                    showToast('오프셋 기록 저장 실패 — 관리자 등록 시 반영되지 않을 수 있어요', 'error');
-                }
-            }, 800);
-        }
-
-        function toggleAutoLyrics(enabled) {
-            state.autoLyricsEnabled = enabled;
-            localStorage.setItem('overlay_auto_lyrics', enabled ? 'true' : 'false');
-            // 현재 곡에 정식 가사가 없고 재생 중이면 즉시 반영
-            if (!state.currentLyrics) {
-                if (enabled) {
-                    autoSearchLyrics(state.currentSongTitle, state.currentArtist);
-                } else {
-                    renderNoAutoLyrics();
-                }
-            }
-        }
 
         // ── 자동 가사(LRCLIB) — 검색은 클라이언트에서 직접 (서버 IP 레이트리밋 회피) ──
         const LRC_TIME_RE = /^\[(\d+):(\d+(?:\.\d+)?)\](.*)$/;
@@ -4621,9 +4579,6 @@
             state.currentLyrics = null;
             state.lastLyricsIndex = -2;
             // 적용을 내렸으니 대기 중 로그/기록 참조도 취소 (다시 고르면 새로 계산)
-            state.autoPending = null;
-            state.autoPlaySeconds = 0;
-            state.currentAutoImportId = null;
             if (hasResults) {
                 renderAutoResults(state.currentAutoResults, state.currentSongTitle, state.currentArtist);
             } else {
@@ -4768,48 +4723,8 @@
             forceUpdateLyrics();
             syncLyricsInit();
             showToast('자동 가사를 적용했습니다', 'success');
-            // 짧게 시도만 한 후보는 기록하지 않는다. 이 가사로 1분 이상 재생한 경우에만
-            // logAutoApply 가 호출되도록 대기 상태로 둔다(재생 누적은 아래 ticker 가 셈).
-            state.currentAutoImportId = null;
-            state.autoPending = { r, lyricsDataStr };
-            state.autoPlaySeconds = 0;
         }
 
-        async function logAutoApply(r, lyricsDataStr) {
-            if (!state.currentSongExternalId) return;  // 외부 ID 없으면(임시 신청 등) 기록 불가
-            const reqToken = state.playToken;  // 이 로그가 속한 재생 세션
-            try {
-                const videoId = state.currentVideoId || null;
-                const res = await fetch('/api/v1/auto-lyrics/apply', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', ...csrfHeaders },
-                    body: JSON.stringify({
-                        song_external_id: state.currentSongExternalId,
-                        source: 'lrclib',
-                        source_id: r.id != null ? String(r.id) : null,
-                        track_name: r.trackName || r.name || null,
-                        artist_name: r.artistName || null,
-                        album_name: r.albumName || null,
-                        duration: r.duration != null ? Math.round(r.duration) : null,
-                        synced_lyrics: r.syncedLyrics || null,
-                        lyrics_data: lyricsDataStr,
-                        mr_youtube_video_id: videoId,
-                        offset_ms: state.songOffset
-                    })
-                });
-                if (!res.ok) return;
-                const data = await res.json();
-                // 곡이 바뀌었으면 이전 곡 기록 id 를 현재 상태에 심지 않는다
-                if (state.playToken !== reqToken) return;
-                state.currentAutoImportId = data.import_id || null;
-                // apply 전송 사이에 오프셋을 이미 조정했다면(싱크 맞춤 등) 지금 반영
-                if (state.currentAutoImportId && state.songOffset !== 0) {
-                    scheduleAutoOffsetLog();
-                }
-            } catch (e) {
-                console.log('auto-lyrics apply log error:', e);
-            }
-        }
 
         // Modal
         function closeModal() {
@@ -4977,17 +4892,6 @@
             elements.songOffsetPlus.addEventListener('click', () => adjustSongOffset(100));
             elements.songSyncBtn.addEventListener('click', syncToFirstLyric);
             elements.reselectAutoBtn.addEventListener('click', reopenAutoResults);
-            // 자동가사: 재생 중일 때만 누적, 이 가사로 1분 이상 재생하면 관리자 등록용 로그 기록
-            setInterval(() => {
-                if (state.autoPending && state.currentLyrics && state.currentLyrics.isAuto && state.isPlaying) {
-                    state.autoPlaySeconds++;
-                    if (state.autoPlaySeconds >= 60) {
-                        const p = state.autoPending;
-                        state.autoPending = null;  // 한 번만 기록
-                        logAutoApply(p.r, p.lyricsDataStr);
-                    }
-                }
-            }, 1000);
             elements.autoLyricsToggle.checked = state.autoLyricsEnabled;
             elements.autoLyricsToggle.addEventListener('change', (e) => toggleAutoLyrics(e.target.checked));
             elements.lyricsDisplay.addEventListener('click', handleAutoLyricsClick);

@@ -80,6 +80,17 @@ async def auth_callback(
             (email,)
         )
 
+        # 같은 이메일의 탈퇴 계정이 아직 파기 전이면 위 조회에 잡히지 않는다.
+        # 그대로 두면 아래에서 신규 가입으로 흘러 users.email UNIQUE 에 걸려 500 이 난다.
+        # (로그인한 채로 소셜을 연결하는 경우는 새 행을 만들지 않으므로 해당 없다)
+        if not user and not existing_social and not current_user:
+            withdrawn = await db.fetch_one(
+                "SELECT id FROM users WHERE email = %s AND deleted_at IS NOT NULL",
+                (email,)
+            )
+            if withdrawn:
+                return RedirectResponse(url='/login?error=account_withdrawn')
+
         if user or existing_social:
             target_user_id = user['id'] if user else existing_social['user_id']
             if not current_user:

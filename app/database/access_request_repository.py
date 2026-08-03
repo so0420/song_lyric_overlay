@@ -215,6 +215,7 @@ class AccessRequestRepository:
                        WHERE status = 'approved'
                    ) r ON u.id = r.user_id AND r.rn = 1
                    WHERE u.overlay_approved = 1 AND u.is_admin = 0
+                     AND u.deleted_at IS NULL
                      AND (u.name LIKE %s OR u.email LIKE %s)
                    ORDER BY r.reviewed_at DESC
                    LIMIT %s OFFSET %s""",
@@ -232,6 +233,7 @@ class AccessRequestRepository:
                        WHERE status = 'approved'
                    ) r ON u.id = r.user_id AND r.rn = 1
                    WHERE u.overlay_approved = 1 AND u.is_admin = 0
+                     AND u.deleted_at IS NULL
                    ORDER BY r.reviewed_at DESC
                    LIMIT %s OFFSET %s""",
                 (limit, offset)

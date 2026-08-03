@@ -650,12 +650,30 @@ registerForm.addEventListener('submit', async (e) => {
             const when = data.__withdrawn.deleted_at
                 ? new Date(data.__withdrawn.deleted_at).toLocaleDateString('ko-KR')
                 : null;
+            // 두 번 나눠 묻는다. 한 번에 물으면 [취소]나 ESC 가 곧바로
+            // '이전 계정 삭제'로 떨어져, 그만두려던 사람이 되돌릴 수 없는 쪽을 고르게 된다.
             restore = confirm(
                 '이 이메일로 탈퇴한 계정이 있습니다.'
                 + (when ? `\n탈퇴일: ${when}` : '')
-                + '\n\n[확인] 이전 계정을 복구합니다. 작성한 가사·노래책이 그대로 돌아옵니다.'
-                + '\n[취소] 새 계정으로 시작합니다. 이전 계정의 정보는 삭제됩니다.'
+                + '\n\n이전 계정을 복구할까요?'
+                + '\n\n[확인] 복구합니다. 작성한 가사·노래책이 그대로 돌아옵니다.'
+                + '\n[취소] 복구하지 않습니다. (다음 화면에서 다시 확인합니다)'
             );
+
+            if (!restore) {
+                const goNew = confirm(
+                    '새 계정으로 시작하면 이전 계정의 정보가 삭제됩니다.'
+                    + '\n작성하신 가사·노래책은 새 계정으로 옮겨지지 않으며 되돌릴 수 없습니다.'
+                    + '\n(삭제는 이메일 인증을 마치는 시점에 실행됩니다)'
+                    + '\n\n[확인] 새 계정으로 시작합니다.'
+                    + '\n[취소] 회원가입을 그만둡니다.'
+                );
+                if (!goNew) {
+                    showMessage(registerMessage, '회원가입을 진행하지 않았습니다. 이전 계정은 그대로 있습니다.', false);
+                    return;
+                }
+            }
+
             data = await submitRegister({ email, password, name, restore });
         }
 
@@ -700,7 +718,12 @@ verifyForm.addEventListener('submit', async (e) => {
             throw new Error(data.detail || '인증에 실패했습니다.');
         }
 
-        showMessage(verifyMessage, '회원가입이 완료되었습니다! 로그인 페이지로 이동합니다.', false);
+        // 복구인지 새 계정인지 서버가 구분해서 알려주므로 그 문구를 그대로 보여 준다.
+        showMessage(
+            verifyMessage,
+            data.message || '회원가입이 완료되었습니다! 로그인해주세요.',
+            false
+        );
 
         setTimeout(() => {
             window.location.href = '/login';

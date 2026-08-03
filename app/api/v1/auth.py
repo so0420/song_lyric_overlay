@@ -3,7 +3,7 @@ import json
 from fastapi import APIRouter, Request, HTTPException, Depends
 from app.database.mariadb import db_handler
 from app.database.redis.redis import redis
-from app.database.account_purge import purge_account
+from app.database.account_purge import purge_account, RETENTION_DAYS
 from app.utils.config import settings
 from app.utils.log import logger
 from app.utils.mailer import send_email
@@ -35,15 +35,22 @@ async def register(request: Request, data: RegisterSchema):
         raise HTTPException(status_code=400, detail=error_msg)
 
     # 이메일 중복 확인
+    # purge_due: 보관기간이 지나 자동 파기를 기다리는 중인 계정 (파기 작업은 6시간마다 돈다)
     existing_user = await db_handler.fetch_one(
-        "SELECT id, email_verified, deleted_at FROM users WHERE email = %s",
-        (data.email,)
+        "SELECT id, email_verified, deleted_at, "
+        "       (deleted_at < NOW() - INTERVAL %s DAY) AS purge_due "
+        "  FROM users WHERE email = %s",
+        (RETENTION_DAYS, data.email)
     )
 
     if existing_user and existing_user.get('deleted_at'):
         # 탈퇴한 계정의 이메일 — 복구할지 새로 시작할지 물어본 뒤 진행한다.
         # 어느 쪽이든 실제 반영은 이메일 인증(OTP)을 통과한 뒤에 한다.
-        if data.restore is None:
+        if existing_user.get('purge_due'):
+            # 보관기간이 지난 계정은 어차피 파기 대상이라 복구를 묻지 않는다.
+            # (약관 제9조 ④ 3호 "30일이 지난 경우 묻지 않고 새 계정으로 가입")
+            restore = False
+        elif data.restore is None:
             raise HTTPException(
                 status_code=409,
                 detail={
@@ -53,6 +60,8 @@ async def register(request: Request, data: RegisterSchema):
                                   if existing_user.get('deleted_at') else None,
                 },
             )
+        else:
+            restore = data.restore
 
         password_hash = hash_password(data.password)
 
@@ -61,7 +70,7 @@ async def register(request: Request, data: RegisterSchema):
         #  인증 순간 복구가 아니라 파기가 일어난다) 어느 쪽을 골랐든 먼저 지운다.
         await redis.delete(f"pending_register:{data.email}")
 
-        if data.restore:
+        if restore:
             # 복구 예정 — 인증 후 되살릴 수 있도록 새 이름·비밀번호만 미리 적어 둔다.
             # deleted_at 은 그대로 두므로 인증 전까지는 여전히 탈퇴 상태다.
             await db_handler.execute_query(
@@ -123,7 +132,7 @@ async def verify_email(request: Request, data: VerifyEmailSchema):
         raise HTTPException(status_code=400, detail=result.message)
 
     user = await db_handler.fetch_one(
-        "SELECT id, deleted_at FROM users WHERE email = %s",
+        "SELECT id, deleted_at, email_verified FROM users WHERE email = %s",
         (data.email,)
     )
 
@@ -148,6 +157,14 @@ async def verify_email(request: Request, data: VerifyEmailSchema):
 
     # 탈퇴 계정 복구 (register 에서 restore=True)
     if user.get('deleted_at'):
+        # 복구를 고른 경우에만 register 가 email_verified 를 0 으로 내려놓는다.
+        # 1 로 남아 있다면 '새 계정으로 시작'을 골랐는데 그 의사(pending)가 만료된 것이다.
+        # 여기서 막지 않으면 고르지 않은 '복구'가 대신 실행된다.
+        if user.get('email_verified'):
+            raise HTTPException(
+                status_code=400,
+                detail="가입 요청의 유효시간이 지났습니다. 회원가입을 처음부터 다시 진행해주세요."
+            )
         await db_handler.execute_query(
             "UPDATE users SET deleted_at = NULL, is_active = 1, email_verified = 1 WHERE id = %s",
             (user['id'],)
@@ -186,6 +203,16 @@ async def resend_verification(request: Request, data: ResendVerificationSchema):
 
     # OTP 생성 및 이메일 발송
     code = await otp_manager.create_otp(f"register:{data.email}")
+
+    if pending_raw:
+        # OTP 만 연장하면 '새 계정으로 시작' 의사가 먼저 만료되어,
+        # 새로 받은 코드로 인증했을 때 고르지 않은 '복구'가 실행된다. 수명을 맞춰 준다.
+        await redis.set(
+            f"pending_register:{data.email}",
+            pending_raw,
+            ex=settings.otp_ttl,
+        )
+
     display_name = json.loads(pending_raw)['name'] if pending_raw else user['name']
     html_content, text_content = get_verification_email(display_name, code)
 
@@ -300,12 +327,21 @@ async def reset_password(request: Request, data: ResetPasswordSchema):
 
     # 유저 확인
     user = await db_handler.fetch_one(
-        "SELECT id FROM users WHERE email = %s",
+        "SELECT id, deleted_at FROM users WHERE email = %s",
         (data.email,)
     )
 
     if not user:
         raise HTTPException(status_code=400, detail="해당 이메일로 가입된 계정을 찾을 수 없습니다.")
+
+    # 탈퇴한 계정은 비밀번호를 바꿔 줘도 로그인할 수 없다(login 이 deleted_at 을 거른다).
+    # 안내 없이 성공시키면 "바꿨는데 로그인이 안 된다"는 막다른 길이 된다.
+    # (여기서만 알리고 forgot-password 는 그대로 둔다 — 거기서 알리면 계정 존재 여부가 새어 나간다)
+    if user.get('deleted_at'):
+        raise HTTPException(
+            status_code=400,
+            detail="탈퇴한 계정입니다. 같은 이메일로 회원가입을 진행하시면 이전 계정을 복구하실 수 있습니다."
+        )
 
     # 비밀번호 업데이트
     new_hash = hash_password(data.new_password)

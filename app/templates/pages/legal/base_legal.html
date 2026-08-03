@@ -272,3 +272,12 @@ main {
     </div>
 </div>
 {% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // PiP 작은 창을 켠 채 이 페이지를 읽을 때 Space 를 재생/일시정지로 가져가면
+    // 긴 문서를 스페이스바로 넘길 수 없다. 읽는 페이지에서는 단축키 전달을 끈다.
+    // (Escape 릴레이는 base.html 에서 이 설정과 무관하게 유지된다)
+    window.__pipDisableKeyForward = true;
+</script>
+{% endblock %}

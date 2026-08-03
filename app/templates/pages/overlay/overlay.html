@@ -4486,6 +4486,19 @@
         }
 
 
+        function toggleAutoLyrics(enabled) {
+            state.autoLyricsEnabled = enabled;
+            localStorage.setItem('overlay_auto_lyrics', enabled ? 'true' : 'false');
+            // 현재 곡에 정식 가사가 없고 재생 중이면 즉시 반영
+            if (!state.currentLyrics) {
+                if (enabled) {
+                    autoSearchLyrics(state.currentSongTitle, state.currentArtist);
+                } else {
+                    renderNoAutoLyrics();
+                }
+            }
+        }
+
         // ── 자동 가사(LRCLIB) — 검색은 클라이언트에서 직접 (서버 IP 레이트리밋 회피) ──
         const LRC_TIME_RE = /^\[(\d+):(\d+(?:\.\d+)?)\](.*)$/;
         function lrcToSegments(synced) {

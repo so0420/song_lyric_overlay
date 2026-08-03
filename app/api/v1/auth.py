@@ -55,6 +55,12 @@ async def register(request: Request, data: RegisterSchema):
             )
 
         password_hash = hash_password(data.password)
+
+        # 이전 요청에서 고른 의사가 남아 있으면 이번 선택을 덮어써 버린다.
+        # ('새 계정'을 골랐다가 되돌아와 '복구'로 바꾸면, 남은 키 때문에
+        #  인증 순간 복구가 아니라 파기가 일어난다) 어느 쪽을 골랐든 먼저 지운다.
+        await redis.delete(f"pending_register:{data.email}")
+
         if data.restore:
             # 복구 예정 — 인증 후 되살릴 수 있도록 새 이름·비밀번호만 미리 적어 둔다.
             # deleted_at 은 그대로 두므로 인증 전까지는 여전히 탈퇴 상태다.
@@ -163,19 +169,25 @@ async def resend_verification(request: Request, data: ResendVerificationSchema):
     """인증 코드 재발송"""
 
     user = await db_handler.fetch_one(
-        "SELECT id, name, email_verified FROM users WHERE email = %s",
+        "SELECT id, name, email_verified, deleted_at FROM users WHERE email = %s",
         (data.email,)
     )
 
     if not user:
         raise HTTPException(status_code=400, detail="해당 이메일로 가입된 계정을 찾을 수 없습니다.")
 
-    if user.get('email_verified'):
+    # 탈퇴 계정으로 재가입(복구/새 계정) 중이면 기존 행의 인증 여부와 무관하게 재발송해야 한다.
+    # '새 계정' 경로는 기존 행을 건드리지 않으므로 email_verified 가 1로 남아 있다.
+    pending_raw = await redis.get(f"pending_register:{data.email}")
+    rejoining = bool(pending_raw) or bool(user.get('deleted_at'))
+
+    if user.get('email_verified') and not rejoining:
         raise HTTPException(status_code=400, detail="이미 인증된 계정입니다.")
 
     # OTP 생성 및 이메일 발송
     code = await otp_manager.create_otp(f"register:{data.email}")
-    html_content, text_content = get_verification_email(user['name'], code)
+    display_name = json.loads(pending_raw)['name'] if pending_raw else user['name']
+    html_content, text_content = get_verification_email(display_name, code)
 
     success = send_email(
         to_email=data.email,

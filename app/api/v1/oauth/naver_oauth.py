@@ -57,6 +57,11 @@ async def naver_auth_callback(
         # 이미 가입된 계정이면 해당 유저 정보 가져오기
         user = await db.fetch_one("SELECT * FROM users WHERE id = %s AND deleted_at IS NULL", (social_account['user_id'],))
 
+        # 탈퇴한 계정의 소셜 연결이 아직 남아 있는 경우 (파기 전 30일)
+        # 여기서 걸러내지 않으면 아래에서 user 가 None 이라 500 이 난다.
+        if not user:
+            return RedirectResponse(url='/login?error=account_withdrawn')
+
         # 소셜 계정 정보 갱신
         await db.execute_query(
             "UPDATE social_accounts SET provider_email = %s, provider_name = %s, provider_picture = %s WHERE provider = %s AND provider_user_id = %s",

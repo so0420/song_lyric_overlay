@@ -23,6 +23,12 @@ ALTER TABLE `users`
 ALTER TABLE `users`
     ADD COLUMN `purged_at` TIMESTAMP NULL COMMENT '탈퇴 후 개인정보 파기 완료 일시' AFTER `deleted_at`;
 
+-- 주의:
+--   이 마이그레이션을 적용하면 서버 재시작 시 파기 작업이 곧바로 돌기 시작한다.
+--   무엇이 지워질지 먼저 확인하고, 필요하면 users/social_accounts 등을 백업해 두어라.
+--     python purge_accounts.py          # 대상만 확인 (아무것도 지우지 않음)
+--     mysqldump ... song_lyric users social_accounts > users_backup.sql
+
 -- 파기 대상(탈퇴했고 아직 파기 전)을 훑는 쿼리용 인덱스
 ALTER TABLE `users`
     ADD INDEX `idx_users_purge_target` (`purged_at`, `deleted_at`);

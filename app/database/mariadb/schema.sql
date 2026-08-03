@@ -382,7 +382,7 @@ CREATE TABLE IF NOT EXISTS `user_chzzk_channels` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
--- 자동 가사(LRCLIB) 적용 기록 / 관리자 정식 등록 대기 큐
+-- 노래 타임라인 기록
 -- ============================================
 -- 치지직 연동 유저가 방송 중 부른 곡을 방송 시작(openDate) 기준 경과 시간과 함께 기록.
 -- 방송별로 openDate 로 묶어 조회하며, 최근 1달치만 보관한다.

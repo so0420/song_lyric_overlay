@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>가사 보기 - Jamku Song</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Nanum+Gothic:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+    <style>
+        @font-face {
+            font-family: 'OngleipParkDahyeon';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2411-3@1.0/Ownglyph_ParkDaHyun.woff2') format('woff2');
+            font-weight: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Umdot';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-4@1.1/Umdot12.woff2') format('woff2');
+            font-weight: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'GangwonEducationModuche';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2201-2@1.0/GangwonEdu_OTFLightA.woff') format('woff');
+            font-weight: 300;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'GangwonEducationModuche';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2201-2@1.0/GangwonEdu_OTFBoldA.woff') format('woff');
+            font-weight: 700;
+            font-display: swap;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --lv-size: 30px;
+            --lv-font: 'Pretendard', 'Noto Sans KR', sans-serif;
+            --lv-color: #ffffff;
+            --lv-highlight: #ffe500;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background: #0f172a;
+            color: var(--lv-color);
+            font-family: var(--lv-font);
+        }
+
+        /* OBS 브라우저 소스용 — 배경을 빼고 영상 위에 얹는다 */
+        body.bg-transparent { background: transparent; }
+
+        .lv-root {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            position: relative;
+        }
+
+        /* ===== 머리말 (창으로 열었을 때만) ===== */
+        .lv-header {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            background: rgba(15, 23, 42, 0.92);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+            font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+        }
+
+        .lv-song {
+            flex: 1 1 auto;
+            min-width: 0;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            overflow: hidden;
+        }
+
+        .lv-song-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #f8fafc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .lv-song-artist {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .lv-tools {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lv-size {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 8px;
+            padding: 2px;
+        }
+
+        .lv-btn {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-family: inherit;
+            font-size: 0.78rem;
+            padding: 5px 10px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .lv-btn:hover { background: rgba(51, 65, 85, 0.95); }
+
+        .lv-size .lv-btn {
+            border: none;
+            background: transparent;
+            padding: 2px 8px;
+            font-size: 0.95rem;
+            line-height: 1.2;
+        }
+
+        .lv-size-val {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            min-width: 28px;
+            text-align: center;
+        }
+
+        .lv-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            flex: 0 0 auto;
+        }
+
+        .lv-status.off { background: #ef4444; }
+
+        /* ===== 가사 스크롤 영역 ===== */
+        .lv-scroll {
+            flex: 1 1 auto;
+            position: relative;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0 24px;
+            /* OBS 브라우저 소스에서는 스크롤바가 화면에 찍히면 안 된다 */
+            scrollbar-width: thin;
+            scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+        }
+
+        body.no-chrome .lv-scroll { scrollbar-width: none; }
+        body.no-chrome .lv-scroll::-webkit-scrollbar { width: 0; height: 0; }
+
+        .lv-scroll::-webkit-scrollbar { width: 8px; }
+        .lv-scroll::-webkit-scrollbar-track { background: transparent; }
+        .lv-scroll::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.45);
+            border-radius: 4px;
+        }
+
+        /* 첫 줄·마지막 줄도 화면 한가운데로 올 수 있도록 위아래를 비워 둔다 */
+        .lv-pad { height: 45vh; }
+
+        .lv-line {
+            font-size: var(--lv-size);
+            line-height: 1.45;
+            font-weight: 600;
+            text-align: center;
+            padding: 10px 0;
+            color: var(--lv-color);
+            opacity: 0.45;
+            transition: opacity 0.25s ease, color 0.25s ease, transform 0.25s ease;
+            word-break: keep-all;
+            overflow-wrap: anywhere;
+        }
+
+        /* 이미 부른 줄은 더 흐리게 — 지금 어디인지 한눈에 보이게 */
+        .lv-line.past { opacity: 0.28; }
+
+        .lv-line.current {
+            color: var(--lv-highlight);
+            opacity: 1;
+            font-weight: 800;
+            transform: scale(1.04);
+        }
+
+        .lv-line .lv-sub { display: block; opacity: 0.85; }
+
+        body.stroke .lv-line {
+            -webkit-text-stroke: var(--lv-stroke-w, 2px) var(--lv-stroke-c, #000);
+            paint-order: stroke fill;
+        }
+
+        body.shadow .lv-line { text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6); }
+
+        /* ===== 우상단 '가사 따라가기' ===== */
+        .lv-follow {
+            position: absolute;
+            top: 10px;
+            right: 16px;
+            z-index: 5;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 12px;
+            border: none;
+            border-radius: 999px;
+            background: rgba(37, 99, 235, 0.95);
+            color: #fff;
+            font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+        }
+
+        .lv-follow:hover { background: rgba(29, 78, 216, 0.98); }
+        .lv-follow.visible { display: inline-flex; }
+
+        /* 머리말이 있으면 그 아래에 뜨도록 */
+        body.has-chrome .lv-follow { top: 56px; }
+
+        /* ===== 빈 상태 ===== */
+        .lv-empty {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+            font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: #94a3b8;
+            pointer-events: none;
+        }
+
+        .lv-empty.visible { display: flex; }
+    </style>
+</head>
+<body>
+    <div class="lv-root">
+        <header class="lv-header" id="lvHeader" style="display: none;">
+            <div class="lv-song">
+                <span class="lv-song-title" id="lvTitle">재생 대기 중</span>
+                <span class="lv-song-artist" id="lvArtist"></span>
+            </div>
+            <div class="lv-tools">
+                <div class="lv-size">
+                    <button type="button" class="lv-btn" id="sizeDown" title="글자 작게">−</button>
+                    <span class="lv-size-val" id="sizeVal">30</span>
+                    <button type="button" class="lv-btn" id="sizeUp" title="글자 크게">+</button>
+                </div>
+                <button type="button" class="lv-btn" id="bgToggle" title="OBS에 넣을 때는 투명 배경을 쓰세요">배경 투명</button>
+                <button type="button" class="lv-btn" id="copyObsUrl" title="지금 보이는 모양 그대로 OBS 브라우저 소스에 넣을 URL을 복사합니다">OBS URL 복사</button>
+                <span class="lv-status off" id="lvStatus" title="노래하기 연결 상태"></span>
+            </div>
+        </header>
+
+        <button type="button" class="lv-follow" id="followBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 5v14"></path>
+                <path d="m19 12-7 7-7-7"></path>
+            </svg>
+            가사 따라가기
+        </button>
+
+        <div class="lv-scroll" id="lvScroll">
+            <div class="lv-pad"></div>
+            <div id="lvLines"></div>
+            <div class="lv-pad"></div>
+        </div>
+
+        <div class="lv-empty visible" id="lvEmpty">
+            노래하기 화면에서 곡을 재생하면<br>여기에 전체 가사가 표시됩니다.
+        </div>
+    </div>
+
+    <script>
+        const overlayToken = {{ overlay_token | tojson }};
+        const initialSettings = {{ settings | tojson if settings else 'null' }};
+        // 토큰이 URL에 들어 있으면 OBS 브라우저 소스로 보는 중이라 조작 UI 를 숨긴다.
+        const showChrome = {{ 'true' if show_chrome else 'false' }};
+
+        const defaultSettings = {
+            font_family: 'Pretendard',
+            font_color: '#FFFFFF',
+            highlight_color: '#FFE500',
+            text_stroke: false,
+            stroke_color: '#000000',
+            text_shadow: true,
+            show_lyrics_line1: true,
+            show_lyrics_line2: true,
+            show_lyrics_line3: true,
+        };
+
+        const settings = { ...defaultSettings, ...(initialSettings || {}) };
+
+        const scroller = document.getElementById('lvScroll');
+        const linesBox = document.getElementById('lvLines');
+        const followBtn = document.getElementById('followBtn');
+        const emptyBox = document.getElementById('lvEmpty');
+        const header = document.getElementById('lvHeader');
+        const titleEl = document.getElementById('lvTitle');
+        const artistEl = document.getElementById('lvArtist');
+        const statusEl = document.getElementById('lvStatus');
+        const sizeValEl = document.getElementById('sizeVal');
+
+        // ===== 보기 설정 (URL > localStorage > 기본값) =====
+        const params = new URLSearchParams(location.search);
+        const SIZE_MIN = 14, SIZE_MAX = 72;
+
+        function readSize() {
+            const fromUrl = parseInt(params.get('size'), 10);
+            if (fromUrl >= SIZE_MIN && fromUrl <= SIZE_MAX) return fromUrl;
+            const saved = parseInt(localStorage.getItem('lyrics_view_size'), 10);
+            if (saved >= SIZE_MIN && saved <= SIZE_MAX) return saved;
+            return 30;
+        }
+
+        function readTransparent() {
+            if (params.has('bg')) return params.get('bg') === 'transparent';
+            return localStorage.getItem('lyrics_view_bg') === 'transparent';
+        }
+
+        let fontSize = readSize();
+        let transparent = readTransparent();
+
+        function applyView() {
+            document.documentElement.style.setProperty('--lv-size', fontSize + 'px');
+            document.documentElement.style.setProperty('--lv-font',
+                `'${settings.font_family}', 'Pretendard', 'Noto Sans KR', sans-serif`);
+            document.documentElement.style.setProperty('--lv-color', settings.font_color);
+            document.documentElement.style.setProperty('--lv-highlight', settings.highlight_color);
+            document.documentElement.style.setProperty('--lv-stroke-c', settings.stroke_color);
+            document.documentElement.style.setProperty('--lv-stroke-w',
+                Math.max(1, Math.round(fontSize / 18)) + 'px');
+
+            document.body.classList.toggle('bg-transparent', transparent);
+            // 투명 배경에서는 어떤 영상 위에 올라갈지 알 수 없으므로 외곽선을 강제한다
+            document.body.classList.toggle('stroke', transparent || !!settings.text_stroke);
+            document.body.classList.toggle('shadow', settings.text_shadow !== false);
+            document.body.classList.toggle('has-chrome', showChrome);
+            document.body.classList.toggle('no-chrome', !showChrome);
+
+            if (sizeValEl) sizeValEl.textContent = fontSize;
+            const bgBtn = document.getElementById('bgToggle');
+            if (bgBtn) bgBtn.textContent = transparent ? '배경 어둡게' : '배경 투명';
+        }
+
+        // 지금 보고 있는 모양을 URL 에 남겨 둔다 (그대로 복사해 OBS 에 붙일 수 있게)
+        function syncUrl() {
+            const q = new URLSearchParams(location.search);
+            q.set('size', String(fontSize));
+            q.set('bg', transparent ? 'transparent' : 'dark');
+            history.replaceState(null, '', location.pathname + '?' + q.toString());
+        }
+
+        if (showChrome) header.style.display = 'flex';
+        applyView();
+
+        // ===== 가사 렌더링 =====
+        let lyricsData = null;
+        let lineEls = [];
+        let syncTime = 0;
+        let syncReceivedAt = 0;
+        let isPlaying = false;
+        let lastCur = -2;      // 마지막으로 칠한 '현재 줄'
+        let lastFocus = -2;    // 마지막으로 화면 가운데에 둔 줄
+        let rafId = null;
+        let following = true;
+        let songKey = null;
+        // 자동 정렬로 움직이는 중인 구간 (scroll 이벤트가 우리 것인지 가르는 데 쓴다)
+        let animFrom = 0, animTo = 0, animActive = false, animEndsAt = 0;
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 외국어 가사는 '\n' 으로 원문/발음/해석이 이어져 있다 (OBS 오버레이와 같은 규칙)
+        function formatLyrics(text) {
+            if (!text) return '&nbsp;';
+            const parts = text.split('\\n');
+            if (parts.length === 1) return escapeHtml(text);
+
+            const show = [
+                settings.show_lyrics_line1 !== false,
+                settings.show_lyrics_line2 !== false,
+                settings.show_lyrics_line3 !== false,
+            ];
+            const visible = [];
+            for (let i = 0; i < parts.length; i++) {
+                if (i < 3 && !show[i]) continue;
+                const escaped = escapeHtml(parts[i]);
+                visible.push(i === 0 ? escaped : `<span class="lv-sub">${escaped}</span>`);
+            }
+            return visible.join('') || '&nbsp;';
+        }
+
+        function renderAllLines() {
+            linesBox.innerHTML = '';
+            lineEls = [];
+            if (!lyricsData || !lyricsData.length) return;
+
+            const frag = document.createDocumentFragment();
+            lyricsData.forEach((line, i) => {
+                const p = document.createElement('p');
+                p.className = 'lv-line';
+                p.dataset.i = String(i);
+                p.innerHTML = formatLyrics(line.text);
+                frag.appendChild(p);
+                lineEls.push(p);
+            });
+            linesBox.appendChild(frag);
+        }
+
+        function findLyricsIndex(lyrics, time) {
+            for (let i = 0; i < lyrics.length; i++) {
+                if (time >= lyrics[i].start && time < lyrics[i].end) return i;
+            }
+            return -1;
+        }
+
+        // 가사와 가사 사이(간주)에서는 '다음에 부를 줄'을 기준으로 삼는다
+        function focusIndexFor(time) {
+            if (!lyricsData || !lyricsData.length) return -1;
+            const idx = findLyricsIndex(lyricsData, time);
+            if (idx !== -1) return idx;
+            for (let i = 0; i < lyricsData.length; i++) {
+                if (lyricsData[i].start > time) return i;
+            }
+            return lyricsData.length - 1;
+        }
+
+        function getInterpolatedTime() {
+            if (!isPlaying) return syncTime;
+            return syncTime + (performance.now() - syncReceivedAt);
+        }
+
+        function scrollToIndex(i, smooth) {
+            const el = lineEls[i];
+            if (!el) return;
+            const target = el.offsetTop + el.offsetHeight / 2 - scroller.clientHeight / 2;
+            const max = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+            const top = Math.max(0, Math.min(target, max));
+            const far = Math.abs(top - scroller.scrollTop) > scroller.clientHeight * 3;
+            const behavior = (smooth && !far) ? 'smooth' : 'auto';
+
+            // 스크롤바를 끌었는지 알아내려면 scroll 이벤트를 봐야 하는데, 우리가 만든
+            // 스크롤도 같은 이벤트를 낸다. '시간'으로 걸러내면 자동 정렬이 잦은 구간에서
+            // 사용자 조작까지 함께 묻히므로, 지금 움직이는 구간(from~to) 안에 있는지로 가른다.
+            animFrom = scroller.scrollTop;
+            animTo = top;
+            animActive = true;
+            animEndsAt = performance.now() + (behavior === 'smooth' ? 900 : 150);
+
+            scroller.scrollTo({ top, behavior });
+        }
+
+        function paint(cur, time) {
+            for (let i = 0; i < lineEls.length; i++) {
+                const el = lineEls[i];
+                el.classList.toggle('current', i === cur);
+                el.classList.toggle('past', i !== cur && lyricsData[i].end <= time);
+            }
+        }
+
+        function updateTo(time, force) {
+            if (!lyricsData || !lyricsData.length) return;
+            const cur = findLyricsIndex(lyricsData, time);
+            // 간주 구간에서는 '다음에 부를 줄'을 화면 가운데에 둔다
+            const focus = cur !== -1 ? cur : focusIndexFor(time);
+            if (!force && cur === lastCur && focus === lastFocus) return;
+            lastCur = cur;
+            lastFocus = focus;
+            paint(cur, time);
+            if (following) scrollToIndex(focus, true);
+        }
+
+        function renderLoop() {
+            updateTo(getInterpolatedTime(), false);
+            rafId = requestAnimationFrame(renderLoop);
+        }
+
+        function startLoop() {
+            stopLoop();
+            rafId = requestAnimationFrame(renderLoop);
+        }
+
+        function stopLoop() {
+            if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+        }
+
+        function setFollowing(on) {
+            following = on;
+            followBtn.classList.toggle('visible', !on);
+        }
+
+        function onUserScroll() {
+            if (!following) return;
+            setFollowing(false);
+        }
+
+        scroller.addEventListener('wheel', onUserScroll, { passive: true });
+        scroller.addEventListener('touchmove', onUserScroll, { passive: true });
+        scroller.addEventListener('scroll', () => {
+            // 스크롤바 끌기는 wheel/touch 가 아니라 scroll 이벤트만 남긴다.
+            const top = scroller.scrollTop;
+            if (animActive) {
+                const lo = Math.min(animFrom, animTo) - 4;
+                const hi = Math.max(animFrom, animTo) + 4;
+                if (top >= lo && top <= hi) {
+                    // 자동 정렬이 지나가는 길 위 → 우리가 만든 스크롤이다.
+                    // 목적지에 닿으면 '길'을 그 점으로 좁힌다. 구간 자체를 닫아 버리면
+                    // 애니메이션이 마지막으로 흘리는 이벤트까지 사용자 조작으로 오인한다.
+                    if (Math.abs(top - animTo) < 2) animFrom = animTo;
+                    else if (performance.now() > animEndsAt) animFrom = animTo = top;
+                    return;
+                }
+                animActive = false;   // 길 밖으로 튀었다 → 사용자가 끌었다
+            }
+            onUserScroll();
+        }, { passive: true });
+
+        document.addEventListener('keydown', (e) => {
+            const keys = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '];
+            if (keys.includes(e.key)) onUserScroll();
+        });
+
+        followBtn.addEventListener('click', () => {
+            setFollowing(true);
+            const idx = focusIndexFor(getInterpolatedTime());
+            if (idx >= 0) scrollToIndex(idx, true);
+        });
+
+        window.addEventListener('resize', () => {
+            if (following && lastFocus >= 0) scrollToIndex(lastFocus, false);
+        });
+
+        // ===== 곡 정보 =====
+        function updateSongInfo(title, artist) {
+            if (!showChrome) return;
+            titleEl.textContent = title || '재생 대기 중';
+            artistEl.textContent = artist ? '- ' + artist : '';
+        }
+
+        function showEmpty(on) {
+            emptyBox.classList.toggle('visible', on);
+        }
+
+        function handleLyricsInit(data) {
+            updateSongInfo(data.songTitle, data.artist);
+
+            const lyrics = data.lyrics && data.lyrics.length ? data.lyrics : null;
+            const key = lyrics
+                ? [data.songTitle || '', data.artist || '', lyrics.length, lyrics[0].start, lyrics[0].text].join('|')
+                : null;
+
+            const songChanged = key !== songKey;
+            songKey = key;
+
+            lyricsData = lyrics;
+            syncTime = data.currentTime || 0;
+            syncReceivedAt = performance.now();
+            isPlaying = !!data.isPlaying;
+            lastCur = -2;
+            lastFocus = -2;
+
+            if (!lyrics) {
+                stopLoop();
+                linesBox.innerHTML = '';
+                lineEls = [];
+                showEmpty(true);
+                setFollowing(true);
+                return;
+            }
+
+            // 노래하기 화면은 일시정지·재개·시크 때마다 전체 가사를 다시 보낸다.
+            // 내용이 그대로인데 수백 줄을 매번 지웠다 그리면 진행 중인 부드러운 스크롤과
+            // 강조 전환이 끊기므로, 곡이 바뀐 경우에만 다시 그린다.
+            if (songChanged || lineEls.length !== lyrics.length) renderAllLines();
+            showEmpty(false);
+
+            // 다른 곡으로 바뀌면 사용자가 스크롤해 뒀더라도 다시 따라가기 시작한다
+            if (songChanged) {
+                setFollowing(true);
+                scroller.scrollTop = 0;
+            }
+
+            updateTo(getInterpolatedTime(), true);
+            if (isPlaying) startLoop(); else stopLoop();
+        }
+
+        function handleTimeSync(data) {
+            syncTime = data.currentTime;
+            syncReceivedAt = performance.now();
+
+            const wasPlaying = isPlaying;
+            isPlaying = !!data.isPlaying;
+
+            if (isPlaying && !wasPlaying) {
+                startLoop();
+            } else if (!isPlaying && wasPlaying) {
+                stopLoop();
+                updateTo(syncTime, true);
+            } else if (!isPlaying) {
+                // 정지 상태에서의 구간 이동(시크)
+                updateTo(syncTime, false);
+            }
+        }
+
+        function clearAll() {
+            stopLoop();
+            lyricsData = null;
+            lineEls = [];
+            songKey = null;
+            linesBox.innerHTML = '';
+            isPlaying = false;
+            lastCur = -2;
+            lastFocus = -2;
+            updateSongInfo('', '');
+            showEmpty(true);
+            setFollowing(true);
+        }
+
+        // ===== WebSocket =====
+        let ws = null;
+        let reconnectTimer = null;
+        let tokenInvalidated = false;
+
+        function setStatus(on) {
+            statusEl.classList.toggle('off', !on);
+        }
+
+        function connect() {
+            const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(
+                `${proto}//${location.host}/api/v1/overlay/ws?overlay_token=${encodeURIComponent(overlayToken)}`
+            );
+
+            ws.onopen = () => {
+                if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+                setStatus(true);
+            };
+
+            ws.onmessage = (event) => {
+                let msg;
+                try { msg = JSON.parse(event.data); } catch { return; }
+
+                switch (msg.type) {
+                    case 'ping':
+                        ws.send(JSON.stringify({ type: 'pong' }));
+                        break;
+                    case 'lyrics_init':
+                        handleLyricsInit(msg.data || {});
+                        break;
+                    case 'lyrics_time_sync':
+                        handleTimeSync(msg.data || {});
+                        break;
+                    case 'clear':
+                    case 'song_change':
+                        clearAll();
+                        break;
+                    case 'token_invalidated':
+                        tokenInvalidated = true;
+                        ws.close();
+                        break;
+                }
+            };
+
+            ws.onclose = () => {
+                setStatus(false);
+                if (tokenInvalidated) {
+                    emptyBox.innerHTML = '오버레이 토큰이 재발급되어 연결이 끊어졌습니다.<br>새 URL로 다시 열어주세요.';
+                    showEmpty(true);
+                    return;
+                }
+                reconnectTimer = setTimeout(connect, 3000);
+            };
+
+            ws.onerror = () => { try { ws.close(); } catch {} };
+        }
+
+        // ===== 머리말 조작 =====
+        if (showChrome) {
+            document.getElementById('sizeDown').addEventListener('click', () => {
+                fontSize = Math.max(SIZE_MIN, fontSize - 2);
+                localStorage.setItem('lyrics_view_size', String(fontSize));
+                applyView();
+                syncUrl();
+                if (following && lastFocus >= 0) scrollToIndex(lastFocus, false);
+            });
+
+            document.getElementById('sizeUp').addEventListener('click', () => {
+                fontSize = Math.min(SIZE_MAX, fontSize + 2);
+                localStorage.setItem('lyrics_view_size', String(fontSize));
+                applyView();
+                syncUrl();
+                if (following && lastFocus >= 0) scrollToIndex(lastFocus, false);
+            });
+
+            document.getElementById('bgToggle').addEventListener('click', () => {
+                transparent = !transparent;
+                localStorage.setItem('lyrics_view_bg', transparent ? 'transparent' : 'dark');
+                applyView();
+                syncUrl();
+            });
+
+            document.getElementById('copyObsUrl').addEventListener('click', async (e) => {
+                const url = `${location.origin}/overlay/lyrics`
+                    + `?token=${encodeURIComponent(overlayToken)}`
+                    + `&size=${fontSize}&bg=${transparent ? 'transparent' : 'dark'}`;
+                const btn = e.currentTarget;
+                try {
+                    await navigator.clipboard.writeText(url);
+                } catch {
+                    const tmp = document.createElement('input');
+                    tmp.value = url;
+                    document.body.appendChild(tmp);
+                    tmp.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tmp);
+                }
+                btn.textContent = '복사됨!';
+                setTimeout(() => { btn.textContent = 'OBS URL 복사'; }, 2000);
+            });
+
+            syncUrl();
+        }
+
+        connect();
+    </script>
+</body>
+</html>

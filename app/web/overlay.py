@@ -91,6 +91,46 @@ async def access_request_page(
         "latest_request": latest_request
     })
 
+@router.get("/overlay/lyrics", response_class=HTMLResponse)
+async def lyrics_view_page(
+    request: Request,
+    token: str = None,
+    user=Depends(get_current_user)
+):
+    """전체 가사 스크롤 보기 페이지
+
+    - 토큰 없이 열면(노래하기의 '새 창에서 가사 보기') 로그인 세션으로 인증하고
+      조작 UI 를 함께 보여준다.
+    - 토큰을 붙여 열면 OBS 브라우저 소스용이라 조작 UI 없이 가사만 그린다.
+
+    어느 쪽이든 노래하기 화면과의 동기화는 OBS 오버레이와 같은 경로(overlay 연결)를
+    쓴다. 싱어 연결은 자기 자신이 보낸 가사를 되받지 않기 때문이다.
+    """
+    if token:
+        user_id = await verify_overlay_token_async(token)
+        if not user_id:
+            return HTMLResponse(content="<p style='color:white;background:#0f172a;font-family:sans-serif;padding:20px;'>유효하지 않은 오버레이 토큰입니다. 설정 페이지에서 새 URL을 복사해주세요.</p>")
+        overlay_token = token
+        show_chrome = False
+    else:
+        access_check = await check_overlay_access(user, request)
+        if access_check:
+            return access_check
+        user_id = user['id']
+        overlay_token = await get_or_create_overlay_token(user_id)
+        show_chrome = True
+
+    overlay_repo = get_overlay_repository()
+    settings = await overlay_repo.get_settings(user_id)
+
+    return templates.TemplateResponse("pages/overlay/lyrics_view.html", {
+        "request": request,
+        "overlay_token": overlay_token,
+        "settings": settings,
+        "show_chrome": show_chrome,
+    })
+
+
 @router.get("/overlay/obs", response_class=HTMLResponse)
 async def obs_overlay_page(
     request: Request,

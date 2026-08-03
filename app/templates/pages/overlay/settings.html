@@ -973,6 +973,18 @@ input:checked + .toggle-slider:before {
                 OBS에서 브라우저 소스를 추가하고 위 URL을 붙여넣으세요. (권장 크기: 1920x1080)
             </p>
 
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div style="flex: 1 1 240px; min-width: 0;">
+                    <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">전체 가사 보기 URL</div>
+                    <p style="font-size: 0.75rem; color: var(--text-dim); margin-top: 4px;">
+                        곡 전체 가사를 스크롤로 보여주고, 재생 중에는 현재 가사가 화면 가운데로 따라오는 화면입니다.
+                        노래하기의 <strong>새 창에서 가사 보기</strong>와 같은 화면이며,
+                        글자 크기와 배경(투명/어둡게)은 그 창에서 정한 뒤 <strong>OBS URL 복사</strong>로 가져갈 수 있습니다.
+                    </p>
+                </div>
+                <button class="btn btn-outline" style="white-space: nowrap;" id="copyLyricsUrlBtn" onclick="copyLyricsUrl()">URL 복사</button>
+            </div>
+
             <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div>
@@ -1665,6 +1677,8 @@ const defaultSettings = {
 
 // Set overlay URL (토큰 기반 인증)
 let realOverlayUrl = `${baseUrl}/overlay/obs?token=${overlayToken}`;
+// 전체 가사 스크롤 화면 (노래하기의 '새 창에서 가사 보기'와 같은 페이지)
+let realLyricsUrl = `${baseUrl}/overlay/lyrics?token=${overlayToken}`;
 let isUrlVisible = false;
 
 // 실제 URL을 input에 설정 (블러로 가려짐)
@@ -2138,6 +2152,23 @@ function copyUrl() {
     });
 }
 
+function copyLyricsUrl() {
+    const btn = document.getElementById('copyLyricsUrlBtn');
+    const done = () => {
+        btn.textContent = '복사됨!';
+        setTimeout(() => { btn.textContent = 'URL 복사'; }, 2000);
+    };
+    navigator.clipboard.writeText(realLyricsUrl).then(done).catch(() => {
+        const tempInput = document.createElement('input');
+        tempInput.value = realLyricsUrl;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        done();
+    });
+}
+
 async function regenerateToken() {
     if (!confirm('토큰을 재발급하면 기존 OBS 연결이 끊어집니다.\n새 URL을 OBS에 다시 설정해야 합니다.\n\n계속하시겠습니까?')) {
         return;
@@ -2153,6 +2184,7 @@ async function regenerateToken() {
             const data = await res.json();
             // 새 토큰으로 URL 업데이트
             realOverlayUrl = `${baseUrl}/overlay/obs?token=${data.token}`;
+            realLyricsUrl = `${baseUrl}/overlay/lyrics?token=${data.token}`;
             document.getElementById('overlayUrl').value = realOverlayUrl;
             // 블러 상태 유지
             showToast('토큰이 재발급되었습니다. 새 URL을 복사하세요.', 'success');

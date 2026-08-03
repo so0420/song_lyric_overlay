@@ -1215,6 +1215,7 @@
     .oc-btn--blue { background: #2563eb; }
     .oc-btn--violet { background: #8b5cf6; }
     .oc-btn--slate { background: #64748b; }
+    .oc-btn--emerald { background: #059669; }
 
     .oc-toggle {
         display: flex;
@@ -2278,6 +2279,7 @@
                     <div class="offset-actions">
                         <button class="offset-reset" id="offsetReset" title="모든 오프셋 초기화">초기화</button>
                         <button type="button" id="changeVideoBtn" class="oc-btn oc-btn--blue" title="현재 재생 곡의 영상 변경">영상 변경</button>
+                        <button type="button" id="openLyricsViewBtn" class="oc-btn oc-btn--emerald" title="전체 가사를 스크롤해서 보는 창을 엽니다. 재생 중에는 현재 가사가 가운데로 따라옵니다. (OBS 브라우저 소스로도 쓸 수 있습니다)">새 창에서 가사 보기</button>
                         <a href="https://chromewebstore.google.com/detail/dhmalklebhljlmfbbpiojdilckgnjiio?utm_source=item-share-cb" target="_blank" class="oc-btn oc-btn--violet" title="크롬 확장으로 노래 키 조절">노래 키 조절</a>
                     </div>
                 </div>
@@ -4152,6 +4154,31 @@
             }
         });
 
+        // ===== 전체 가사 보기 창 =====
+        // 이 창은 OBS 오버레이와 같은 경로로 붙는다(overlay 연결). 연결되는 순간 서버가
+        // 이 페이지에 request_init 을 보내므로 열자마자 현재 곡 가사가 채워진다.
+        let lyricsViewWin = null;
+
+        function openLyricsView() {
+            if (lyricsViewWin && !lyricsViewWin.closed) {
+                lyricsViewWin.focus();
+                return;
+            }
+            const w = Math.min(560, screen.availWidth);
+            const h = Math.min(880, screen.availHeight);
+            lyricsViewWin = window.open('/overlay/lyrics', 'jamku-lyrics-view',
+                `width=${w},height=${h},menubar=no,toolbar=no`);
+            if (!lyricsViewWin) {
+                showToast('팝업이 차단되었습니다. 이 사이트의 팝업을 허용해주세요.', 'error');
+                return;
+            }
+            lyricsViewWin.focus();
+
+            // request_init 은 WS 로만 온다. 이쪽 WS 가 끊겨 있으면 새 창이 빈 채로 남으므로
+            // 창이 붙었을 즈음 현재 상태를 한 번 더 보낸다(HTTP 폴백 경로로도 전달된다).
+            setTimeout(syncLyricsInit, 1500);
+        }
+
         // ===== OBS 동기화 함수 =====
 
         // 가사/곡 정보 초기화 후 OBS에도 빈 상태 전송
@@ -4917,6 +4944,7 @@
             elements.lyricsDisplay.addEventListener('mouseleave', hideAutoTooltip);
             elements.offsetReset.addEventListener('click', resetOffsets);
             document.getElementById('changeVideoBtn').addEventListener('click', openVideoReplaceForCurrent);
+            document.getElementById('openLyricsViewBtn').addEventListener('click', openLyricsView);
 
             // Initialize offset display
             updateOffsetDisplay();

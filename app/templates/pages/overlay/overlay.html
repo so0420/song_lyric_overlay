@@ -1983,6 +1983,36 @@
         display: none;
     }
 
+    /* 모서리로 크기를 직접 정한 상태 — 가로·세로를 자유롭게 잡을 수 있고
+       남는 세로 공간은 가사 영역이 가져간다 (영상은 16:9 를 유지). */
+    body.pip-active .video-card.pip-sized {
+        display: flex;
+        flex-direction: column;
+        max-height: none;
+        overflow: hidden;
+    }
+
+    body.pip-active .video-card.pip-sized .pip-handle,
+    body.pip-active .video-card.pip-sized .now-playing-info,
+    body.pip-active .video-card.pip-sized .video-wrapper,
+    body.pip-active .video-card.pip-sized .controls-bar,
+    body.pip-active .video-card.pip-sized .offset-controls {
+        flex: 0 0 auto;
+    }
+
+    body.pip-active .video-card.pip-sized .lyrics-display-wrap {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    body.pip-active .video-card.pip-sized .lyrics-display {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+    }
+
     /* 오른쪽 아래 모서리 리사이즈 그립.
        카드가 스크롤돼도 항상 보이는 아래쪽에 붙어 있어야 하므로 sticky 를 쓰고,
        sticky 인 컨트롤바(z-index 1)보다 위에 둔다. */
@@ -2004,7 +2034,7 @@
         bottom: 0;
         width: 20px;
         height: 20px;
-        cursor: ew-resize;
+        cursor: nwse-resize;
         touch-action: none;
         color: var(--text-dim);
     }
@@ -5147,6 +5177,7 @@
             active: false,
             pushedHistory: false,
             width: parseInt(localStorage.getItem('overlay_pip_width') || '420', 10) || 420,
+            height: parseInt(localStorage.getItem('overlay_pip_height') || '0', 10) || null,
             pos: null,
             drag: null,
             resizing: false,
@@ -5190,6 +5221,16 @@
             const width = Math.min(pip.width, Math.max(PIP_WIDTH_MIN, window.innerWidth - PIP_MARGIN * 2));
             card.style.width = width + 'px';
 
+            // 세로를 직접 정해 뒀으면 그 높이를 쓰고, 아니면 내용에 맞춘다
+            if (pip.height) {
+                card.classList.add('pip-sized');
+                const maxH = window.innerHeight - PIP_MARGIN * 2;
+                card.style.height = Math.min(maxH, Math.max(Math.min(maxH, pipMinHeight(card)), pip.height)) + 'px';
+            } else {
+                card.classList.remove('pip-sized');
+                card.style.height = '';
+            }
+
             const height = card.getBoundingClientRect().height;
             const base = pip.pos || {
                 left: window.innerWidth - width - PIP_MARGIN,
@@ -5218,16 +5259,31 @@
             }).observe(card);
         }
 
-        // 오른쪽 아래 모서리 그립으로 폭 조절
+        // 세로 크기를 직접 정했을 때, 영상·컨트롤 등 고정 요소를 빼고 가사에 남길 최소 높이
+        function pipMinHeight(card) {
+            let chrome = 0;
+            ['#pipHandle', '.now-playing-info', '.video-wrapper', '.controls-bar', '.offset-controls']
+                .forEach(sel => {
+                    const el = card.querySelector(sel);
+                    if (el) chrome += el.getBoundingClientRect().height;
+                });
+            return Math.round(chrome + 56);   // 가사 최소 한 줄
+        }
+
+        // 오른쪽 아래 모서리 그립으로 가로·세로를 자유롭게 조절
         function initPipResize(card) {
             const grip = $('#pipResize');
-            let startX = 0, startW = 0;
+            let startX = 0, startY = 0, startW = 0, startH = 0;
 
             grip.addEventListener('pointerdown', (e) => {
                 if (!pip.active || e.button !== 0) return;
+                const r = card.getBoundingClientRect();
                 startX = e.clientX;
-                startW = card.getBoundingClientRect().width;
+                startY = e.clientY;
+                startW = r.width;
+                startH = r.height;
                 pip.resizing = true;
+                card.classList.add('pip-sized');
                 grip.setPointerCapture(e.pointerId);
                 e.preventDefault();
                 e.stopPropagation();
@@ -5235,16 +5291,26 @@
 
             grip.addEventListener('pointermove', (e) => {
                 if (!pip.resizing) return;
-                const max = Math.min(PIP_WIDTH_MAX, window.innerWidth - PIP_MARGIN * 2);
-                const w = Math.round(Math.min(max, Math.max(PIP_WIDTH_MIN, startW + (e.clientX - startX))));
+
+                const maxW = Math.min(PIP_WIDTH_MAX, window.innerWidth - PIP_MARGIN * 2);
+                const w = Math.round(Math.min(maxW, Math.max(PIP_WIDTH_MIN, startW + (e.clientX - startX))));
                 card.style.width = w + 'px';
+
+                // 폭이 바뀌면 영상 높이(16:9)도 바뀌므로 최소 높이는 그 뒤에 잰다
+                const maxH = window.innerHeight - PIP_MARGIN * 2;
+                const minH = Math.min(maxH, pipMinHeight(card));
+                const h = Math.round(Math.min(maxH, Math.max(minH, startH + (e.clientY - startY))));
+                card.style.height = h + 'px';
+
                 pip.width = w;
+                pip.height = h;
             });
 
             const endResize = () => {
                 if (!pip.resizing) return;
                 pip.resizing = false;
                 localStorage.setItem('overlay_pip_width', String(pip.width));
+                localStorage.setItem('overlay_pip_height', String(pip.height));
 
                 // 크기를 키워 카드가 화면 밖으로 삐져나오면 그립을 다시 잡을 수 없다
                 // → 크기 조절 직후에는 들어갈 수 있는 만큼 화면 안으로 당겨온다
@@ -5259,6 +5325,17 @@
             };
             grip.addEventListener('pointerup', endResize);
             grip.addEventListener('pointercancel', endResize);
+
+            // 그립 더블클릭 → 세로를 내용에 맞게 되돌린다
+            grip.addEventListener('dblclick', (e) => {
+                e.preventDefault();
+                pip.height = null;
+                localStorage.removeItem('overlay_pip_height');
+                card.classList.remove('pip-sized');
+                card.style.height = '';
+                applyPipLayout();
+                showToast('작은 창 세로 크기를 내용에 맞게 되돌렸습니다');
+            });
         }
 
         function pipNavigate(url) {
@@ -5328,6 +5405,8 @@
             card.style.left = '';
             card.style.top = '';
             card.style.width = '';
+            card.style.height = '';
+            card.classList.remove('pip-sized');
 
             pipNavigate('about:blank');   // 패널 안 페이지의 타이머/요청 정리
             $('#pipBrowser').dataset.currentUrl = '';

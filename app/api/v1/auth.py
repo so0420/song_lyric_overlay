@@ -1,5 +1,11 @@
+import json
+
 from fastapi import APIRouter, Request, HTTPException, Depends
 from app.database.mariadb import db_handler
+from app.database.redis.redis import redis
+from app.database.account_purge import purge_account
+from app.utils.config import settings
+from app.utils.log import logger
 from app.utils.mailer import send_email
 from app.utils.otp import otp_manager
 from app.utils.config import config
@@ -30,11 +36,41 @@ async def register(request: Request, data: RegisterSchema):
 
     # 이메일 중복 확인
     existing_user = await db_handler.fetch_one(
-        "SELECT id, email_verified FROM users WHERE email = %s",
+        "SELECT id, email_verified, deleted_at FROM users WHERE email = %s",
         (data.email,)
     )
 
-    if existing_user:
+    if existing_user and existing_user.get('deleted_at'):
+        # 탈퇴한 계정의 이메일 — 복구할지 새로 시작할지 물어본 뒤 진행한다.
+        # 어느 쪽이든 실제 반영은 이메일 인증(OTP)을 통과한 뒤에 한다.
+        if data.restore is None:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "withdrawn_account",
+                    "message": "이 이메일로 탈퇴한 계정이 있습니다. 이전 계정을 복구할까요?",
+                    "deleted_at": existing_user['deleted_at'].isoformat()
+                                  if existing_user.get('deleted_at') else None,
+                },
+            )
+
+        password_hash = hash_password(data.password)
+        if data.restore:
+            # 복구 예정 — 인증 후 되살릴 수 있도록 새 이름·비밀번호만 미리 적어 둔다.
+            # deleted_at 은 그대로 두므로 인증 전까지는 여전히 탈퇴 상태다.
+            await db_handler.execute_query(
+                "UPDATE users SET password_hash = %s, name = %s, email_verified = 0 WHERE id = %s",
+                (password_hash, data.name, existing_user['id'])
+            )
+        else:
+            # 새 계정으로 시작 — 기존 계정은 인증을 통과한 뒤에 파기한다.
+            # 인증 전에 건드리면 이메일만 아는 사람이 남의 탈퇴 계정을 지울 수 있다.
+            await redis.set(
+                f"pending_register:{data.email}",
+                json.dumps({"name": data.name, "password_hash": password_hash}),
+                ex=settings.otp_ttl,
+            )
+    elif existing_user:
         if existing_user.get('email_verified'):
             raise HTTPException(status_code=400, detail="이미 가입된 이메일입니다.")
         else:
@@ -80,14 +116,38 @@ async def verify_email(request: Request, data: VerifyEmailSchema):
     if not result.success:
         raise HTTPException(status_code=400, detail=result.message)
 
-    # 유저 이메일 인증 완료 처리
     user = await db_handler.fetch_one(
-        "SELECT id FROM users WHERE email = %s",
+        "SELECT id, deleted_at FROM users WHERE email = %s",
         (data.email,)
     )
 
+    # 탈퇴 계정을 버리고 새로 시작하기로 한 경우 (register 에서 restore=False)
+    pending_raw = await redis.get(f"pending_register:{data.email}")
+    if pending_raw:
+        pending = json.loads(pending_raw)
+        if user and user.get('deleted_at'):
+            # 이메일을 비워야 같은 주소로 새 행을 만들 수 있다.
+            # 파기 항목·방식은 자동 파기와 동일하다.
+            await purge_account(user['id'])
+        await db_handler.execute_query(
+            "INSERT INTO users (email, password_hash, name, email_verified) VALUES (%s, %s, %s, 1)",
+            (data.email, pending['password_hash'], pending['name'])
+        )
+        await redis.delete(f"pending_register:{data.email}")
+        logger.info(f"탈퇴 계정을 정리하고 새 계정을 생성했습니다: {data.email}")
+        return {"success": True, "message": "새 계정이 만들어졌습니다. 로그인해주세요."}
+
     if not user:
         raise HTTPException(status_code=400, detail="해당 이메일로 가입된 계정을 찾을 수 없습니다.")
+
+    # 탈퇴 계정 복구 (register 에서 restore=True)
+    if user.get('deleted_at'):
+        await db_handler.execute_query(
+            "UPDATE users SET deleted_at = NULL, is_active = 1, email_verified = 1 WHERE id = %s",
+            (user['id'],)
+        )
+        logger.info(f"탈퇴 계정을 복구했습니다: {data.email}")
+        return {"success": True, "message": "계정이 복구되었습니다. 로그인해주세요."}
 
     await db_handler.execute_query(
         "UPDATE users SET email_verified = 1 WHERE id = %s",

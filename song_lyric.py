@@ -34,6 +34,7 @@ from app.database.mariadb import db_handler
 from app.database.meilisearch.meilisearch import meilisearch_handler
 from app.database.redis.redis import redis
 from app.integrations.chzzk_connection.chzzk_connection_client import chzzk_connection_client
+from app.database.account_purge import purge_loop
 
 
 _orig_unraisablehook = sys.unraisablehook
@@ -83,6 +84,9 @@ async def lifespan(app: FastAPI):
         chzzk_task = asyncio.create_task(chzzk_connection_client.start())
         logger.info("치지직 채팅 릴레이 연결 활성화됨")
 
+    # 탈퇴 후 보관 기간이 지난 계정의 개인정보 자동 파기
+    purge_task = asyncio.create_task(purge_loop())
+
     try:
         yield
     finally:
@@ -91,6 +95,12 @@ async def lifespan(app: FastAPI):
         # 던져질 때 정리가 통째로 건너뛰어져 'generator didn't stop after
         # athrow()' + pending 태스크 파괴 노이즈가 난다)
         # 한 단계가 멈춰도 다른 정리를 막지 않도록 격리 + 시간 제한.
+        purge_task.cancel()
+        try:
+            await asyncio.wait_for(purge_task, timeout=3)
+        except BaseException:
+            pass
+
         if chzzk_task:
             chzzk_task.cancel()
             # start() 의 finally 가 disconnect 까지 처리한다. 지연되면 강제로 끊는다.

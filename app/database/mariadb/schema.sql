@@ -5,7 +5,7 @@
 -- Users table: Core user information
 CREATE TABLE IF NOT EXISTS `users` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '내부 고유 식별자',
-    `email` VARCHAR(255) NOT NULL UNIQUE COMMENT '사용자 이메일',
+    `email` VARCHAR(255) NULL UNIQUE COMMENT '사용자 이메일 (탈퇴 후 파기 시 NULL)',
     `password_hash` VARCHAR(255) NULL COMMENT '비밀번호 해시 (bcrypt) - 이메일 로그인용',
     `email_verified` TINYINT(1) DEFAULT 0 COMMENT '이메일 인증 여부 (1: 인증됨, 0: 미인증)',
     `name` VARCHAR(100) COMMENT '사용자 이름/닉네임',
@@ -18,7 +18,10 @@ CREATE TABLE IF NOT EXISTS `users` (
     `ip` VARCHAR(45) COMMENT '최근 로그인 IP',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '가입 일시',
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '정보 수정 일시',
-    `deleted_at` TIMESTAMP NULL COMMENT '삭제 일시 (소프트 삭제)'
+    `deleted_at` TIMESTAMP NULL COMMENT '삭제 일시 (소프트 삭제)',
+    `purged_at` TIMESTAMP NULL COMMENT '탈퇴 후 개인정보 파기 완료 일시',
+
+    INDEX `idx_users_purge_target` (`purged_at`, `deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Social Accounts table: Support multiple OAuth providers (Google, Naver, etc.)

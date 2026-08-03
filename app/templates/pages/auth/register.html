@@ -595,6 +595,30 @@ function startResendCooldown() {
 }
 
 // Register Form Submit
+// 회원가입 요청. 탈퇴 계정이라 서버가 되물으면 __withdrawn 을 담아 돌려준다.
+async function submitRegister(payload) {
+    const response = await fetch('/api/v1/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+
+    if (response.status === 409 && data.detail && data.detail.code === 'withdrawn_account') {
+        return { __withdrawn: data.detail };
+    }
+
+    if (!response.ok) {
+        const detail = data.detail;
+        throw new Error(
+            (typeof detail === 'string' ? detail : detail && detail.message) || '회원가입에 실패했습니다.'
+        );
+    }
+
+    return data;
+}
+
 registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     hideMessage(registerMessage);
@@ -617,16 +641,22 @@ registerForm.addEventListener('submit', async (e) => {
     setLoading(registerBtn, true);
 
     try {
-        const response = await fetch('/api/v1/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, name })
-        });
+        // 탈퇴한 계정의 이메일이면 서버가 409 로 되묻는다.
+        // 그때 복구 여부를 확인해 restore 를 실어 다시 보낸다.
+        let restore = null;
+        let data = await submitRegister({ email, password, name, restore });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.detail || '회원가입에 실패했습니다.');
+        if (data.__withdrawn) {
+            const when = data.__withdrawn.deleted_at
+                ? new Date(data.__withdrawn.deleted_at).toLocaleDateString('ko-KR')
+                : null;
+            restore = confirm(
+                '이 이메일로 탈퇴한 계정이 있습니다.'
+                + (when ? `\n탈퇴일: ${when}` : '')
+                + '\n\n[확인] 이전 계정을 복구합니다. 작성한 가사·노래책이 그대로 돌아옵니다.'
+                + '\n[취소] 새 계정으로 시작합니다. 이전 계정의 정보는 삭제됩니다.'
+            );
+            data = await submitRegister({ email, password, name, restore });
         }
 
         // Move to verification step

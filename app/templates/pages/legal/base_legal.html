@@ -1,0 +1,274 @@
+{% extends "base/base.html" %}
+
+{% block extra_styles %}
+<style>
+/* main 은 flex 아이템이라 min-width:auto 가 걸려, 안에 넓은 표가 있으면
+   화면 밖으로 밀려난다(표 래퍼의 가로 스크롤이 무력화됨). 이 페이지에서만 풀어준다. */
+main {
+    min-width: 0;
+}
+
+.legal-container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding-top: 40px;
+    min-width: 0;
+}
+
+.legal-breadcrumb {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+}
+
+.legal-breadcrumb a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.legal-breadcrumb a:hover { text-decoration: underline; }
+
+.legal-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 8px;
+}
+
+.legal-subtitle {
+    color: var(--text-sub);
+    font-size: 0.95rem;
+    line-height: 1.7;
+}
+
+.legal-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin-top: 20px;
+    padding: 14px 18px;
+    background: #f8fafc;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 0.85rem;
+    color: var(--text-sub);
+}
+
+.legal-meta strong { color: var(--text-main); }
+
+/* 목차 */
+.legal-toc {
+    background: #f8fafc;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin: 32px 0 48px;
+}
+
+.legal-toc-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+}
+
+.legal-toc ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 2px 12px;
+    counter-reset: legal-toc;
+}
+
+.legal-toc ol li { counter-increment: legal-toc; }
+
+.legal-toc ol a {
+    display: block;
+    padding: 7px 10px;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.88rem;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.legal-toc ol a::before {
+    content: counter(legal-toc) ". ";
+    color: var(--text-dim);
+    font-weight: 700;
+}
+
+.legal-toc ol a:hover { background: var(--accent-light); }
+
+/* 본문 */
+.legal-body {
+    font-size: 0.95rem;
+    line-height: 1.85;
+    color: var(--text-sub);
+    /* 본문에 URL·기관 연락처 같은 긴 문자열이 많다 — 좁은 화면에서 줄바꿈되게 */
+    overflow-wrap: anywhere;
+}
+
+.legal-body h2 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin: 48px 0 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--accent);
+    scroll-margin-top: 24px;
+}
+
+.legal-body h3 {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 28px 0 10px;
+}
+
+.legal-body h4 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 20px 0 8px;
+}
+
+.legal-body p { margin: 0 0 14px; }
+
+.legal-body ul,
+.legal-body ol {
+    margin: 0 0 16px;
+    padding-left: 22px;
+}
+
+.legal-body li { margin-bottom: 7px; }
+
+.legal-body a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    word-break: break-all;
+}
+
+.legal-body strong { color: var(--text-main); }
+
+.legal-body code {
+    background: #f1f5f9;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.88em;
+    color: var(--text-main);
+    word-break: break-all;
+}
+
+.legal-body hr {
+    border: 0;
+    border-top: 1px solid var(--border-color);
+    margin: 40px 0;
+}
+
+.legal-body blockquote {
+    margin: 0 0 16px;
+    padding: 14px 18px;
+    background: var(--accent-light);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    color: var(--text-main);
+}
+
+.legal-body blockquote p:last-child { margin-bottom: 0; }
+
+/* 표 — 좁은 화면·작은 창(PiP)에서 가로 스크롤 */
+.legal-table-wrap {
+    overflow-x: auto;
+    margin: 0 0 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.legal-table-wrap table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 560px;
+    font-size: 0.86rem;
+}
+
+.legal-table-wrap th,
+.legal-table-wrap td {
+    padding: 10px 14px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--border-color);
+    line-height: 1.6;
+}
+
+.legal-table-wrap th {
+    background: #f8fafc;
+    font-weight: 700;
+    color: var(--text-main);
+    white-space: nowrap;
+}
+
+.legal-table-wrap tr:last-child td { border-bottom: 0; }
+
+.legal-footnote {
+    margin-top: 56px;
+    padding: 18px 20px;
+    background: #f8fafc;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 0.85rem;
+    color: var(--text-sub);
+    line-height: 1.7;
+}
+
+.legal-nav {
+    margin-top: 32px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+    .legal-container { padding-top: 24px; }
+    .legal-title { font-size: 1.5rem; }
+    .legal-toc { padding: 18px 20px; }
+    .legal-body h2 { font-size: 1.1rem; margin-top: 36px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="legal-container">
+    <div class="legal-breadcrumb">
+        <a href="/">홈</a> &rsaquo; {% block legal_breadcrumb %}{% endblock %}
+    </div>
+    <h1 class="legal-title">{% block legal_title %}{% endblock %}</h1>
+    <p class="legal-subtitle">{% block legal_subtitle %}{% endblock %}</p>
+
+    <div class="legal-meta">
+        <span>시행일자 <strong>{{ effective_date }}</strong></span>
+        <span>·</span>
+        <span>서비스명 <strong>Jamku Song</strong></span>
+    </div>
+
+    {% block legal_toc %}{% endblock %}
+
+    <div class="legal-body">
+        {% block legal_body %}{% endblock %}
+    </div>
+
+    <div class="legal-nav">
+        {% block legal_nav %}
+        <a href="/privacy" class="btn btn-outline">개인정보 처리방침</a>
+        <a href="/terms" class="btn btn-outline">이용약관</a>
+        {% endblock %}
+    </div>
+</div>
+{% endblock %}

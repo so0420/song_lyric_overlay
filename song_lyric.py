@@ -35,6 +35,7 @@ from app.database.meilisearch.meilisearch import meilisearch_handler
 from app.database.redis.redis import redis
 from app.integrations.chzzk_connection.chzzk_connection_client import chzzk_connection_client
 from app.database.account_purge import purge_loop
+from app.database.audio_purge import purge_loop as audio_purge_loop
 
 
 _orig_unraisablehook = sys.unraisablehook
@@ -87,6 +88,9 @@ async def lifespan(app: FastAPI):
     # 탈퇴 후 보관 기간이 지난 계정의 개인정보 자동 파기
     purge_task = asyncio.create_task(purge_loop())
 
+    # 어느 가사에도 연결되지 않은 업로드 음원 자동 파기
+    audio_purge_task = asyncio.create_task(audio_purge_loop())
+
     try:
         yield
     finally:
@@ -95,11 +99,14 @@ async def lifespan(app: FastAPI):
         # 던져질 때 정리가 통째로 건너뛰어져 'generator didn't stop after
         # athrow()' + pending 태스크 파괴 노이즈가 난다)
         # 한 단계가 멈춰도 다른 정리를 막지 않도록 격리 + 시간 제한.
-        purge_task.cancel()
-        try:
-            await asyncio.wait_for(purge_task, timeout=3)
-        except BaseException:
-            pass
+        # 두 파기 루프 모두 위 주석의 이유대로 취소 후 반드시 회수한다
+        # (회수하지 않으면 'Task was destroyed but it is pending' 노이즈가 돌아온다)
+        for _task in (purge_task, audio_purge_task):
+            _task.cancel()
+            try:
+                await asyncio.wait_for(_task, timeout=3)
+            except BaseException:
+                pass
 
         if chzzk_task:
             chzzk_task.cancel()
@@ -151,20 +158,29 @@ async def add_security_headers(request: Request, call_next):
     # Content Security Policy (CSP)
     # - default-src 'self': 기본적으로 같은 출처만 허용
     # - script-src: 인라인 스크립트와 YouTube API 허용
+    #               'wasm-unsafe-eval' 은 동영상→음원 변환기(ffmpeg.wasm)의 WASM 컴파일용.
+    #               'unsafe-eval' 보다 좁은 권한이며(WASM 컴파일만 허용), 워커 스크립트는
+    #               자기 응답의 CSP 를 따르므로 전역에 있어야 한다.
     # - style-src: 인라인 스타일과 Google Fonts 허용
     # - font-src: Google Fonts 허용
     # - img-src: iTunes, YouTube 썸네일 등 허용
     # - frame-src: YouTube 임베드 허용
     # - connect-src: API 호출, WebSocket 허용
+    # - media-src: blob: 은 업로드 전 로컬 미리듣기(URL.createObjectURL)용
+    #
+    # 주의: ffmpeg.wasm 멀티스레드 코어를 쓰려고 COOP/COEP 를 켜면 안 된다.
+    #       require-corp 를 켜는 순간 YouTube iframe·썸네일·눈누 웹폰트가 모두 차단된다.
+    #       (그래서 단일 스레드 코어를 쓴다 — app/static/js/audio_extract.js 참조)
     csp_directives = [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com",
+        "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.youtube.com https://s.ytimg.com",
+        "worker-src 'self'",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
         "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
         "img-src 'self' data: https: blob:",
         "frame-src 'self' https://www.youtube.com",
         "connect-src 'self' ws: wss: https://www.googleapis.com https://lrclib.net",
-        "media-src 'self' https:",
+        "media-src 'self' https: blob:",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
@@ -193,8 +209,23 @@ async def log_requests(request: Request, call_next):
 
     return response
 
+class _StaticFilesWithVendorCache(StaticFiles):
+    """/static/vendor/** 는 버전 고정된 불변 자산이므로 오래 캐시시킨다.
+
+    기본 StaticFiles 는 Cache-Control 을 안 보내서 ETag 조건부 재검증만 하는데,
+    ffmpeg.wasm 코어(약 32MB)가 브라우저를 새로 켤 때마다 재검증 대상이 된다.
+    """
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        path = kwargs.get("full_path") or (args[0] if args else "")
+        if "/vendor/" in str(path):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
 # Static 폴더 마운트
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", _StaticFilesWithVendorCache(directory="app/static"), name="static")
 
 # Exception Handlers 등록
 app.add_exception_handler(CustomHTTPException, custom_http_exception_handler)

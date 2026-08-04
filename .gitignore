@@ -58,6 +58,12 @@ nul
 instance/
 .local/
 
+# ===== 업로드 음원 (사용자 파일 — 커밋 금지) =====
+/storage/
+
+# ===== ffmpeg.wasm 코어 (약 32MB — scripts/fetch_ffmpeg.sh 로 배포 시 내려받음) =====
+app/static/vendor/ffmpeg/*.wasm
+
 # ===== Node.js =====
 node_modules/
 package-lock.json

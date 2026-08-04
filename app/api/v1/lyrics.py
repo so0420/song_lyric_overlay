@@ -6,7 +6,14 @@ from app.database.songbook_repository import get_songbook_repository
 from app.database.meilisearch.meilisearch import meilisearch_handler
 from app.integrations.itunes_search import search_itunes_cached
 from app.api.v1.songs import register_itunes_results
-from app.schemas.lyrics import LyricsCreateSchema, LyricsUpdateSchema, LyricsMemoSchema
+from app.database.audio_repository import get_audio_repository, AudioRepository
+from app.api.v1.audio import build_audio_response
+from app.schemas.lyrics import (
+    LyricsCreateSchema,
+    LyricsUpdateSchema,
+    LyricsMemoSchema,
+    VisibilityPatchSchema,
+)
 from app.schemas.common import IdResponse
 from app.utils.csrf import verify_csrf
 from app.utils.log import logger
@@ -23,6 +30,32 @@ def _user_ctx(user):
     if not user:
         return None, False
     return user.get("id"), bool(user.get("is_admin"))
+
+
+async def _validate_audio_link(audio_file_id: int, user, audio_repo: AudioRepository) -> None:
+    """음원 연결 가능 여부 검사 (존재 + 미삭제 + 본인 소유). 실패 시 400.
+
+    남의 audio_file_id 를 내 가사에 붙여 노출시키는 것을 막는 유일한 방어선이다.
+    존재 여부가 새어나가지 않게 실패 사유는 하나로 합친다 (_validate_lyrics_link 와 같은 방식).
+    """
+    if not user:
+        raise HTTPException(status_code=400, detail="음원을 연결하려면 로그인이 필요합니다.")
+    row = await audio_repo.get_by_id(audio_file_id)
+    if not row or row.get("deleted_at"):
+        raise HTTPException(status_code=400, detail="연결할 수 없는 음원입니다.")
+    if not user.get("is_admin") and row.get("owner_id") != user["id"]:
+        raise HTTPException(status_code=400, detail="연결할 수 없는 음원입니다.")
+
+
+def _decorate_source(lyrics: dict, lyrics_id: int) -> dict:
+    """응답에 재생 소스 관련 계산 필드를 붙인다 (URL 은 전송 계층의 몫)."""
+    if lyrics.get("audio_file_id"):
+        lyrics["audio_url"] = f"/api/v1/lyrics/{lyrics_id}/audio"
+        lyrics["mr_source"] = "audio"
+    else:
+        lyrics["audio_url"] = None
+        lyrics["mr_source"] = "youtube" if lyrics.get("mr_youtube_video_id") else None
+    return lyrics
 
 
 async def _collect_search_candidate_ids(q: str) -> list:
@@ -169,7 +202,53 @@ async def get_lyrics_detail(
         if not user:
             raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
         raise HTTPException(status_code=403, detail="이 가사에 접근할 권한이 없습니다.")
-    return lyrics
+    return _decorate_source(lyrics, lyrics_id)
+
+
+@router.get("/{lyrics_id}/audio")
+async def stream_lyrics_audio(
+    lyrics_id: int,
+    user=Depends(get_current_user),
+    repo: LyricsRepository = Depends(get_lyrics_repository),
+    audio_repo: AudioRepository = Depends(get_audio_repository),
+):
+    """가사에 연결된 업로드 음원 재생 (가사의 공개 범위를 따른다).
+
+    공개(public) 가사라도 재생에는 로그인을 요구한다. 지금 비관리자가 만드는 가사는
+    모두 public 으로 강제되므로(create_lyrics), 그대로 두면 업로드한 음원이
+    비회원에게까지 그대로 내려가 사실상 무료 MP3 배포처가 된다.
+    """
+    lyrics = await repo.get_lyrics_by_id(lyrics_id)
+    if not lyrics or not lyrics.get("audio_file_id"):
+        raise HTTPException(status_code=404, detail="음원을 찾을 수 없습니다.")
+
+    if not user:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    if not await can_view_lyrics(lyrics, user, repo):
+        raise HTTPException(status_code=403, detail="이 가사에 접근할 권한이 없습니다.")
+
+    row = await audio_repo.get_by_id(lyrics["audio_file_id"])
+    if not row or row.get("deleted_at"):
+        raise HTTPException(status_code=404, detail="음원을 찾을 수 없습니다.")
+
+    return await build_audio_response(row)
+
+
+@router.patch("/{lyrics_id}/visibility", dependencies=[Depends(verify_csrf)])
+async def patch_own_visibility(
+    lyrics_id: int,
+    data: VisibilityPatchSchema,
+    user=Depends(get_current_user_api),
+    repo: LyricsRepository = Depends(get_lyrics_repository),
+):
+    """본인 가사의 공개 범위 변경.
+
+    음원을 연결한 가사는 기본이 private 이므로 소유자가 되돌릴 수단이 필요하다.
+    (관리자용 전체 권한 엔드포인트는 /api/v1/admin/lyrics/{id}/visibility 에 따로 있다)
+    """
+    if not await repo.update_visibility_owned(lyrics_id, user["id"], data.visibility):
+        raise HTTPException(status_code=404, detail="가사를 찾을 수 없거나 변경 권한이 없습니다.")
+    return {"success": True, "visibility": data.visibility}
 
 
 @router.post("/", dependencies=[Depends(verify_csrf)])
@@ -177,7 +256,8 @@ async def create_lyrics(
     request: Request,
     data: LyricsCreateSchema,
     user=Depends(get_current_user),
-    repo: LyricsRepository = Depends(get_lyrics_repository)
+    repo: LyricsRepository = Depends(get_lyrics_repository),
+    audio_repo: AudioRepository = Depends(get_audio_repository),
 ):
     """가사 작성 저장 (비로그인 시 익명으로 저장)"""
     owner_id = user['id'] if user else None
@@ -189,14 +269,25 @@ async def create_lyrics(
         if is_duplicate:
             raise HTTPException(status_code=400, detail="같은 노래에 동일한 제목의 가사가 이미 존재합니다.")
 
+    if data.audio_file_id is not None:
+        await _validate_audio_link(data.audio_file_id, user, audio_repo)
+
     # 관리자만 visibility 지정 가능, 그 외는 기본값(public)
-    visibility = data.visibility if (is_admin and data.visibility) else "public"
+    # 단, 업로드 음원을 연결한 가사는 기본을 private 으로 둔다 — 음원까지 전체공개가
+    # 되어버리는 것을 막기 위해서다. 소유자는 PATCH /{id}/visibility 로 넓힐 수 있다.
+    if is_admin and data.visibility:
+        visibility = data.visibility
+    elif data.audio_file_id is not None:
+        visibility = "private"
+    else:
+        visibility = "public"
 
     lyrics_id = await repo.create_lyrics(
         owner_id=owner_id,
         song_id=data.song_id,
         title=data.title,
         mr_youtube_video_id=data.mr_youtube_video_id,
+        audio_file_id=data.audio_file_id,
         lyrics_data=data.lyrics_data,
         visibility=visibility,
     )
@@ -226,7 +317,8 @@ async def update_lyrics(
     lyrics_id: int,
     data: LyricsUpdateSchema,
     user=Depends(get_current_user),
-    repo: LyricsRepository = Depends(get_lyrics_repository)
+    repo: LyricsRepository = Depends(get_lyrics_repository),
+    audio_repo: AudioRepository = Depends(get_audio_repository),
 ):
     """가사 수정 (비로그인 시 본인이 생성한 익명 가사만 수정 가능)"""
     owner_id = user['id'] if user else None
@@ -237,6 +329,19 @@ async def update_lyrics(
         anon_ids = request.session.get('anon_lyrics_ids', [])
         if lyrics_id not in anon_ids:
             raise HTTPException(status_code=403, detail="수정 권한이 없습니다.")
+
+    if data.audio_file_id is not None:
+        await _validate_audio_link(data.audio_file_id, user, audio_repo)
+
+    # 유튜브 → 음원으로 '전환'하는 경우, 생성 때와 같은 이유로 비공개로 내린다.
+    # 이게 없으면 전체공개 가사에 음원만 갈아끼워 누구나 받아갈 수 있는 상태가 된다
+    # (비관리자 가사는 생성 시 무조건 public 이므로 실제로 흔한 경로다).
+    # '전환 시점'에만 적용하는 이유: 매번 내리면 소유자가 PATCH /{id}/visibility 로
+    # 넓혀 둔 설정이 저장할 때마다 되돌아간다.
+    needs_private = False
+    if data.audio_file_id is not None and not is_admin:
+        prev = await repo.get_lyrics_by_id(lyrics_id)
+        needs_private = bool(prev and not prev.get("audio_file_id"))
 
     # 가사 이름 중복 체크 (로그인 사용자만)
     if owner_id and data.title:
@@ -249,10 +354,14 @@ async def update_lyrics(
         owner_id=owner_id,
         title=data.title,
         mr_youtube_video_id=data.mr_youtube_video_id,
+        audio_file_id=data.audio_file_id,
         lyrics_data=data.lyrics_data
     )
     if not updated:
         raise HTTPException(status_code=404, detail="가사를 찾을 수 없거나 수정 권한이 없습니다.")
+
+    if needs_private:
+        await repo.update_visibility(lyrics_id, "private")
 
     # 관리자가 visibility 동시에 변경하려 한 경우 별도 반영
     if is_admin and data.visibility:

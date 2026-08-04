@@ -10,11 +10,12 @@ import json
 # recent_request_count: 최근 1달간 이 곡(같은 스트리머)의 신청 횟수 (상관 서브쿼리)
 _SONGBOOK_SELECT = """
     SELECT sb.id AS entry_id, sb.sort_order, sb.difficulty, sb.memo, sb.tags AS song_tags,
-           sb.mr_youtube_video_id,
+           sb.mr_youtube_video_id, sb.audio_file_id,
            COALESCE(sb.cover_image_url, s.cover_image_url) AS cover_image_url,
            s.id AS song_id, s.song_external_id, s.title, s.length_ms,
            a.name AS artist_name,
            l.id AS lyrics_id, l.title AS lyrics_title, l.mr_youtube_video_id AS lyrics_mr_video_id,
+           l.audio_file_id AS lyrics_audio_file_id,
            (SELECT COUNT(*) FROM song_request_logs rl
             WHERE rl.song_id = sb.song_id AND rl.streamer_id = sb.streamer_id
               AND rl.requested_at >= NOW() - INTERVAL 1 MONTH) AS recent_request_count
@@ -140,6 +141,7 @@ class SongbookRepository:
         song_id: int,
         lyrics_id: Optional[int] = None,
         mr_youtube_video_id: Optional[str] = None,
+        audio_file_id: Optional[int] = None,
         tags: Optional[List[str]] = None,
         difficulty: Optional[int] = None,
         memo: Optional[str] = None,
@@ -158,10 +160,12 @@ class SongbookRepository:
 
         query = """
             INSERT INTO streamer_songbooks
-                (streamer_id, sort_order, song_id, mr_youtube_video_id, lyrics_id, cover_image_url, tags, difficulty, memo)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                (streamer_id, sort_order, song_id, mr_youtube_video_id, audio_file_id, lyrics_id,
+                 cover_image_url, tags, difficulty, memo)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
                 mr_youtube_video_id = VALUES(mr_youtube_video_id),
+                audio_file_id = VALUES(audio_file_id),
                 lyrics_id = VALUES(lyrics_id),
                 cover_image_url = VALUES(cover_image_url),
                 tags = VALUES(tags),
@@ -171,7 +175,7 @@ class SongbookRepository:
         await self.db.execute_query(
             query,
             (
-                streamer_id, next_sort, song_id, mr_youtube_video_id, lyrics_id,
+                streamer_id, next_sort, song_id, mr_youtube_video_id, audio_file_id, lyrics_id,
                 cover_image_url, dump_json_field(tags), difficulty, memo,
             ),
         )
@@ -184,7 +188,7 @@ class SongbookRepository:
 
     async def update_entry(self, entry_id: int, **kwargs) -> bool:
         """수록곡 동적 UPDATE (화이트리스트 컬럼만). tags 는 JSON 직렬화."""
-        allowed = {"lyrics_id", "mr_youtube_video_id", "tags", "difficulty", "memo", "cover_image_url"}
+        allowed = {"lyrics_id", "mr_youtube_video_id", "audio_file_id", "tags", "difficulty", "memo", "cover_image_url"}
         updates = []
         params = []
         for key, val in kwargs.items():

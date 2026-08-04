@@ -79,6 +79,9 @@ class Settings(BaseSettings):
     # 오버레이 사용 요청 알림용 디스코드 웹훅 — 비어있으면 알림을 보내지 않는다
     discord_webhook_url: str = ""
 
+    # 업로드 음원 저장 루트 — 비어있으면 <리포지토리 루트>/storage/audio
+    audio_storage_root: str = ""
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": False,

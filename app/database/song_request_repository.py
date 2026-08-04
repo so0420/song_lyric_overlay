@@ -7,8 +7,9 @@ from typing import Optional, Dict, Any, List
 _REQUEST_SELECT = """
     SELECT r.*, s.title AS ref_song_title, s.song_external_id, a.name AS ref_artist_name,
            COALESCE(sb.cover_image_url, s.cover_image_url) AS ref_song_cover,
-           sb.mr_youtube_video_id AS sb_mr_video_id,
+           sb.mr_youtube_video_id AS sb_mr_video_id, sb.audio_file_id AS sb_audio_file_id,
            l.id AS ref_lyrics_id, l.title AS ref_lyrics_title, l.mr_youtube_video_id AS lyrics_mr_video_id,
+           l.audio_file_id AS lyrics_audio_file_id,
            CASE WHEN sb.id IS NOT NULL THEN 1 ELSE 0 END AS is_in_songbook
     FROM song_requests r
     LEFT JOIN songs s ON r.song_id = s.id

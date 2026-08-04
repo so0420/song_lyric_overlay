@@ -12,15 +12,21 @@
     통째로 지우는 행
         소셜 계정 연결, 가사 즐겨찾기, 가사별 개인 메모, 재생목록,
         오버레이 설정·프리셋, 노래 타임라인 기록, 치지직 채널 연동,
-        노래책 프로필(수록곡·노래 신청 내역·신청 통계가 CASCADE 로 함께 삭제된다)
+        노래책 프로필(수록곡·노래 신청 내역·신청 통계가 CASCADE 로 함께 삭제된다),
+        업로드한 음원 파일 (디스크의 파일과 audio_files 기록)
 
 남기는 항목:
     users.id, 가입 일시, 탈퇴 일시, 파기 일시, 관리자/승인 플래그
     → 통계와 연결 무결성을 위해 필요하고, 개인을 식별하지 않는다.
     이용자가 작성한 가사(songs, song_lyrics)
     → 다른 이용자가 이미 사용 중일 수 있어 함께 지우지 않는다.
+      다만 그 가사에 연결돼 있던 업로드 음원은 위와 같이 파기되므로,
+      가사는 남아도 음원은 재생되지 않는다.
 """
+import anyio
+
 from app.database.mariadb import db_handler
+from app.utils import audio_storage
 from app.utils.log import logger
 
 # 탈퇴 후 이 기간이 지나면 파기한다
@@ -42,6 +48,9 @@ _PURGE_TARGET_SQL = """
 # 사용자별 데이터를 담고 있어 행째로 지우는 테이블.
 # streamers 를 지우면 streamer_songbooks·song_requests·song_request_logs 가
 # ON DELETE CASCADE 로 함께 지워진다(노래책 프로필·수록곡·신청 내역·신청 통계).
+# audio_files 는 여기 넣지 않는다 — 행을 지우기 전에 storage_path 를 확보해야
+# 디스크 파일을 지울 수 있고, 파일 I/O 를 트랜잭션 안에서 하면 안 되기 때문이다.
+# (purge_account 에서 별도로 처리한다)
 _PURGE_TABLES = (
     ("social_accounts", "user_id"),            # 소셜 계정 연결 정보
     ("user_lyrics_favorites", "user_id"),      # 가사 즐겨찾기
@@ -92,11 +101,28 @@ async def purge_account(user_id: int) -> bool:
         if not target:
             return False
 
+        # 업로드 음원: 행을 지우기 전에 파일 경로를 확보한다 (행이 사라지면 경로를 알 수 없다).
+        # 행 삭제로 song_lyrics.audio_file_id / streamer_songbooks.audio_file_id 는
+        # FK 의 ON DELETE SET NULL 로 정리된다.
+        audio_rows = await tx.fetch_all(
+            "SELECT storage_path FROM audio_files WHERE owner_id = %s", (user_id,)
+        )
+        await tx.execute_query("DELETE FROM audio_files WHERE owner_id = %s", (user_id,))
+
         for table, column in _PURGE_TABLES:
             await tx.execute_query(f"DELETE FROM {table} WHERE {column} = %s", (user_id,))
         await tx.execute_query(_PURGE_USER_SQL, (user_id,))
 
-    logger.info(f"[account_purge] 계정 {user_id} 개인정보 파기 완료")
+    # 커밋된 뒤에 디스크 파일을 지운다. 여기서 실패해도 DB 는 이미 정리됐고,
+    # 남은 파일은 purge_audio.py --verify 가 잡아낸다.
+    for row in audio_rows:
+        try:
+            path = audio_storage.resolve_audio_path(row["storage_path"])
+            await anyio.to_thread.run_sync(lambda p=path: p.unlink(missing_ok=True))
+        except Exception as e:
+            logger.error(f"[account_purge] 음원 파일 삭제 실패: {row['storage_path']} — {e}")
+
+    logger.info(f"[account_purge] 계정 {user_id} 개인정보 파기 완료 (음원 {len(audio_rows)}건 포함)")
     return True
 
 

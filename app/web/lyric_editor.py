@@ -5,6 +5,8 @@ from app.database.song_repository import get_song_repository
 from app.database.lyrics_repository import get_lyrics_repository
 from app.core.auth import get_current_user
 from app.core.lyrics_access import can_view_lyrics
+from app.utils.audio_sniff import ALLOWED_AUDIO
+from app.utils.audio_storage import MAX_AUDIO_BYTES
 
 router = APIRouter()
 
@@ -50,4 +52,7 @@ async def lyric_editor_page(
         "default_mr_video_id": None,
         "is_admin": is_admin,
         "is_owner": is_owner,
+        # 업로드 한도/허용 형식은 서버가 한 곳에서 정한다 (프론트에 상수를 중복하지 않기 위해)
+        "max_audio_bytes": MAX_AUDIO_BYTES,
+        "allowed_audio_exts": sorted(set(ALLOWED_AUDIO.values())),
     })

@@ -65,6 +65,7 @@ class SongbookEntryCreateSchema(BaseModel):
     song_external_id: str = Field(..., min_length=1, max_length=255, description="노래 외부 ID")
     lyrics_id: Optional[int] = Field(None, description="연결할 가사 ID")
     mr_youtube_video_id: Optional[str] = Field(None, max_length=255, description="MR 유튜브 영상 ID")
+    audio_file_id: Optional[int] = Field(None, description="연결할 업로드 음원 ID (본인 소유만)")
     tags: List[str] = Field(default_factory=list, max_length=30, description="노래 태그 이름 목록")
     difficulty: Optional[int] = Field(None, ge=1, le=10, description="난이도 (1~10, 없으면 미설정)")
     memo: Optional[str] = Field(None, max_length=255, description="노래 설명/메모")
@@ -79,6 +80,7 @@ class SongbookEntryUpdateSchema(BaseModel):
     """
     lyrics_id: Optional[int] = Field(None, description="연결할 가사 ID (0 또는 null 명시 시 해제)")
     mr_youtube_video_id: Optional[str] = Field(None, max_length=255, description="MR 유튜브 영상 ID")
+    audio_file_id: Optional[int] = Field(None, description="연결할 업로드 음원 ID (0 또는 null 명시 시 해제)")
     tags: Optional[List[str]] = Field(None, max_length=30, description="노래 태그 이름 목록")
     difficulty: Optional[int] = Field(None, ge=1, le=10, description="난이도 (1~10)")
     memo: Optional[str] = Field(None, max_length=255, description="노래 설명/메모")

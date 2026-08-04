@@ -6,7 +6,7 @@ from app.core.auth import get_current_user, get_admin_user
 router = APIRouter()
 
 # 개인정보 처리방침·이용약관의 시행일자. 문서 내용을 고칠 때 함께 갱신한다.
-LEGAL_EFFECTIVE_DATE = "2026년 8월 3일"
+LEGAL_EFFECTIVE_DATE = "2026년 8월 11일"
 
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request, user=Depends(get_current_user)):

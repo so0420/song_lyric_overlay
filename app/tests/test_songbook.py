@@ -453,6 +453,7 @@ class TestSongbookOwnership:
         assert response.json()["entry_id"] == 77
         repos.songbook.add_song.assert_awaited_once_with(
             streamer_id=10, song_id=45, lyrics_id=None, mr_youtube_video_id=None,
+            audio_file_id=None,
             tags=["발라드"], difficulty=7, memo=None, cover_image_url=None,
         )
 

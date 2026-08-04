@@ -51,6 +51,7 @@ class LyricsRepository:
                 u.name as owner_name,
                 l.title,
                 l.mr_youtube_video_id,
+                l.audio_file_id,
                 l.is_verified,
                 l.visibility,
                 l.likes_count,
@@ -76,6 +77,7 @@ class LyricsRepository:
                 u.name as owner_name,
                 l.title,
                 l.mr_youtube_video_id,
+                l.audio_file_id,
                 l.is_verified,
                 l.visibility,
                 l.likes_count,
@@ -90,7 +92,7 @@ class LyricsRepository:
             LEFT JOIN user_lyrics_favorites fav ON l.id = fav.lyrics_id
             LEFT JOIN user_lyrics_favorites ulf ON l.id = ulf.lyrics_id AND ulf.user_id = %s
             WHERE l.deleted_at IS NULL AND {vis_where}
-            GROUP BY l.id, l.owner_id, u.name, l.title, l.mr_youtube_video_id,
+            GROUP BY l.id, l.owner_id, u.name, l.title, l.mr_youtube_video_id, l.audio_file_id,
                      l.is_verified, l.visibility, l.likes_count, l.created_at, l.updated_at
             ORDER BY l.is_verified DESC, l.likes_count DESC, l.created_at DESC
         """
@@ -138,10 +140,15 @@ class LyricsRepository:
         """
         query = """
             SELECT l.*, s.title as song_title, s.song_external_id, s.cover_image_url,
-                   a.name as artist_name
+                   a.name as artist_name,
+                   af.mime_type as audio_mime_type,
+                   af.byte_size as audio_byte_size,
+                   af.duration_ms as audio_duration_ms,
+                   af.original_filename as audio_original_filename
             FROM song_lyrics l
             JOIN songs s ON l.song_id = s.id
             LEFT JOIN artists a ON s.artist_id = a.id
+            LEFT JOIN audio_files af ON af.id = l.audio_file_id AND af.deleted_at IS NULL
             WHERE l.id = %s AND l.deleted_at IS NULL
         """
         return await self.db.fetch_one(query, (lyrics_id,))
@@ -194,34 +201,48 @@ class LyricsRepository:
         self,
         owner_id,
         song_id: int,
-        mr_youtube_video_id: str,
+        mr_youtube_video_id: Optional[str],
         lyrics_data: str,
         title: str = None,
         visibility: str = "public",
+        audio_file_id: Optional[int] = None,
     ) -> int:
         query = """
-            INSERT INTO song_lyrics (owner_id, song_id, title, mr_youtube_video_id, lyrics_data, visibility)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO song_lyrics
+                (owner_id, song_id, title, mr_youtube_video_id, audio_file_id, lyrics_data, visibility)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         return await self.db.execute_query(
-            query, (owner_id, song_id, title, mr_youtube_video_id, lyrics_data, visibility)
+            query,
+            (owner_id, song_id, title, mr_youtube_video_id, audio_file_id, lyrics_data, visibility),
         )
 
-    async def update_lyrics(self, lyrics_id: int, owner_id, mr_youtube_video_id: str, lyrics_data: str, title: str = None) -> bool:
+    async def update_lyrics(
+        self,
+        lyrics_id: int,
+        owner_id,
+        mr_youtube_video_id: Optional[str],
+        lyrics_data: str,
+        title: str = None,
+        audio_file_id: Optional[int] = None,
+    ) -> bool:
+        # 두 소스 컬럼을 항상 함께 쓴다 — 그래야 유튜브 → 음원으로 바꿀 때 옛 값이 지워진다
         if owner_id is None:
             query = """
                 UPDATE song_lyrics
-                SET title = %s, mr_youtube_video_id = %s, lyrics_data = %s, updated_at = CURRENT_TIMESTAMP
+                SET title = %s, mr_youtube_video_id = %s, audio_file_id = %s,
+                    lyrics_data = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s AND owner_id IS NULL
             """
-            params = (title, mr_youtube_video_id, lyrics_data, lyrics_id)
+            params = (title, mr_youtube_video_id, audio_file_id, lyrics_data, lyrics_id)
         else:
             query = """
                 UPDATE song_lyrics
-                SET title = %s, mr_youtube_video_id = %s, lyrics_data = %s, updated_at = CURRENT_TIMESTAMP
+                SET title = %s, mr_youtube_video_id = %s, audio_file_id = %s,
+                    lyrics_data = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s AND owner_id = %s
             """
-            params = (title, mr_youtube_video_id, lyrics_data, lyrics_id, owner_id)
+            params = (title, mr_youtube_video_id, audio_file_id, lyrics_data, lyrics_id, owner_id)
 
         async with self.db.session() as conn:
             async with conn.cursor() as cursor:
@@ -246,6 +267,24 @@ class LyricsRepository:
         async with self.db.session() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(query, (1 if verified else 0, lyrics_id))
+                return cursor.rowcount > 0
+
+    async def update_visibility_owned(self, lyrics_id: int, owner_id: int, visibility: str) -> bool:
+        """소유자 본인의 가사 visibility 변경 (다른 사람 가사는 rowcount 0 → False).
+
+        음원을 연결한 가사는 기본이 private 이므로, 소유자가 다시 공개로 되돌릴
+        수단이 필요하다. 관리자 경로(update_visibility)와 달리 소유권을 SQL 에서 강제한다.
+        """
+        if visibility not in ("public", "private", "whitelist"):
+            raise ValueError(f"invalid visibility: {visibility}")
+        query = """
+            UPDATE song_lyrics
+            SET visibility = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s AND owner_id = %s AND deleted_at IS NULL
+        """
+        async with self.db.session() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(query, (visibility, lyrics_id, owner_id))
                 return cursor.rowcount > 0
 
     async def update_visibility(self, lyrics_id: int, visibility: str) -> bool:

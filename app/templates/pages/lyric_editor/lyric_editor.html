@@ -795,6 +795,85 @@
         transform: scale(1.1);
     }
 
+    .video-placeholder-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .btn-audio-pick {
+        background: #334155;
+        box-shadow: 0 4px 15px rgba(15, 23, 42, 0.35);
+    }
+
+    .btn-audio-pick:hover {
+        background: #475569;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.45);
+    }
+
+    /* 업로드 음원 재생 화면 (유튜브 영상 자리를 그대로 씀) */
+    .audio-host {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #0f172a;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        padding: 24px;
+        z-index: 4;
+        color: #cbd5e1;
+        text-align: center;
+    }
+
+    .audio-host-icon {
+        width: 56px;
+        height: 56px;
+        opacity: 0.65;
+    }
+
+    .audio-host-name {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #e2e8f0;
+        word-break: break-all;
+        max-width: 90%;
+    }
+
+    .audio-host audio {
+        width: min(460px, 92%);
+    }
+
+    /* 업로드 진행 표시 */
+    .audio-upload-status {
+        width: min(360px, 90%);
+        margin-top: 4px;
+    }
+
+    .audio-upload-label {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.75);
+        margin-bottom: 6px;
+    }
+
+    .audio-upload-bar {
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.15);
+        overflow: hidden;
+    }
+
+    .audio-upload-fill {
+        height: 100%;
+        width: 0%;
+        background: var(--accent);
+        transition: width 0.2s;
+    }
+
     /* Infinite scroll loading indicator */
     .spinner-small {
         width: 20px;
@@ -927,6 +1006,8 @@
                         style="padding: 8px 14px; font-weight: 700; font-size: 0.85rem;">곡 검색</button>
                     <button onclick="showVideoSearchModal()" class="btn btn-outline"
                         style="padding: 8px 14px; font-weight: 700; font-size: 0.85rem;">영상 변경</button>
+                    <button onclick="pickAudioFile()" class="btn btn-outline"
+                        style="padding: 8px 14px; font-weight: 700; font-size: 0.85rem;">음원 올리기</button>
                 </div>
             </div>
         </div>
@@ -935,20 +1016,50 @@
             <div id="player"
                 style="{% if not (lyrics and lyrics.mr_youtube_video_id) and not default_mr_video_id %}display: none;{% endif %}">
             </div>
+            <!-- 업로드 음원 재생 화면 (유튜브 iframe 과 형제) -->
+            <div id="audio-host" class="audio-host"
+                style="{% if lyrics and lyrics.audio_file_id %}display: flex;{% else %}display: none;{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="audio-host-icon">
+                    <path d="M9 18V5l12-2v13"></path>
+                    <circle cx="6" cy="18" r="3"></circle>
+                    <circle cx="18" cy="16" r="3"></circle>
+                </svg>
+                <p class="audio-host-name" id="audio-host-name">
+                    {{ (lyrics.audio_original_filename if lyrics else '') or '업로드 음원' }}
+                </p>
+                <audio id="audio-el" controls preload="auto"></audio>
+            </div>
             <div id="video-placeholder" class="video-placeholder"
-                style="{% if (lyrics and lyrics.mr_youtube_video_id) or default_mr_video_id %}display: none;{% else %}display: flex;{% endif %}">
+                style="{% if (lyrics and (lyrics.mr_youtube_video_id or lyrics.audio_file_id)) or default_mr_video_id %}display: none;{% else %}display: flex;{% endif %}">
                 <div>
-                    <div class="video-placeholder-title">영상을 선택해주세요</div>
-                    <div class="video-placeholder-sub">가사 작업의 기준이 될 유튜브 MR 원본 영상이 필요합니다.</div>
+                    <div class="video-placeholder-title">MR 을 선택해주세요</div>
+                    <div class="video-placeholder-sub">가사 작업의 기준이 될 유튜브 MR 영상 또는 음원 파일이 필요합니다.</div>
                 </div>
-                <button onclick="showVideoSearchModal()" class="btn-video-search-direct">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2.5">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                    영상 검색하기
-                </button>
+                <div class="video-placeholder-actions">
+                    <button onclick="showVideoSearchModal()" class="btn-video-search-direct">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        영상 검색하기
+                    </button>
+                    <button onclick="pickAudioFile()" class="btn-video-search-direct btn-audio-pick">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M9 18V5l12-2v13"></path>
+                            <circle cx="6" cy="18" r="3"></circle>
+                            <circle cx="18" cy="16" r="3"></circle>
+                        </svg>
+                        음원 파일 올리기
+                    </button>
+                </div>
+                <input type="file" id="audio-file-input" accept="audio/*,video/*" style="display:none"
+                    onchange="handleAudioFilePicked(this)">
+                <div id="audio-upload-status" class="audio-upload-status" style="display:none;">
+                    <div class="audio-upload-label" id="audio-upload-label"></div>
+                    <div class="audio-upload-bar"><div class="audio-upload-fill" id="audio-upload-fill"></div></div>
+                </div>
             </div>
         </div>
 
@@ -1346,6 +1457,10 @@
 {% block extra_scripts %}
 <!-- 편집기는 Space/방향키를 자체 단축키로 쓰므로 PiP 모드에서 상위 페이지로 키를 넘기지 않는다 -->
 <script>window.__pipDisableKeyForward = true;</script>
+<script src="/static/js/media_player.js"></script>
+<script src="/static/js/audio_upload.js"></script>
+<!-- 변환기 자체는 가볍다. 무거운 32MB wasm 은 실제로 변환이 필요할 때만 받는다 -->
+<script src="/static/js/audio_extract.js"></script>
 <script src="https://www.youtube.com/iframe_api"></script>
 {% autoescape false %}
 <script>
@@ -1366,10 +1481,38 @@
         return false;
     };
 
+    // 가벼운 알림 (alert 로 작업 흐름을 끊고 싶지 않은 경우용)
+    let toastTimer = null;
+    function showToast(message) {
+        let el = document.getElementById('editor-toast');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'editor-toast';
+            el.style.cssText = 'position:fixed;left:50%;bottom:32px;transform:translateX(-50%);' +
+                'background:#1e293b;color:#fff;padding:12px 20px;border-radius:12px;font-weight:700;' +
+                'font-size:0.9rem;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;' +
+                'transition:opacity .2s;pointer-events:none;max-width:80vw;text-align:center;';
+            document.body.appendChild(el);
+        }
+        el.textContent = message;
+        el.style.opacity = '1';
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { el.style.opacity = '0'; }, 2600);
+    }
+
     let currentSongId = {% if song %}{{ song.id | tojson }}{% else %}null{% endif %};
     let currentLyricsId = {% if lyrics %}{{ lyrics.id | tojson }}{% else %}null{% endif %};
     let currentLyricsTitle = {% if lyrics %}{{ lyrics.title | tojson }}{% else %}""{% endif %};
     let currentVideoId = {{ (lyrics.mr_youtube_video_id if lyrics else (default_mr_video_id or '')) | tojson }};
+    // 업로드 음원을 기준 소스로 쓰는 경우 (유튜브와 택일)
+    let currentAudio = {% if lyrics and lyrics.audio_file_id %}{
+        id: {{ lyrics.audio_file_id | tojson }},
+        url: {{ ('/api/v1/lyrics/' ~ lyrics.id ~ '/audio') | tojson }},
+        name: {{ (lyrics.audio_original_filename or '업로드 음원') | tojson }},
+        durationMs: {{ (lyrics.audio_duration_ms or 0) | tojson }}
+    }{% else %}null{% endif %};
+    const MAX_AUDIO_BYTES = {{ max_audio_bytes | tojson }};
+    const ALLOWED_AUDIO_EXTS = {{ allowed_audio_exts | tojson }};
     let activeIndex = -1;
 
     // Undo/Redo
@@ -1390,7 +1533,7 @@
     function saveDraft() {
         try {
             localStorage.setItem(DRAFT_KEY, JSON.stringify({
-                segments, currentSongId, currentLyricsId, currentVideoId,
+                segments, currentSongId, currentLyricsId, currentVideoId, currentAudio,
                 currentLyricsTitle: document.getElementById('lyrics-title-input').value,
                 savedAt: Date.now()
             }));
@@ -1491,23 +1634,58 @@
     }
     {% endif %}
 
-    // YouTube API
+    // 미디어 플레이어 부트스트랩
+    //
+    // 예전에는 편집기 전체 초기화가 onYouTubeIframeAPIReady 안에 있었다. 그래서 유튜브
+    // 스크립트가 차단되면(광고차단기/네트워크) 편집기가 통째로 죽었고, 음원만 쓰는
+    // 사용자에게는 그게 확정 버그가 된다. 초기화는 DOMContentLoaded 로 옮기고,
+    // 유튜브 스크립트는 도착하면 파사드에 알리기만 한다.
+    function initMediaPlayer() {
+        if (player) return;
+        player = MediaPlayer.create({
+            ytHostId: 'player',
+            audioHostId: 'audio-host',
+            audioElId: 'audio-el',
+            audioPreload: 'auto',   // 편집기는 계속 스크럽하므로 전체를 미리 받는다
+            ytPlayerVars: { 'autoplay': 0, 'modestbranding': 1, 'rel': 0 },
+            onReady: () => { renderTimeline(); startPreviewLoop(); },
+            onAutoplayBlocked: () => showToast('재생 버튼을 눌러 시작해 주세요'),
+            onError: () => showToast('음원을 재생할 수 없습니다')
+        });
+    }
+
     function onYouTubeIframeAPIReady() {
-        // 초기 타임라인 렌더링 (비디오 여부와 관계없이)
+        initMediaPlayer();
+        player.notifyYouTubeApiReady();
+    }
+
+    function bootstrapEditor() {
+        initMediaPlayer();
+        // 초기 타임라인 렌더링 (소스 유무와 관계없이)
         renderTimeline();
         startPreviewLoop();
 
-        if (currentVideoId) {
+        if (currentAudio) {
+            initAudio(currentAudio);
+        } else if (currentVideoId) {
             initPlayer(currentVideoId);
         } else {
             showVideoPlaceholder();
         }
     }
 
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootstrapEditor);
+    } else {
+        bootstrapEditor();
+    }
+
     function showVideoPlaceholder() {
         const playerEl = document.getElementById('player');
+        const audioEl = document.getElementById('audio-host');
         const placeholderEl = document.getElementById('video-placeholder');
         if (playerEl) playerEl.style.display = 'none';
+        if (audioEl) audioEl.style.display = 'none';
         if (placeholderEl) placeholderEl.style.display = 'flex';
     }
 
@@ -1523,25 +1701,39 @@
             showVideoPlaceholder();
             return;
         }
-
         currentVideoId = videoId;
-        if (player && typeof player.loadVideoById === 'function') {
-            hideVideoPlaceholder();
-            player.loadVideoById(videoId);
+        currentAudio = null;
+        initMediaPlayer();
+        hideVideoPlaceholder();
+        const audioHostEl = document.getElementById('audio-host');
+        if (audioHostEl) audioHostEl.style.display = 'none';
+        player.load({ type: 'youtube', videoId: videoId });
+    }
+
+    // 업로드 음원을 기준 소스로 설정
+    // audio = { id, url, name, durationMs }
+    function initAudio(audio) {
+        if (!audio) {
+            showVideoPlaceholder();
             return;
         }
-        player = new YT.Player('player', {
-            height: '100%',
-            width: '100%',
-            videoId: videoId,
-            playerVars: { 'autoplay': 0, 'modestbranding': 1, 'rel': 0 },
-            events: {
-                'onReady': () => {
-                    hideVideoPlaceholder();
-                    renderTimeline();
-                    startPreviewLoop();
-                }
-            }
+        currentAudio = audio;
+        currentVideoId = '';
+        initMediaPlayer();
+        const placeholderEl = document.getElementById('video-placeholder');
+        const playerEl = document.getElementById('player');
+        const audioHostEl = document.getElementById('audio-host');
+        if (placeholderEl) placeholderEl.style.display = 'none';
+        if (playerEl) playerEl.style.display = 'none';
+        if (audioHostEl) audioHostEl.style.display = 'flex';
+        const nameEl = document.getElementById('audio-host-name');
+        if (nameEl) nameEl.textContent = audio.name || '업로드 음원';
+        player.load({
+            type: 'audio',
+            audioId: audio.id,
+            url: audio.url,
+            name: audio.name || '',
+            durationMs: audio.durationMs || 0
         });
     }
 
@@ -1827,7 +2019,7 @@
             const previewEl = document.getElementById('preview-text');
             const placeholderEl = document.getElementById('preview-placeholder');
 
-            if (!player || typeof player.getCurrentTime !== 'function') {
+            if (!player || !player.hasSource()) {
                 if (previewEl) previewEl.style.display = 'none';
                 if (placeholderEl) placeholderEl.style.display = 'inline';
                 updatePlayingHighlight(-1);
@@ -2411,10 +2603,12 @@
             imgEl.style.visibility = 'hidden';
         }
 
-        // 곡 선택 시 비디오 정보 초기화
+        // 곡 선택 시 재생 소스 초기화 (유튜브/음원 모두)
         currentVideoId = '';
+        currentAudio = null;
         if (player) {
             player.stopVideo();
+            player.clearSource();
         }
         showVideoPlaceholder();
 
@@ -2604,6 +2798,72 @@
         hideModals();
     }
 
+    // ---------------------------------------------------------------
+    // 음원 파일 업로드
+    // ---------------------------------------------------------------
+    function pickAudioFile() {
+        const input = document.getElementById('audio-file-input');
+        if (!input) return;
+        input.value = '';   // 같은 파일을 다시 골라도 change 가 오도록
+        input.click();
+    }
+
+    function setUploadStatus(visible, label, ratio) {
+        const box = document.getElementById('audio-upload-status');
+        const placeholder = document.getElementById('video-placeholder');
+        const labelEl = document.getElementById('audio-upload-label');
+        const fillEl = document.getElementById('audio-upload-fill');
+        if (!box) return;
+        box.style.display = visible ? 'block' : 'none';
+        // 이미 소스가 있어 플레이스홀더가 숨겨진 상태여도 진행 상황은 보여야 한다
+        if (visible && placeholder) placeholder.style.display = 'flex';
+        if (labelEl && label != null) labelEl.textContent = label;
+        if (fillEl) fillEl.style.width = Math.round((ratio || 0) * 100) + '%';
+    }
+
+    function handleAudioFilePicked(input) {
+        const file = input && input.files && input.files[0];
+        if (!file) return;
+
+        let indeterminate = false;
+        setUploadStatus(true, '파일을 확인하는 중…', 0);
+        window.addEventListener('beforeunload', warnWhileUploading);
+
+        AudioUpload.handleFile(file, {
+            maxUploadBytes: MAX_AUDIO_BYTES,
+            onPhase: (phase, detail) => {
+                indeterminate = (phase === 'validating' || phase === 'loading-ffmpeg');
+                setUploadStatus(phase !== 'done', detail, indeterminate ? 0 : undefined);
+            },
+            onProgress: (ratio) => setUploadStatus(true, null, ratio)
+        })
+            .then(result => {
+                window.removeEventListener('beforeunload', warnWhileUploading);
+                setUploadStatus(false);
+                initAudio({
+                    id: result.id,
+                    // 아직 가사에 연결되기 전이므로 소유자 전용 경로로 재생한다.
+                    // 저장 후 다시 열면 /api/v1/lyrics/{id}/audio 로 바뀐다.
+                    url: result.url,
+                    name: result.original_filename || file.name,
+                    durationMs: result.duration_ms || 0
+                });
+                scheduleDraftSave();
+                showToast('음원을 연결했습니다. 저장하면 이 가사에 적용됩니다.');
+            })
+            .catch(err => {
+                window.removeEventListener('beforeunload', warnWhileUploading);
+                setUploadStatus(false);
+                alert(err.message || '음원 업로드에 실패했습니다.');
+            });
+    }
+
+    function warnWhileUploading(e) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+    }
+
     function showPublicLyricsSearchModal() { showModal('modal-public-lyrics-search'); document.getElementById('public-song-search-input').focus(); }
 
     function renderPublicSearchResults() {
@@ -2740,6 +3000,8 @@
                 try {
                     segments = JSON.parse(data.lyrics_data);
                     currentVideoId = data.mr_youtube_video_id;
+                    // 남의 음원은 내 가사에 연결할 수 없으므로(서버가 400) 소스는 가져오지 않는다
+                    currentAudio = null;
                     currentLyricsId = null; // 복사해온 것이므로 저장 시 새로운 ID를 받도록 초기화
                     currentLyricsTitle = data.title;
                     document.getElementById('lyrics-title-input').value = data.title || '';
@@ -2769,6 +3031,7 @@
                     try {
                         segments = JSON.parse(data.lyrics_data);
                         currentVideoId = data.mr_youtube_video_id;
+                        currentAudio = null;   // 위와 같은 이유
                         currentLyricsId = null; // 저장 시 내 가사로 저장되도록
                         currentLyricsTitle = data.title;
                         document.getElementById('lyrics-title-input').value = data.title || '';
@@ -2795,7 +3058,10 @@
                             if (draft.currentLyricsTitle) {
                                 document.getElementById('lyrics-title-input').value = draft.currentLyricsTitle;
                             }
-                            if (draft.currentVideoId && draft.currentVideoId !== currentVideoId) {
+                            if (draft.currentAudio && draft.currentAudio.id) {
+                                // 드래프트에는 음원 id 만 담긴다 (파일 바이트를 localStorage 에 넣으면 죽는다)
+                                initAudio(draft.currentAudio);
+                            } else if (draft.currentVideoId && draft.currentVideoId !== currentVideoId) {
                                 currentVideoId = draft.currentVideoId;
                                 initPlayer(currentVideoId);
                             }
@@ -2874,7 +3140,9 @@
 
     function saveLyrics() {
         if (!currentSongId) return alert("곡을 선택해 주세요.");
-        if (!currentVideoId) return alert("영상을 선택해 주세요.");
+        if (!currentVideoId && !currentAudio) return alert("MR 영상 또는 음원 파일을 선택해 주세요.");
+        // 업로드가 끝나기 전에 저장하면 아직 존재하지 않는 audio_id 를 남기게 된다
+        if (window.AudioUpload && AudioUpload.isBusy()) return alert("음원 업로드가 끝난 뒤 저장해 주세요.");
 
         const titleInput = document.getElementById('lyrics-title-input');
         const lyricsTitle = titleInput.value.trim();
@@ -2888,7 +3156,8 @@
         const payload = {
             song_id: currentSongId,
             title: lyricsTitle,
-            mr_youtube_video_id: currentVideoId,
+            mr_youtube_video_id: currentAudio ? null : (currentVideoId || null),
+            audio_file_id: currentAudio ? currentAudio.id : null,
             lyrics_data: JSON.stringify(segments),
             autolink_songbook: isAutolinkEnabled()
         };

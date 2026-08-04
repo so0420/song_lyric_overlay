@@ -51,4 +51,6 @@ RATE_LIMITS = {
     "search": "30/minute",     # 검색 요청
     "api": "60/minute",        # 일반 API 요청
     "song_request": "10/minute",  # 노래 신청 (비로그인 시청자 포함)
+    "upload_minute": "3/minute",  # 음원 업로드 (연타 방지)
+    "upload_hour": "20/hour",     # 음원 업로드 (하루치 폭주 방지)
 }

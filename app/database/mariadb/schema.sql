@@ -88,6 +88,32 @@ CREATE TABLE IF NOT EXISTS `songs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
+-- Audio files: 이용자가 업로드한 음원 (가사 재생 소스, 유튜브 MR 의 대안)
+--   파일 본체는 서버 디스크(storage/audio)에 두고 여기에는 위치와 메타데이터만 둔다.
+--   공개 범위는 이 테이블이 갖지 않고, 연결된 가사(song_lyrics.visibility)를 따른다.
+CREATE TABLE IF NOT EXISTS `audio_files` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `owner_id` BIGINT NULL COMMENT '업로드한 사용자 ID. 탈퇴/삭제 시 NULL',
+    `storage_path` VARCHAR(255) NOT NULL COMMENT '저장 루트 기준 상대 경로 (예 ab/cd/abcd....mp3)',
+    `original_filename` VARCHAR(255) NULL COMMENT '업로드 당시 원본 파일명 (표시용)',
+    `mime_type` VARCHAR(100) NOT NULL COMMENT '서버가 매직바이트로 판별한 실제 형식. 클라이언트 신고값은 저장하지 않음',
+    `byte_size` BIGINT NOT NULL COMMENT '파일 크기 (바이트)',
+    `sha256` CHAR(64) NOT NULL COMMENT '내용 해시. 같은 소유자의 중복 업로드 판별용',
+    `duration_ms` INT NULL COMMENT '재생 길이 (밀리초). 클라이언트가 알려준 표시용 값이며 서버는 검증하지 않음',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at` TIMESTAMP NULL COMMENT '파기 표시. 값이 있으면 디스크 파일은 이미 지워졌거나 지우는 중',
+
+    UNIQUE KEY `uq_audio_storage_path` (`storage_path`),
+    UNIQUE KEY `uq_audio_owner_sha256` (`owner_id`, `sha256`),
+    INDEX `idx_audio_owner_quota` (`owner_id`, `deleted_at`, `byte_size`),
+    INDEX `idx_audio_reap` (`deleted_at`, `created_at`),
+
+    -- 외래 키 설정: 소유자 삭제 시 NULL로 변경
+    CONSTRAINT `fk_audio_owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 -- Song lyrics: 노래 가사
 CREATE TABLE IF NOT EXISTS `song_lyrics` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -95,6 +121,7 @@ CREATE TABLE IF NOT EXISTS `song_lyrics` (
     `song_id` BIGINT NOT NULL COMMENT '노래 ID',
     `title` VARCHAR(255) NULL COMMENT '가사 제목 (예: 정식 싱크, 숏츠용 등)',
     `mr_youtube_video_id` VARCHAR(255) NULL COMMENT '음악 영상 ID: mr영상꺼',
+    `audio_file_id` BIGINT NULL COMMENT '업로드 음원 ID. mr_youtube_video_id 와 택일',
     `lyrics_data` TEXT NULL COMMENT '노래 가사: [{"start": 0, "end": 1000, "text": "가사"}] 형식',
     `is_verified` TINYINT(1) DEFAULT 0 COMMENT '가사 검증 여부 (1: 검증됨, 0: 검증되지 않음)',
     `visibility` ENUM('public','private','whitelist') NOT NULL DEFAULT 'public' COMMENT '공개 범위: public=전체공개, private=본인+관리자, whitelist=본인+관리자+허용된 유저',
@@ -103,10 +130,14 @@ CREATE TABLE IF NOT EXISTS `song_lyrics` (
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted_at` TIMESTAMP NULL COMMENT '삭제 일시 (소프트 삭제)',
 
+    INDEX `idx_lyrics_audio_file` (`audio_file_id`),
+
     -- 외래 키 설정: 소유자 삭제 시 NULL로 변경
     CONSTRAINT `fk_lyrics_owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     -- 외래 키 설정: 노래 삭제 시 삭제
-    CONSTRAINT `fk_lyrics_song` FOREIGN KEY (`song_id`) REFERENCES `songs` (`id`) ON DELETE CASCADE
+    CONSTRAINT `fk_lyrics_song` FOREIGN KEY (`song_id`) REFERENCES `songs` (`id`) ON DELETE CASCADE,
+    -- 외래 키 설정: 음원 파일 삭제 시 NULL로 변경
+    CONSTRAINT `fk_lyrics_audio` FOREIGN KEY (`audio_file_id`) REFERENCES `audio_files` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Lyrics whitelist: visibility='whitelist'인 가사에 대해 허용된 유저 목록
@@ -316,6 +347,7 @@ CREATE TABLE IF NOT EXISTS `streamer_songbooks` (
     `sort_order` INT NOT NULL COMMENT '노래 정렬 순서',
     `song_id` BIGINT NOT NULL COMMENT 'songs 테이블 참조 ID',
     `mr_youtube_video_id` VARCHAR(255) NULL COMMENT 'MR 유튜브 영상 ID',
+    `audio_file_id` BIGINT NULL COMMENT '수록곡 전용 업로드 음원 ID. 가사의 음원보다 우선',
     `lyrics_id` BIGINT NULL COMMENT '연결된 가사 ID (song_lyrics)',
     `cover_image_url` TEXT NULL COMMENT '커버 이미지 URL',
     `tags` TEXT NOT NULL DEFAULT '[]' COMMENT '노래 태그 JSON ["tag1", ...] (streamers.tags의 name과 연결)',
@@ -326,9 +358,11 @@ CREATE TABLE IF NOT EXISTS `streamer_songbooks` (
     UNIQUE KEY `unique_streamer_song` (`streamer_id`, `song_id`),
     INDEX `idx_songbook_streamer_sort` (`streamer_id`, `sort_order`),
     INDEX `idx_songbook_song_id` (`song_id`),
+    INDEX `idx_songbook_audio_file` (`audio_file_id`),
     CONSTRAINT `fk_songbook_streamer` FOREIGN KEY (`streamer_id`) REFERENCES `streamers` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_songbook_song` FOREIGN KEY (`song_id`) REFERENCES `songs` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_songbook_lyrics` FOREIGN KEY (`lyrics_id`) REFERENCES `song_lyrics` (`id`) ON DELETE SET NULL
+    CONSTRAINT `fk_songbook_lyrics` FOREIGN KEY (`lyrics_id`) REFERENCES `song_lyrics` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_songbook_audio` FOREIGN KEY (`audio_file_id`) REFERENCES `audio_files` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 노래 신청

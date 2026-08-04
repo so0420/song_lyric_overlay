@@ -236,6 +236,37 @@
         opacity: 0.5;
     }
 
+    /* 업로드 음원 재생 화면 (유튜브 영상 자리를 그대로 씀 → PiP 크기 계산에 영향 없음) */
+    .audio-host {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        gap: 14px;
+        padding: 16px;
+        color: #cbd5e1;
+        text-align: center;
+    }
+
+    .audio-host-icon {
+        width: 56px;
+        height: 56px;
+        opacity: 0.65;
+    }
+
+    .audio-host-name {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #e2e8f0;
+        word-break: break-all;
+        max-width: 90%;
+    }
+
+    .audio-host audio {
+        width: min(420px, 90%);
+    }
+
     /* Now Playing Info */
     .now-playing-info {
         padding: 16px 24px;
@@ -929,6 +960,69 @@
         font-weight: 700;
         color: #b45309;
         background: #fef3c7;
+        vertical-align: middle;
+    }
+
+    /* MR 소스 선택 탭 (유튜브 / 내 음원) */
+    .source-tabs {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .source-tab {
+        padding: 10px 16px;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: var(--text-dim);
+        cursor: pointer;
+    }
+
+    .source-tab.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+    }
+
+    .audio-list-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+
+    .audio-list-item:hover {
+        background: var(--accent-light);
+    }
+
+    .audio-list-name {
+        font-weight: 700;
+        font-size: 0.9rem;
+        word-break: break-all;
+    }
+
+    .audio-list-meta {
+        font-size: 0.78rem;
+        color: var(--text-dim);
+    }
+
+    .playlist-item-audio {
+        display: inline-block;
+        margin-left: 4px;
+        padding: 0 6px;
+        border-radius: 6px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: #4338ca;
+        background: #e0e7ff;
         vertical-align: middle;
     }
 
@@ -2212,6 +2306,16 @@
                 </div>
                 <div id="playerContainer" style="display: none; width: 100%; height: 100%;">
                     <div id="player" style="width: 100%; height: 100%;"></div>
+                    <!-- 업로드 음원 재생용 (유튜브 iframe 과 형제. iframe 은 절대 옮기거나 지우지 않는다) -->
+                    <div id="audioHost" class="audio-host" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="audio-host-icon">
+                            <path d="M9 18V5l12-2v13"></path>
+                            <circle cx="6" cy="18" r="3"></circle>
+                            <circle cx="18" cy="16" r="3"></circle>
+                        </svg>
+                        <p class="audio-host-name" id="audioHostName">업로드 음원</p>
+                        <audio id="audioEl" preload="metadata"></audio>
+                    </div>
                 </div>
             </div>
             <div class="lyrics-display-wrap">
@@ -2436,7 +2540,7 @@
 <div class="modal-overlay" id="videoModal">
     <div class="modal" style="max-width: 700px;">
         <div class="modal-header">
-            <h2 class="modal-title" id="videoModalTitle">영상 선택</h2>
+            <h2 class="modal-title" id="videoModalTitle">MR 선택</h2>
             <button class="modal-close" id="videoModalClose" title="닫기">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M18 6 6 18M6 6l12 12" />
@@ -2444,16 +2548,32 @@
             </button>
         </div>
         <div class="modal-body">
-            <div class="video-search-box" style="margin-bottom: 16px;">
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="videoSearchInput" class="search-input" style="flex: 1; padding: 12px 16px;"
-                        placeholder="영상 검색...">
-                    <button class="search-btn" id="videoSearchBtn" style="padding: 12px 20px;">검색</button>
+            <div class="source-tabs">
+                <button class="source-tab active" data-source-tab="youtube">유튜브 검색</button>
+                <button class="source-tab" data-source-tab="audio">내 음원</button>
+            </div>
+
+            <div id="sourcePaneYoutube">
+                <div class="video-search-box" style="margin-bottom: 16px;">
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="videoSearchInput" class="search-input" style="flex: 1; padding: 12px 16px;"
+                            placeholder="영상 검색...">
+                        <button class="search-btn" id="videoSearchBtn" style="padding: 12px 20px;">검색</button>
+                    </div>
+                </div>
+                <div id="videoSearchResults" style="max-height: 400px; overflow-y: auto;">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
                 </div>
             </div>
-            <div id="videoSearchResults" style="max-height: 400px; overflow-y: auto;">
-                <div class="loading">
-                    <div class="spinner"></div>
+
+            <div id="sourcePaneAudio" style="display: none;">
+                <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 12px;">
+                    가사 편집기에서 올린 음원을 MR 로 사용할 수 있습니다.
+                </p>
+                <div id="audioListResults" style="max-height: 400px; overflow-y: auto;">
+                    <div class="loading"><div class="spinner"></div></div>
                 </div>
             </div>
         </div>
@@ -2540,6 +2660,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="/static/js/media_player.js"></script>
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
     (function () {
@@ -2568,9 +2689,16 @@
 
         // State
         const state = {
-            ytPlayer: null,
-            isPlayerReady: false,
-            pendingVideoId: null,
+            ytPlayer: null,   // MediaPlayer 파사드 (유튜브 + 업로드 음원)
+            // 준비 여부는 파사드가 판단한다. 예전처럼 유튜브 onReady 에서만 켜지는 플래그로 두면
+            // 음원만 쓰는 사용자에게 syncFrame/syncTimeToOBS 등이 조용히 죽는다.
+            get isPlayerReady() { return !!(this.ytPlayer && this.ytPlayer.isReady); },
+            // 현재 재생 소스 서술자 ({type:'youtube'|'audio', ...}). getItemSource() 참고
+            currentSource: null,
+            // 가사 목록 렌더 데이터 (DOM 속성 대신 여기 담고 data-idx 로 참조)
+            lyricsListData: [],
+            // '내 음원' 탭 목록
+            myAudioList: [],
             playlist: JSON.parse(localStorage.getItem('overlay_playlist') || '[]'),
             favorites: [],
             currentTab: 'playlist',
@@ -2685,50 +2813,47 @@
             }, 3000);
         }
 
-        // YouTube Player
-        function initYouTubePlayer() {
+        // 미디어 플레이어 (유튜브 + 업로드 음원 공용 파사드)
+        // 메서드 이름과 상태 코드가 YT IFrame API 와 같으므로 아래 호출부는 그대로 쓴다.
+        function initMediaPlayer() {
             if (state.ytPlayer) return; // 이미 초기화됨
-            state.ytPlayer = new YT.Player('player', {
-                height: '100%',
-                width: '100%',
-                playerVars: {
+            state.ytPlayer = MediaPlayer.create({
+                ytHostId: 'player',
+                audioHostId: 'audioHost',
+                audioElId: 'audioEl',
+                ytPlayerVars: {
                     'playsinline': 1,
                     'rel': 0,
                     'modestbranding': 1,
                     'enablejsapi': 1,
                     'origin': window.location.origin
                 },
-                events: {
-                    'onReady': onPlayerReady,
-                    'onStateChange': onPlayerStateChange
+                onReady: onPlayerReady,
+                onStateChange: onPlayerStateChange,
+                onAutoplayBlocked: function () {
+                    showToast('재생 버튼을 눌러 시작해 주세요', 'info');
+                },
+                onError: function () {
+                    showToast('음원을 재생할 수 없습니다', 'error');
                 }
             });
+            // 음원 백엔드는 유튜브 스크립트 없이도 바로 쓸 수 있으므로 즉시 초기화한다.
+            onPlayerReady();
         }
 
-        window.onYouTubeIframeAPIReady = initYouTubePlayer;
-
-        // YouTube API가 이미 로드된 경우 (캐시에서 빠르게 로드됨)
-        if (window.YT && window.YT.Player) {
-            initYouTubePlayer();
-        }
+        // 유튜브 스크립트가 도착하면 파사드에 알리기만 한다 (파사드가 YT.Player 를 만든다)
+        window.onYouTubeIframeAPIReady = function () {
+            initMediaPlayer();
+            state.ytPlayer.notifyYouTubeApiReady();
+        };
 
         function onPlayerReady(event) {
-            console.log('onPlayerReady called, pendingVideoId:', state.pendingVideoId);
-            state.isPlayerReady = true;
             state.ytPlayer.setVolume(state.volume);
-            elements.volumeSlider.value = state.volume;
-
-            // 대기 중인 영상이 있으면 로드
-            if (state.pendingVideoId) {
-                console.log('Loading pending video:', state.pendingVideoId);
-                state.ytPlayer.cueVideoById(state.pendingVideoId);
-                showPlayer();
-                state.pendingVideoId = null;
-            }
+            if (elements.volumeSlider) elements.volumeSlider.value = state.volume;
         }
 
         function onPlayerStateChange(event) {
-            state.isPlaying = event.data === YT.PlayerState.PLAYING;
+            state.isPlaying = event.data === MediaPlayer.State.PLAYING;
             updatePlayButton();
             updateControlButtons();
 
@@ -2748,7 +2873,7 @@
             }
 
             // 곡이 끝나면 재생목록에서 삭제하고 다음 곡 로드
-            if (event.data === YT.PlayerState.ENDED && state.autoRemoveCompleted) {
+            if (event.data === MediaPlayer.State.ENDED && state.autoRemoveCompleted) {
                 if (state.currentTab === 'playlist' && state.currentPlayingIndex >= 0) {
                     // 현재 곡 삭제 (인덱스 유지하면 다음 곡이 자동으로 현재 위치로 옴)
                     state.playlist.splice(state.currentPlayingIndex, 1);
@@ -2766,12 +2891,15 @@
                         // 재생목록이 비었으면 초기화
                         state.currentPlayingIndex = -1;
                         showPlaceholder();
+                        // 재생할 것이 남지 않았으므로 소스도 비운다 (isVideoLoaded 판정용)
+                        try { state.ytPlayer.clearSource(); } catch (e) { /* 무시 */ }
+                        state.currentSource = null;
                         // 가사 데이터는 유지 → 방금 곡을 다시 재생하면 오버레이 복원
                         clearOverlayForSongEnd();
                         updateControlButtons();
                     }
                 }
-            } else if (event.data === YT.PlayerState.ENDED) {
+            } else if (event.data === MediaPlayer.State.ENDED) {
                 // 자동 삭제 비활성화 시 다음 곡만 로드
                 const items = state.currentTab === 'playlist' ? state.playlist : state.favorites;
                 if (state.currentPlayingIndex < items.length - 1) {
@@ -2955,6 +3083,68 @@
             });
         }
 
+        // ---------------------------------------------------------------
+        // 재생 소스 (유튜브 영상 / 업로드 음원)
+        // ---------------------------------------------------------------
+        // 규칙 하나: sourceType 이 없으면 유튜브다.
+        // 이 규칙 덕분에 이미 저장된 재생목록(videoId 만 있는 항목)을 마이그레이션 없이 그대로 쓴다.
+        function getItemSource(item) {
+            if (!item) return null;
+            if (item.sourceType === 'audio' || (!item.sourceType && item.audioId)) {
+                if (!item.audioId) return null;
+                // 재생 주소는 '음원의 출처'로 정해야 한다.
+                //   가사에 연결된 음원  → /api/v1/lyrics/{가사id}/audio (남의 공개 가사도 재생 가능)
+                //   내가 직접 고른 음원 → /api/v1/audio/{음원id}        (소유자 전용)
+                // 항목에 lyricsId 가 있다는 이유만으로 가사 경로를 쓰면, 그 가사가
+                // 유튜브 MR 일 때 서버가 404 를 돌려주어 절대 재생되지 않는다.
+                // audioViaLyricsId 가 undefined 인 옛 항목은 종전대로 lyricsId 를 쓴다(하위 호환).
+                const viaLyrics = item.audioViaLyricsId !== undefined
+                    ? item.audioViaLyricsId
+                    : (item.lyricsId || null);
+                return {
+                    type: 'audio',
+                    audioId: item.audioId,
+                    viaLyricsId: viaLyrics || null,
+                    url: viaLyrics
+                        ? `/api/v1/lyrics/${viaLyrics}/audio`
+                        : `/api/v1/audio/${item.audioId}`,
+                    name: item.audioName || '',
+                    durationMs: item.audioDurationMs || 0
+                };
+            }
+            const vid = item.videoId || item.mr_youtube_video_id || null;
+            return vid ? { type: 'youtube', videoId: vid } : null;
+        }
+
+        // 중복 검사용 키. videoId 비교만 하면 음원 항목끼리 undefined === undefined 로
+        // 같은 곡 취급되어 두 번째 음원이 조용히 추가되지 않는다.
+        function sourceKey(item) {
+            const s = getItemSource(item);
+            return s ? `${s.type}:${s.videoId || s.audioId}` : '';
+        }
+
+        function setItemSource(item, source) {
+            if (!item || !source) return item;
+            if (source.type === 'audio') {
+                item.sourceType = 'audio';
+                item.audioId = source.audioId;
+                item.audioName = source.name || '';
+                item.audioDurationMs = source.durationMs || 0;
+                // 이 음원이 '가사에 연결된 것'인지 '직접 고른 것'인지 기록한다.
+                // null 이면 소유자 전용 경로(/api/v1/audio/{id})로 재생한다.
+                item.audioViaLyricsId = source.viaLyricsId || null;
+                item.videoId = null;
+            } else {
+                item.sourceType = 'youtube';
+                item.videoId = source.videoId;
+                delete item.audioId;
+                delete item.audioName;
+                delete item.audioDurationMs;
+                delete item.audioViaLyricsId;
+            }
+            return item;
+        }
+
         // 저장된 영상 선택 정보 관리
         const savedVideoSelections = JSON.parse(localStorage.getItem('saved_video_selections') || '{}');
 
@@ -2984,7 +3174,7 @@
             // saveVideoSelection 키로 쓰기 위해 songExternalId 보관
             state.currentModalSong = { songExternalId: item.songId, songTitle, artistName };
 
-            $('#videoModalTitle').textContent = `영상 변경 - ${songTitle}`;
+            $('#videoModalTitle').textContent = `MR 변경 - ${songTitle}`;
             $('#videoSearchInput').value = `${songTitle} ${artistName || ''}`.trim();
             $('#videoModal').classList.add('active');
             searchVideosForSelection();
@@ -3009,7 +3199,7 @@
             // 선택 기억 (다음에 같은 곡 검색 시 맨 위 노출)
             if (item.songId) saveVideoSelection(item.songId, videoId, videoTitle, channelTitle, thumbnailUrl);
 
-            item.videoId = videoId;
+            setItemSource(item, { type: 'youtube', videoId: videoId });
             savePlaylist();
             renderPlaylist();
 
@@ -3017,12 +3207,10 @@
             if (index === state.currentPlayingIndex) {
                 // 자동가사 기록/오프셋이 실제 재생 영상과 일치하도록 현재 영상 ID도 갱신
                 state.currentVideoId = videoId;
-                if (state.isPlayerReady && state.ytPlayer && state.ytPlayer.cueVideoById) {
-                    state.ytPlayer.cueVideoById(videoId);
-                    showPlayer();
-                } else {
-                    state.pendingVideoId = videoId;
-                }
+                state.currentSource = getItemSource(item);
+                // 파사드가 준비 전 요청을 내부 대기열에 넣으므로 분기 없이 그냥 부른다
+                state.ytPlayer.load(state.currentSource);
+                showPlayer();
             }
 
             showToast('재생 영상을 변경했습니다', 'success');
@@ -3043,7 +3231,7 @@
             const videoSearchInput = $('#videoSearchInput');
             const videoSearchResults = $('#videoSearchResults');
 
-            videoModalTitle.textContent = `영상 선택 - ${songTitle}`;
+            videoModalTitle.textContent = `MR 선택 - ${songTitle}`;
             videoSearchInput.value = `${songTitle} ${artistName || ''} MR`.trim();
             videoModal.classList.add('active');
 
@@ -3146,6 +3334,88 @@
         function closeVideoModal() {
             $('#videoModal').classList.remove('active');
             state.videoModalMode = 'add';  // 다음 열림을 위해 기본 모드로 복귀
+            switchSourceTab('youtube');
+        }
+
+        // ---------------------------------------------------------------
+        // MR 소스 선택 모달 — 유튜브 / 내 음원 탭
+        // ---------------------------------------------------------------
+        function switchSourceTab(tab) {
+            $$('.source-tab').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.sourceTab === tab);
+            });
+            $('#sourcePaneYoutube').style.display = tab === 'youtube' ? 'block' : 'none';
+            $('#sourcePaneAudio').style.display = tab === 'audio' ? 'block' : 'none';
+            if (tab === 'audio') loadMyAudioList();
+        }
+
+        async function loadMyAudioList() {
+            const box = $('#audioListResults');
+            box.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            try {
+                const res = await fetch('/api/v1/audio/my?limit=100');
+                if (!res.ok) throw new Error('목록을 불러오지 못했습니다');
+                const data = await res.json();
+                if (!data.items.length) {
+                    box.innerHTML = '<p style="text-align:center;color:var(--text-dim);padding:24px 0;">' +
+                        '올린 음원이 없습니다. 가사 편집기에서 음원을 올려보세요.</p>';
+                    return;
+                }
+                state.myAudioList = data.items;
+                box.innerHTML = data.items.map((a, i) => `
+                    <div class="audio-list-item" data-audio-idx="${i}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+                        </svg>
+                        <div style="flex:1;min-width:0;">
+                            <div class="audio-list-name">${escapeHtml(a.original_filename || '음원')}</div>
+                            <div class="audio-list-meta">${formatAudioMeta(a)}</div>
+                        </div>
+                    </div>
+                `).join('');
+                box.querySelectorAll('.audio-list-item').forEach(el => {
+                    el.addEventListener('click', () => {
+                        const a = state.myAudioList[parseInt(el.dataset.audioIdx, 10)];
+                        if (a) applySourceSelection({
+                            type: 'audio', audioId: a.id,
+                            name: a.original_filename || '', durationMs: a.duration_ms || 0
+                        });
+                    });
+                });
+            } catch (e) {
+                box.innerHTML = `<p style="text-align:center;color:var(--danger,#dc2626);padding:24px 0;">${escapeHtml(e.message)}</p>`;
+            }
+        }
+
+        function formatAudioMeta(a) {
+            const parts = [];
+            if (a.duration_ms) parts.push(formatTime(a.duration_ms / 1000));
+            if (a.byte_size) parts.push((a.byte_size / 1024 / 1024).toFixed(1) + 'MB');
+            return parts.join(' · ');
+        }
+
+        // 추가/교체 두 모드를 하나로 처리 (유튜브 선택 경로와 같은 흐름)
+        function applySourceSelection(source) {
+            if (state.videoModalMode === 'replace') {
+                const index = state.replaceTargetIndex;
+                const item = state.playlist[index];
+                if (!item) { closeVideoModal(); return; }
+                setItemSource(item, source);
+                savePlaylist();
+                renderPlaylist();
+                if (index === state.currentPlayingIndex) {
+                    state.currentVideoId = source.type === 'youtube' ? source.videoId : null;
+                    state.currentSource = getItemSource(item);
+                    state.ytPlayer.load(state.currentSource);
+                    showPlayer();
+                }
+                showToast('MR 을 변경했습니다', 'success');
+            } else {
+                const { songExternalId, songTitle, artistName, coverImageUrl } = state.currentModalSong || {};
+                addToPlaylist(null, songExternalId, songTitle, artistName, null, null,
+                    coverImageUrl || '', { source: source });
+            }
+            closeVideoModal();
         }
 
         // 플레이어 표시 제어
@@ -3161,17 +3431,25 @@
 
         function renderLyricsList(lyrics, songExternalId, songTitle, artistName, coverImageUrl) {
             const coverUrl = coverImageUrl || '';
-            let html = lyrics.map(l => `
-            <div class="lyrics-list-item" data-lyrics='${JSON.stringify({
+            // 항목 데이터는 속성이 아니라 배열에 담고 인덱스만 DOM 에 남긴다.
+            // (JSON 을 작은따옴표 속성에 그대로 넣으면 제목·파일명의 따옴표 하나로
+            //  속성이 깨지고 임의 HTML 이 주입된다. escapeHtml 은 따옴표를 안 막는다)
+            state.lyricsListData = lyrics.map(l => ({
                 id: l.id,
                 songExternalId: songExternalId,
                 songTitle: songTitle,
                 artistName: artistName,
                 videoId: l.mr_youtube_video_id,
+                audioId: l.audio_file_id || null,
+                sourceType: l.audio_file_id ? 'audio' : 'youtube',
+                // 이 음원은 '가사에 연결된 것' — 가사 경로로 재생해야 남의 공개 가사도 들린다
+                audioViaLyricsId: l.audio_file_id ? l.id : null,
                 title: l.title || '',
                 coverImageUrl: coverUrl
-            })}'>
-                <img class="lyrics-thumbnail" src="${coverUrl || `https://img.youtube.com/vi/${l.mr_youtube_video_id}/mqdefault.jpg`}" alt="" loading="lazy" onerror="this.style.background='#e2e8f0'">
+            }));
+            let html = lyrics.map((l, i) => `
+            <div class="lyrics-list-item" data-idx="${i}">
+                <img class="lyrics-thumbnail" src="${coverUrl || (l.mr_youtube_video_id ? `https://img.youtube.com/vi/${l.mr_youtube_video_id}/mqdefault.jpg` : '')}" alt="" loading="lazy" onerror="this.style.background='#e2e8f0'">
                 <div class="lyrics-info">
                     <div class="lyrics-title">${escapeHtml(l.title || '제목 없음')}</div>
                     <div class="lyrics-meta">
@@ -3219,11 +3497,16 @@
 
             // Event delegation
             elements.lyricsListContainer.querySelectorAll('.lyrics-list-item').forEach(item => {
-                const data = JSON.parse(item.dataset.lyrics);
+                const data = state.lyricsListData[parseInt(item.dataset.idx, 10)];
+                if (!data) return;
 
                 item.querySelector('[data-add]').addEventListener('click', (e) => {
                     e.stopPropagation();
-                    addToPlaylist(data.id, data.songExternalId, data.songTitle, data.artistName, data.videoId, data.title, data.coverImageUrl || '');
+                    addToPlaylist(
+                        data.id, data.songExternalId, data.songTitle, data.artistName,
+                        data.videoId, data.title, data.coverImageUrl || '',
+                        { source: getItemSource(data) }
+                    );
                 });
 
                 item.querySelector('[data-favorite]').addEventListener('click', (e) => {
@@ -3242,15 +3525,19 @@
         // options.silent: 외부 이벤트(신청 자동 추가)로 호출 시 true — 모달/검색결과를 건드리지 않고
         //                 개별 토스트도 띄우지 않는다(호출 측이 요약 토스트를 책임짐).
         // 반환값: 실제로 추가됐으면 true, 중복이면 false
+        // options.source: 재생 소스 서술자 ({type:'audio'|'youtube', ...}). 없으면 videoId 로 유튜브 취급.
         function addToPlaylist(lyricsId, songId, songTitle, artistName, videoId, lyricsTitle, coverImageUrl, options = {}) {
             const silent = options.silent === true;
-            // 중복 체크: 가사ID > 곡ID+영상 > (임시 곡) 제목 순으로 비교
+            const source = options.source || (videoId ? { type: 'youtube', videoId } : null);
+            const candidate = setItemSource({}, source || { type: 'youtube', videoId: null });
+            // 중복 체크: 가사ID > 곡ID+소스 > (임시 곡) 제목 순으로 비교
             const isDuplicate = state.playlist.some(item => {
                 if (lyricsId && item.lyricsId) {
                     return item.lyricsId === lyricsId;
                 }
                 if (songId && item.songId) {
-                    return item.songId === songId && item.videoId === videoId;
+                    // 소스 종류까지 비교한다 — videoId 만 보면 음원 항목끼리 전부 중복 처리된다
+                    return item.songId === songId && sourceKey(item) === sourceKey(candidate);
                 }
                 // 임시 곡(가사/곡ID 없음): 제목으로 구분 (서로 다른 임시 곡이 합쳐지지 않도록)
                 if (!lyricsId && !songId) {
@@ -3265,6 +3552,7 @@
             }
 
             const newItem = { lyricsId, songId, songTitle, artistName, videoId, lyricsTitle, coverImageUrl: coverImageUrl || '', requestId: options.requestId || null };
+            if (source) setItemSource(newItem, source);
             state.playlist.push(newItem);
             savePlaylist();
             renderPlaylist();
@@ -3419,15 +3707,22 @@
 
             elements.playlistItems.innerHTML = items.map((item, index) => {
                 const isActive = index === state.currentPlayingIndex && state.currentTab === 'playlist';
-                const videoId = item.videoId || item.mr_youtube_video_id;
+                const itemSource = getItemSource(item);
+                const videoId = itemSource?.type === 'youtube' ? itemSource.videoId : null;
                 const hasVideo = !!videoId;
+                const isAudio = itemSource?.type === 'audio';
+                const emptyThumbTitle = isAudio ? '업로드 음원' : '영상 없음';
                 const thumbHtml = item.coverImageUrl
                     ? `<img class="playlist-item-thumb" src="${item.coverImageUrl}" alt="" loading="lazy" ${hasVideo ? `onerror="this.src='https://img.youtube.com/vi/${videoId}/default.jpg'"` : ''}>`
                     : (hasVideo
                         ? `<img class="playlist-item-thumb" src="https://img.youtube.com/vi/${videoId}/default.jpg" alt="" loading="lazy">`
-                        : `<div class="playlist-item-thumb playlist-item-thumb--empty" title="영상 없음">
+                        : `<div class="playlist-item-thumb playlist-item-thumb--empty" title="${emptyThumbTitle}">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                            </div>`);
+                // 소스 상태 표시: 유튜브면 없음, 음원이면 '음원' 칩, 아무것도 없으면 '영상 없음'
+                const sourceBadge = isAudio
+                    ? ' <span class="playlist-item-audio">음원</span>'
+                    : (hasVideo ? '' : ' <span class="playlist-item-novideo">영상 없음</span>');
                 return `
                 <div class="playlist-item ${isActive ? 'active playing' : ''}"
                      draggable="${state.currentTab === 'playlist'}"
@@ -3444,7 +3739,7 @@
                     ${thumbHtml}
                     <div class="playlist-item-info">
                         <div class="playlist-item-title">${escapeHtml(item.songTitle || item.song_title)}</div>
-                        <div class="playlist-item-artist">${escapeHtml(item.artistName || item.artist_name || '')}${hasVideo ? '' : ' <span class="playlist-item-novideo">영상 없음</span>'}</div>
+                        <div class="playlist-item-artist">${escapeHtml(item.artistName || item.artist_name || '')}${sourceBadge}</div>
                     </div>
                     ${state.currentTab === 'playlist' ? `
                     <button class="playlist-item-remove" data-remove="${index}" title="삭제">
@@ -3560,21 +3855,21 @@
             elements.nowPlayingInfo.classList.add('active');
             elements.nowPlayingTitle.textContent = songTitle + (artistName ? ` - ${artistName}` : '');
 
-            // Load video (cue only, don't auto-play)
-            console.log('playItem videoId:', videoId, 'isPlayerReady:', state.isPlayerReady);
-            if (!videoId) {
-                // 임시 신청 등 영상이 없는 곡 — 영상 변경 모달을 열어 직접 지정하게 유도
-                showToast('재생할 영상을 선택해주세요', 'info');
+            // 재생 소스 로드 (큐만 하고 자동 재생하지 않음)
+            const source = getItemSource(item);
+            state.currentSource = source;
+            if (!source) {
+                // 임시 신청 등 소스가 없는 곡 — 변경 모달을 열어 직접 지정하게 유도
+                showToast('재생할 MR(영상 또는 음원)을 선택해주세요', 'info');
                 if (state.currentTab === 'playlist') openVideoReplace(index);
-            } else if (state.isPlayerReady && state.ytPlayer.cueVideoById) {
-                console.log('Cueing video immediately:', videoId);
-                state.ytPlayer.cueVideoById(videoId);
-                showPlayer();
             } else {
-                // YouTube 플레이어가 아직 준비되지 않음 - 대기열에 저장
-                console.log('Player not ready, storing pendingVideoId:', videoId);
-                state.pendingVideoId = videoId;
-                showPlayer(); // 플레이어 영역 표시
+                // 파사드가 준비 전 요청을 내부 대기열에 넣으므로 분기가 필요 없다
+                state.ytPlayer.load(source);
+                if (source.type === 'audio') {
+                    const nameEl = $('#audioHostName');
+                    if (nameEl) nameEl.textContent = source.name || `${songTitle}${artistName ? ' - ' + artistName : ''}`;
+                }
+                showPlayer();
             }
 
             // Load lyrics (if available)
@@ -3884,6 +4179,16 @@
 
         // ===== 노래책 신청 곡 자동 재생목록 등록 =====
 
+        // 신청곡 응답(서버 core/song_request_push.py) → 재생 소스 서술자.
+        // 수록곡 전용 음원은 가사가 아니라 수록곡에 붙어 있으므로 소유자 전용 경로로 재생한다
+        // (가사 경로를 쓰면 그 가사에 audio_file_id 가 없어 404 가 난다).
+        function requestSource(data) {
+            if (data.source_type === 'audio' && data.audio_file_id) {
+                return { type: 'audio', audioId: data.audio_file_id, viaLyricsId: null };
+            }
+            return data.mr_video_id ? { type: 'youtube', videoId: data.mr_video_id } : null;
+        }
+
         // WS 푸시(song_request_new) 수신 처리
         function handleSongRequestPush(data) {
             if (!data) return;
@@ -3899,7 +4204,7 @@
                     data.mr_video_id,
                     data.lyrics_title,
                     data.cover_image_url || '',
-                    { silent: true, requestId: data.request_id }
+                    { silent: true, requestId: data.request_id, source: requestSource(data) }
                 );
                 markRequestsDelivered([data.request_id]);
             }
@@ -3927,7 +4232,7 @@
                         item.mr_video_id,
                         item.lyrics_title,
                         item.cover_image_url || '',
-                        { silent: true, requestId: item.request_id }
+                        { silent: true, requestId: item.request_id, source: requestSource(item) }
                     );
                     if (ok) added++;
                 });
@@ -5004,6 +5309,9 @@
 
             // Video Modal
             $('#videoModalClose').addEventListener('click', closeVideoModal);
+            $$('.source-tab').forEach(btn => {
+                btn.addEventListener('click', () => switchSourceTab(btn.dataset.sourceTab));
+            });
             $('#videoModal').addEventListener('click', (e) => {
                 if (e.target.id === 'videoModal') closeVideoModal();
             });
@@ -5154,7 +5462,7 @@
 
         // 영상이 올라와 있을 때만 가로챈다 — 아무것도 안 틀었으면 평소처럼 페이지 이동
         function isVideoLoaded() {
-            return !!state.pendingVideoId || $('#playerContainer').style.display === 'block';
+            return !!(state.ytPlayer && state.ytPlayer.hasSource()) || $('#playerContainer').style.display === 'block';
         }
 
         // 좌우로는 화면 밖까지 밀어낼 수 있다. 단 헤더 중심부는 항상 화면 안에 남겨
@@ -5337,7 +5645,11 @@
         function endSinging() {
             if (state.isPlayerReady) {
                 try { state.ytPlayer.stopVideo(); } catch (e) { /* 무시 */ }
+                // 소스까지 비워야 isVideoLoaded() 가 false 가 되어 페이지 이동 가로채기가 풀린다
+                // (그러지 않으면 종료 후에도 사이드바 링크가 계속 작은 창으로 열린다)
+                try { state.ytPlayer.clearSource(); } catch (e) { /* 무시 */ }
             }
+            state.currentSource = null;
             state.isPlaying = false;
             state.currentPlayingIndex = -1;
             stopLyricsSync();
@@ -5515,6 +5827,9 @@
 
         // Initialize
         async function init() {
+            // 유튜브 스크립트가 차단돼도 음원 재생은 되어야 하므로 여기서 먼저 만든다.
+            // (스크립트가 나중에 도착하면 onYouTubeIframeAPIReady 가 파사드에 알린다)
+            initMediaPlayer();
             initEventListeners();
             initPipMode();
             renderPlaylist();           // localStorage 캐시로 즉시 페인트

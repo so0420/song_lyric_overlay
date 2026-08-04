@@ -57,6 +57,7 @@
             --lv-line2-ratio: 0.85;
             --lv-line3-ratio: 0.85;
             --lv-align: center;
+            --lv-gap: 1;
         }
 
         html, body {
@@ -124,6 +125,15 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .lv-size-label {
+            font-size: 0.68rem;
+            color: #94a3b8;
+            padding: 0 2px 0 6px;
+            letter-spacing: -0.02em;
         }
 
         .lv-size {
@@ -197,8 +207,10 @@
             border-radius: 4px;
         }
 
-        /* 첫 줄·마지막 줄도 화면 한가운데로 올 수 있도록 위아래를 비워 둔다 */
-        .lv-pad { height: 45vh; }
+        /* 첫 줄·마지막 줄도 화면 한가운데로 올 수 있도록 위아래를 비워 둔다.
+           50%(=화면 절반)보다 적으면 끝부분 줄들이 중앙까지 오지 못하고,
+           창과 OBS 는 높이가 달라 못 미치는 정도까지 서로 달라진다. */
+        .lv-pad { height: 50vh; }
 
         .lv-line {
             /* 아직 부르지 않은 줄 = 오버레이의 '다음 가사' 스타일 */
@@ -207,7 +219,7 @@
             color: var(--lv-next-color);
             line-height: 1.35;
             text-align: var(--lv-align);
-            padding: 8px 0;
+            padding: calc(8px * var(--lv-gap)) 0;
             opacity: 0.6;
             transition: opacity 0.25s ease, color 0.25s ease;
             word-break: keep-all;
@@ -305,10 +317,29 @@
                 <span class="lv-song-artist" id="lvArtist"></span>
             </div>
             <div class="lv-tools">
-                <div class="lv-size" title="가사 글자 크기 (100% = 오버레이 설정 그대로). OBS의 이 가사 화면도 함께 바뀝니다 — 3줄 메인 오버레이는 그대로입니다">
+                <div class="lv-size" title="이 창의 글자 크기 (100% = 오버레이 설정 그대로)">
+                    <span class="lv-size-label">창 크기</span>
                     <button type="button" class="lv-btn" id="sizeDown">−</button>
                     <span class="lv-size-val" id="sizeVal">100%</span>
                     <button type="button" class="lv-btn" id="sizeUp">+</button>
+                </div>
+                <div class="lv-size" title="이 창의 가사 줄 사이 간격">
+                    <span class="lv-size-label">창 간격</span>
+                    <button type="button" class="lv-btn" id="gapDown">−</button>
+                    <span class="lv-size-val" id="gapVal">100%</span>
+                    <button type="button" class="lv-btn" id="gapUp">+</button>
+                </div>
+                <div class="lv-size" title="OBS 전체 가사 화면의 글자 크기 (3줄 메인 오버레이는 그대로입니다)">
+                    <span class="lv-size-label">OBS 크기</span>
+                    <button type="button" class="lv-btn" id="obsSizeDown">−</button>
+                    <span class="lv-size-val" id="obsSizeVal">100%</span>
+                    <button type="button" class="lv-btn" id="obsSizeUp">+</button>
+                </div>
+                <div class="lv-size" title="OBS 전체 가사 화면의 줄 사이 간격">
+                    <span class="lv-size-label">OBS 간격</span>
+                    <button type="button" class="lv-btn" id="obsGapDown">−</button>
+                    <span class="lv-size-val" id="obsGapVal">100%</span>
+                    <button type="button" class="lv-btn" id="obsGapUp">+</button>
                 </div>
                 <button type="button" class="lv-btn" id="alignToggle" title="가사 정렬 (OBS에도 바로 반영됩니다)">가운데</button>
                 <button type="button" class="lv-btn" id="bgToggle" title="OBS에 넣을 때는 투명 배경을 쓰세요">배경 투명</button>
@@ -378,19 +409,30 @@
         // ===== 보기 설정 (URL > localStorage > 기본값) =====
         const params = new URLSearchParams(location.search);
         const SCALE_MIN = 40, SCALE_MAX = 200;
+        const GAP_MIN = 0, GAP_MAX = 400;
         const ALIGNS = ['left', 'center', 'right'];
         const ALIGN_LABEL = { left: '왼쪽', center: '가운데', right: '오른쪽' };
 
         // 글자 크기는 오버레이 설정을 그대로 쓰되, 창 크기에 맞춰 배율만 따로 둔다.
         // (좁은 창에서 52px 는 너무 크고, OBS 는 1920 폭이라 원래 크기가 맞다)
+        // 이 화면 자신의 값(URL > localStorage > 기본값).
+        // 창과 OBS 는 넓이가 달라 각자 값을 따로 갖는다.
+        function readPercent(urlKey, storeKey, min, max, fallback) {
+            const fromUrl = parseInt(params.get(urlKey), 10);
+            if (fromUrl >= min && fromUrl <= max) return fromUrl;
+            const saved = parseInt(localStorage.getItem(storeKey), 10);
+            if (saved >= min && saved <= max) return saved;
+            return fallback;
+        }
+
         function readScale() {
-            const fromUrl = parseInt(params.get('scale'), 10);
-            if (fromUrl >= SCALE_MIN && fromUrl <= SCALE_MAX) return fromUrl;
-            const saved = parseInt(localStorage.getItem('lyrics_view_scale'), 10);
-            if (saved >= SCALE_MIN && saved <= SCALE_MAX) return saved;
-            // 창과 OBS 가 같은 배율을 쓰므로 기본값도 같아야 한다.
-            // (100% = 오버레이 설정의 글자 크기 그대로)
-            return 100;
+            // 100% = 오버레이 설정의 글자 크기 그대로
+            return readPercent('scale', 'lyrics_view_scale', SCALE_MIN, SCALE_MAX,
+                showChrome ? 60 : 100);   // 창은 좁으니 기본을 줄여 둔다
+        }
+
+        function readGap() {
+            return readPercent('gap', 'lyrics_view_gap', GAP_MIN, GAP_MAX, 100);
         }
 
         function readTransparent() {
@@ -411,9 +453,15 @@
             return 'center';
         }
 
+        // 이 화면의 표시값
         let scale = readScale();
+        let gap = readGap();
         let transparent = readTransparent();
         let align = readAlign();
+
+        // 창이 OBS 쪽에 지시하는 값. 창은 좁고 OBS 는 1920 폭이라 각자 따로 둔다.
+        let obsScale = readPercent('__none', 'lyrics_view_obs_scale', SCALE_MIN, SCALE_MAX, 100);
+        let obsGap = readPercent('__none', 'lyrics_view_obs_gap', GAP_MIN, GAP_MAX, 100);
 
         function px(v) { return Math.max(1, Math.round(v)) + 'px'; }
 
@@ -450,6 +498,7 @@
             root.setProperty('--lv-line3-ratio', String((settings.lyrics_line3_size_ratio || 85) / 100));
 
             root.setProperty('--lv-align', align);
+            root.setProperty('--lv-gap', String(gap / 100));
 
             document.body.classList.toggle('bg-transparent', transparent);
             // 외곽선 여부도 오버레이 설정을 그대로 따른다. 투명 배경이라고 강제로 켜면
@@ -459,17 +508,24 @@
             document.body.classList.toggle('has-chrome', showChrome);
             document.body.classList.toggle('no-chrome', !showChrome);
 
-            if (sizeValEl) sizeValEl.textContent = scale + '%';
-            const bgBtn = document.getElementById('bgToggle');
-            if (bgBtn) bgBtn.textContent = transparent ? '배경 어둡게' : '배경 투명';
-            const alignBtn = document.getElementById('alignToggle');
-            if (alignBtn) alignBtn.textContent = ALIGN_LABEL[align];
+            if (!showChrome) return;
+            const setText = (id, v) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = v;
+            };
+            setText('sizeVal', scale + '%');
+            setText('gapVal', gap + '%');
+            setText('obsSizeVal', obsScale + '%');
+            setText('obsGapVal', obsGap + '%');
+            setText('bgToggle', transparent ? '배경 어둡게' : '배경 투명');
+            setText('alignToggle', ALIGN_LABEL[align]);
         }
 
         // 지금 보고 있는 모양을 URL 에 남겨 둔다 (그대로 복사해 OBS 에 붙일 수 있게)
         function syncUrl() {
             const q = new URLSearchParams(location.search);
             q.set('scale', String(scale));
+            q.set('gap', String(gap));
             q.set('bg', transparent ? 'transparent' : 'dark');
             q.set('align', align);
             history.replaceState(null, '', location.pathname + '?' + q.toString());
@@ -565,6 +621,8 @@
         function scrollToIndex(i, smooth) {
             const el = lineEls[i];
             if (!el) return;
+            // 보간이 돌고 있으면 멈춘다 — 두 스크롤이 겹치면 서로를 밀어낸다
+            if (tweenId) { cancelAnimationFrame(tweenId); tweenId = null; }
             const target = el.offsetTop + el.offsetHeight / 2 - scroller.clientHeight / 2;
             const max = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
             const top = Math.max(0, Math.min(target, max));
@@ -580,6 +638,42 @@
             animEndsAt = performance.now() + (behavior === 'smooth' ? 900 : 150);
 
             scroller.scrollTo({ top, behavior });
+        }
+
+        // 창에서 넘어온 위치로 옮길 때 쓰는 짧은 보간.
+        // 브라우저 기본 부드러운 스크롤은 150ms 안에 새 위치가 계속 들어오는 상황에서
+        // 이전 애니메이션과 겹쳐 뒤처지고, 즉시 이동은 뚝뚝 끊겨 보인다.
+        // 매번 '지금 위치에서 다시 시작'하는 짧은 보간이 둘 다 피한다.
+        const MIRROR_TWEEN_MS = 220;
+        let tweenId = null;
+
+        function tweenScrollTo(top) {
+            const from = scroller.scrollTop;
+            const dist = top - from;
+            if (tweenId) { cancelAnimationFrame(tweenId); tweenId = null; }
+            if (Math.abs(dist) < 1) return;
+
+            const start = performance.now();
+            animFrom = from;
+            animTo = top;
+            animActive = true;
+            animEndsAt = start + MIRROR_TWEEN_MS + 150;
+
+            const step = (now) => {
+                const t = Math.min(1, (now - start) / MIRROR_TWEEN_MS);
+                const eased = 1 - Math.pow(1 - t, 3);     // easeOutCubic
+                scroller.scrollTop = from + dist * eased;
+                tweenId = t < 1 ? requestAnimationFrame(step) : null;
+            };
+            tweenId = requestAnimationFrame(step);
+        }
+
+        function tweenToIndex(i) {
+            const el = lineEls[i];
+            if (!el) return;
+            const target = el.offsetTop + el.offsetHeight / 2 - scroller.clientHeight / 2;
+            const max = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+            tweenScrollTo(Math.max(0, Math.min(target, max)));
         }
 
         function paint(cur, time) {
@@ -622,6 +716,16 @@
             const changed = following !== on;
             following = on;
             followBtn.classList.toggle('visible', !on);
+
+            if (changed && !on) {
+                // 사용자가 스크롤을 잡은 순간이다. 돌고 있던 자동 정렬을 즉시 멈춘다.
+                // 그러지 않으면 부드러운 스크롤이 남은 거리를 마저 가면서 사용자가
+                // 맞춘 위치를 되돌리고, OBS 에는 그 직전 위치가 마지막으로 남는다.
+                if (tweenId) { cancelAnimationFrame(tweenId); tweenId = null; }
+                animActive = false;
+                scroller.scrollTo({ top: scroller.scrollTop, behavior: 'auto' });
+            }
+
             if (changed) sendViewState();
         }
 
@@ -676,7 +780,9 @@
                         following: following,
                         centerIndex: following ? -1 : centerLineIndex(),
                         align: align,
-                        scale: scale,
+                        // OBS 용으로 따로 정해 둔 값 (창의 표시값과 별개다)
+                        scale: obsScale,
+                        gap: obsGap,
                     },
                 }));
             } catch {}
@@ -701,6 +807,12 @@
                 looksChanged = true;
             }
 
+            const g = parseInt(data.gap, 10);
+            if (g >= GAP_MIN && g <= GAP_MAX && g !== gap) {
+                gap = g;
+                looksChanged = true;
+            }
+
             if (looksChanged) {
                 applyView();
                 // 글자 크기가 바뀌면 줄 위치가 전부 달라진다 — 보던 자리를 다시 맞춘다
@@ -717,8 +829,7 @@
             }
 
             setFollowing(false);
-            // 끌고 있는 중이라 자주 들어온다 — 부드러운 스크롤을 쓰면 뒤처지므로 바로 옮긴다
-            if (data.centerIndex >= 0) scrollToIndex(data.centerIndex, false);
+            if (data.centerIndex >= 0) tweenToIndex(data.centerIndex);
         }
 
         if (isController) {
@@ -979,17 +1090,43 @@
 
         // ===== 머리말 조작 =====
         if (showChrome) {
-            function changeScale(delta) {
-                scale = Math.min(SCALE_MAX, Math.max(SCALE_MIN, scale + delta));
-                localStorage.setItem('lyrics_view_scale', String(scale));
+            // 창 쪽 값: 이 화면만 바뀐다
+            function changeSelf(kind, delta) {
+                if (kind === 'scale') {
+                    scale = Math.min(SCALE_MAX, Math.max(SCALE_MIN, scale + delta));
+                    localStorage.setItem('lyrics_view_scale', String(scale));
+                } else {
+                    gap = Math.min(GAP_MAX, Math.max(GAP_MIN, gap + delta));
+                    localStorage.setItem('lyrics_view_gap', String(gap));
+                }
                 applyView();
                 syncUrl();
+                // 줄 크기·간격이 바뀌면 위치가 전부 달라진다 — 보던 줄을 다시 가운데로
                 if (following && lastFocus >= 0) scrollToIndex(lastFocus, false);
-                sendViewState();   // OBS 가사 화면도 같은 배율로 (3줄 메인 오버레이는 그대로)
             }
 
-            document.getElementById('sizeDown').addEventListener('click', () => changeScale(-10));
-            document.getElementById('sizeUp').addEventListener('click', () => changeScale(10));
+            // OBS 쪽 값: 창은 그대로 두고 OBS 화면만 바뀐다
+            // (오버레이 설정은 건드리지 않으므로 3줄 메인 오버레이는 영향이 없다)
+            function changeObs(kind, delta) {
+                if (kind === 'scale') {
+                    obsScale = Math.min(SCALE_MAX, Math.max(SCALE_MIN, obsScale + delta));
+                    localStorage.setItem('lyrics_view_obs_scale', String(obsScale));
+                } else {
+                    obsGap = Math.min(GAP_MAX, Math.max(GAP_MIN, obsGap + delta));
+                    localStorage.setItem('lyrics_view_obs_gap', String(obsGap));
+                }
+                applyView();       // 표시된 숫자만 갱신된다
+                sendViewState();
+            }
+
+            document.getElementById('sizeDown').addEventListener('click', () => changeSelf('scale', -10));
+            document.getElementById('sizeUp').addEventListener('click', () => changeSelf('scale', 10));
+            document.getElementById('gapDown').addEventListener('click', () => changeSelf('gap', -25));
+            document.getElementById('gapUp').addEventListener('click', () => changeSelf('gap', 25));
+            document.getElementById('obsSizeDown').addEventListener('click', () => changeObs('scale', -10));
+            document.getElementById('obsSizeUp').addEventListener('click', () => changeObs('scale', 10));
+            document.getElementById('obsGapDown').addEventListener('click', () => changeObs('gap', -25));
+            document.getElementById('obsGapUp').addEventListener('click', () => changeObs('gap', 25));
 
             document.getElementById('alignToggle').addEventListener('click', () => {
                 align = ALIGNS[(ALIGNS.indexOf(align) + 1) % ALIGNS.length];

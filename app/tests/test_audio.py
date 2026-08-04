@@ -810,3 +810,26 @@ process.exit(bad.length ? 1 : 0);
         harness.write_text(self.HARNESS, encoding="utf-8")
         r = subprocess.run([node, str(harness), str(overlay)], capture_output=True, text=True)
         assert r.returncode == 0, r.stdout + r.stderr
+
+    def test_shortcut_guard_allows_non_text_inputs(self):
+        """단축키 차단은 '글자 입력 칸'에만 걸려야 한다.
+
+        음량 슬라이더(input[type=range])에 포커스가 있을 때 S/E(시작·종료점 캡처)가
+        죽는 문제가 있었다. tagName 이 INPUT 이기만 하면 무조건 막았기 때문이다.
+        """
+        from pathlib import Path
+
+        editor = (Path(__file__).resolve().parents[2]
+                  / "app/templates/pages/lyric_editor/lyric_editor.html").read_text(encoding="utf-8")
+
+        # 글자 입력이 아닌 컨트롤은 통과시켜야 한다
+        assert "function isTypingTarget" in editor
+        for t in ("'range'", "'checkbox'", "'button'"):
+            assert t in editor, f"isTypingTarget 의 예외 목록에 {t} 가 없다"
+
+        # 옛 방식(tagName 만 보고 차단)이 남아 있으면 같은 결함이 재발한다
+        assert "e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA'" not in editor
+        assert "e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA'" not in editor
+
+        # 탐색 바가 방향키를 자체 처리하면 전역 핸들러와 겹쳐 ±10초가 된다
+        assert "seek.addEventListener('keydown'" not in editor

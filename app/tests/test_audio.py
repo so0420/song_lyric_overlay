@@ -750,3 +750,63 @@ class TestVerifiedRegressions:
                 f"{name} 에 '해제 후 7일' 이라는 코드와 다른 문구가 남아 있다"
             assert "연결이 모두 해제된 뒤 7일이 지나면" not in text, \
                 f"{name} 에 '해제 후 7일' 이라는 코드와 다른 문구가 남아 있다"
+
+
+# ===============================================================
+# I. 프론트 소스 판정 (진입 경로별) — node 가 있으면 실제로 실행해 검증
+# ===============================================================
+class TestFrontendSourceResolution:
+    """'음원이 연결됐는데 MR을 선택하라고 한다' 류 결함의 회귀 방지.
+
+    재생목록 항목은 진입 경로마다 모양이 다르다 (camelCase 저장분 / snake_case 서버 행 /
+    옛 저장분). getItemSource 가 셋 다 흡수하지 못하면 그 경로에서만 조용히 재생이 막힌다.
+    프론트 테스트 인프라가 없으므로 함수만 떼어내 node 로 돌린다.
+    """
+
+    HARNESS = r"""
+const fs = require('fs');
+const html = fs.readFileSync(process.argv[2], 'utf8');
+const grab = (name) => {
+  const i = html.indexOf(`function ${name}(`);
+  if (i < 0) throw new Error(name + ' 없음');
+  let d = 0, started = false;
+  for (let j = i; j < html.length; j++) {
+    if (html[j] === '{') { d++; started = true; }
+    else if (html[j] === '}') { d--; if (started && d === 0) return html.slice(i, j + 1); }
+  }
+};
+eval(grab('getItemSource') + '\n' + grab('setItemSource') + '\n' + grab('lyricsSource'));
+const cases = [
+  ['가사목록', setItemSource({lyricsId: 5}, {type:'audio', audioId: 42, viaLyricsId: 5}), '/api/v1/lyrics/5/audio'],
+  ['URL진입',  setItemSource({lyricsId: 5}, lyricsSource({id:5, audio_file_id:42})),       '/api/v1/lyrics/5/audio'],
+  ['즐겨찾기', {id: 5, audio_file_id: 42, mr_youtube_video_id: null},                      '/api/v1/lyrics/5/audio'],
+  ['내음원',   setItemSource({lyricsId: 5}, {type:'audio', audioId: 99}),                  '/api/v1/audio/99'],
+  ['신청곡',   setItemSource({lyricsId: 5}, {type:'audio', audioId: 77, viaLyricsId: null}), '/api/v1/audio/77'],
+];
+const bad = [];
+for (const [label, item, expected] of cases) {
+  const s = getItemSource(item);
+  const got = s ? s.url : '(소스없음)';
+  if (got !== expected) bad.push(`${label}: ${got} != ${expected}`);
+}
+const yt = getItemSource({videoId: 'abc', lyricsId: 5});
+if (!yt || yt.type !== 'youtube') bad.push('옛 유튜브 재생목록 하위호환 깨짐');
+if (!getItemSource({mr_youtube_video_id: 'x'})) bad.push('서버 행 유튜브 인식 실패');
+console.log(bad.length ? 'FAIL: ' + bad.join(' | ') : 'OK');
+process.exit(bad.length ? 1 : 0);
+"""
+
+    def test_every_entry_path_resolves(self, tmp_path):
+        import shutil
+        import subprocess
+        from pathlib import Path
+
+        node = shutil.which("node")
+        if not node:
+            pytest.skip("node 없음 — 프론트 검증 생략")
+
+        overlay = Path(__file__).resolve().parents[2] / "app/templates/pages/overlay/overlay.html"
+        harness = tmp_path / "h.js"
+        harness.write_text(self.HARNESS, encoding="utf-8")
+        r = subprocess.run([node, str(harness), str(overlay)], capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout + r.stderr

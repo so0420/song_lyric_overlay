@@ -236,35 +236,174 @@
         opacity: 0.5;
     }
 
-    /* 업로드 음원 재생 화면 (유튜브 영상 자리를 그대로 씀 → PiP 크기 계산에 영향 없음) */
+    /* 업로드 음원 재생 화면 (유튜브 영상 자리를 그대로 씀 → PiP 크기 계산에 영향 없음)
+       재생 조작은 아래 controls-bar 가 이미 담당하므로 여기서는 중복해서 두지 않는다.
+       컨테이너 쿼리로 크기를 잡아 PiP 처럼 작아져도 그대로 축소된다. */
     .audio-host {
+        position: relative;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
         height: 100%;
-        gap: 14px;
-        padding: 16px;
-        color: #cbd5e1;
-        text-align: center;
+        overflow: hidden;
+        background: #0b1220;
+        container-type: inline-size;
     }
 
-    .audio-host-icon {
-        width: 56px;
-        height: 56px;
-        opacity: 0.65;
+    /* 커버를 크게 흐려 배경으로 */
+    .audio-host-backdrop {
+        position: absolute;
+        inset: -12%;
+        background-position: center;
+        background-size: cover;
+        filter: blur(28px) saturate(140%) brightness(0.5);
+        transform: scale(1.1);
+        opacity: 0;
+        transition: opacity 0.4s;
     }
 
-    .audio-host-name {
-        font-size: 0.95rem;
-        font-weight: 600;
+    .audio-host-backdrop.has-art {
+        opacity: 1;
+    }
+
+    .audio-host-body {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 5cqw;
+        width: 100%;
+        padding: 0 7cqw;
+        min-width: 0;
+    }
+
+    .audio-host-art {
+        position: relative;
+        flex-shrink: 0;
+        width: 100px;
+        width: min(30cqw, 200px);
+        aspect-ratio: 1;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.07);
+        background-position: center;
+        background-size: cover;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+    }
+
+    .audio-host-art.has-art .audio-host-art-fallback {
+        display: none;
+    }
+
+    .audio-host-art-fallback {
+        width: 38%;
+        height: 38%;
+        opacity: 0.7;
+    }
+
+    /* 재생 중임을 알리는 이퀄라이저 — 커버 위 오른쪽 아래 */
+    .audio-host-eq {
+        position: absolute;
+        right: 7%;
+        bottom: 7%;
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        height: 16%;
+        opacity: 0;
+        transition: opacity 0.25s;
+    }
+
+    .audio-host-eq span {
+        width: 3px;
+        height: 100%;
+        border-radius: 2px;
+        background: #fff;
+        transform-origin: bottom;
+        animation: audioEq 900ms ease-in-out infinite alternate;
+        animation-play-state: paused;
+    }
+
+    .audio-host-eq span:nth-child(2) { animation-duration: 640ms; }
+    .audio-host-eq span:nth-child(3) { animation-duration: 1100ms; }
+    .audio-host-eq span:nth-child(4) { animation-duration: 780ms; }
+
+    .audio-host.is-playing .audio-host-eq {
+        opacity: 0.95;
+    }
+
+    .audio-host.is-playing .audio-host-eq span {
+        animation-play-state: running;
+    }
+
+    @keyframes audioEq {
+        from { transform: scaleY(0.25); }
+        to   { transform: scaleY(1); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .audio-host-eq span { animation: none; transform: scaleY(0.6); }
+    }
+
+    .audio-host-meta {
+        min-width: 0;
+        text-align: left;
         color: #e2e8f0;
-        word-break: break-all;
-        max-width: 90%;
     }
 
+    .audio-host-title {
+        font-size: 1.05rem;
+        font-size: clamp(0.85rem, 4.4cqw, 1.5rem);
+        font-weight: 800;
+        line-height: 1.3;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .audio-host-artist {
+        margin-top: 0.35em;
+        font-size: 0.9rem;
+        font-size: clamp(0.72rem, 3.1cqw, 1.05rem);
+        color: rgba(226, 232, 240, 0.72);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .audio-host-file {
+        margin-top: 0.9em;
+        font-size: 0.75rem;
+        font-size: clamp(0.62rem, 2.4cqw, 0.85rem);
+        color: rgba(226, 232, 240, 0.45);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .audio-host-file::before {
+        content: '';
+        display: inline-block;
+        width: 0.55em;
+        height: 0.55em;
+        margin-right: 0.45em;
+        border-radius: 50%;
+        background: var(--accent, #2563eb);
+        vertical-align: middle;
+    }
+
+    /* PiP 처럼 아주 좁아지면 파일명은 접는다 */
+    @container (max-width: 260px) {
+        .audio-host-file { display: none; }
+        .audio-host-body { gap: 4cqw; padding: 0 6cqw; }
+    }
+
+    /* 오디오 엘리먼트 자체는 화면에 두지 않는다 (조작은 controls-bar 담당) */
     .audio-host audio {
-        width: min(420px, 90%);
+        display: none;
     }
 
     /* Now Playing Info */
@@ -2308,12 +2447,26 @@
                     <div id="player" style="width: 100%; height: 100%;"></div>
                     <!-- 업로드 음원 재생용 (유튜브 iframe 과 형제. iframe 은 절대 옮기거나 지우지 않는다) -->
                     <div id="audioHost" class="audio-host" style="display: none;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="audio-host-icon">
-                            <path d="M9 18V5l12-2v13"></path>
-                            <circle cx="6" cy="18" r="3"></circle>
-                            <circle cx="18" cy="16" r="3"></circle>
-                        </svg>
-                        <p class="audio-host-name" id="audioHostName">업로드 음원</p>
+                        <!-- 커버를 크게 흐려 배경으로 깔면 곡마다 화면 색이 달라져 '재생 중'이 한눈에 보인다 -->
+                        <div class="audio-host-backdrop" id="audioHostBackdrop"></div>
+                        <div class="audio-host-body">
+                            <div class="audio-host-art" id="audioHostArt">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                                    class="audio-host-art-fallback">
+                                    <path d="M9 18V5l12-2v13"></path>
+                                    <circle cx="6" cy="18" r="3"></circle>
+                                    <circle cx="18" cy="16" r="3"></circle>
+                                </svg>
+                                <div class="audio-host-eq" aria-hidden="true">
+                                    <span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                            <div class="audio-host-meta">
+                                <p class="audio-host-title" id="audioHostTitle">업로드 음원</p>
+                                <p class="audio-host-artist" id="audioHostArtist"></p>
+                                <p class="audio-host-file" id="audioHostName"></p>
+                            </div>
+                        </div>
                         <audio id="audioEl" preload="metadata"></audio>
                     </div>
                 </div>
@@ -2854,6 +3007,8 @@
 
         function onPlayerStateChange(event) {
             state.isPlaying = event.data === MediaPlayer.State.PLAYING;
+            const audioHostEl = $('#audioHost');
+            if (audioHostEl) audioHostEl.classList.toggle('is-playing', state.isPlaying);
             updatePlayButton();
             updateControlButtons();
 
@@ -3090,8 +3245,15 @@
         // 이 규칙 덕분에 이미 저장된 재생목록(videoId 만 있는 항목)을 마이그레이션 없이 그대로 쓴다.
         function getItemSource(item) {
             if (!item) return null;
-            if (item.sourceType === 'audio' || (!item.sourceType && item.audioId)) {
-                if (!item.audioId) return null;
+            // 항목은 세 가지 모양으로 들어온다:
+            //   ① 재생목록에 저장된 항목 (audioId / videoId, camelCase)
+            //   ② 서버 가사 API 행 (audio_file_id / mr_youtube_video_id, snake_case)
+            //      — 즐겨찾기 탭은 API 행을 그대로 재생한다
+            //   ③ 옛 재생목록 (sourceType 없음)
+            // 셋 다 여기서 흡수한다. 한 곳이라도 빠지면 '재생할 MR을 선택해주세요' 가 뜬다.
+            const audioId = item.audioId || item.audio_file_id || null;
+            if (item.sourceType === 'audio' || (!item.sourceType && audioId)) {
+                if (!audioId) return null;
                 // 재생 주소는 '음원의 출처'로 정해야 한다.
                 //   가사에 연결된 음원  → /api/v1/lyrics/{가사id}/audio (남의 공개 가사도 재생 가능)
                 //   내가 직접 고른 음원 → /api/v1/audio/{음원id}        (소유자 전용)
@@ -3100,10 +3262,10 @@
                 // audioViaLyricsId 가 undefined 인 옛 항목은 종전대로 lyricsId 를 쓴다(하위 호환).
                 const viaLyrics = item.audioViaLyricsId !== undefined
                     ? item.audioViaLyricsId
-                    : (item.lyricsId || null);
+                    : (item.lyricsId || item.id || null);
                 return {
                     type: 'audio',
-                    audioId: item.audioId,
+                    audioId: audioId,
                     viaLyricsId: viaLyrics || null,
                     url: viaLyrics
                         ? `/api/v1/lyrics/${viaLyrics}/audio`
@@ -3114,6 +3276,61 @@
             }
             const vid = item.videoId || item.mr_youtube_video_id || null;
             return vid ? { type: 'youtube', videoId: vid } : null;
+        }
+
+        // 서버 가사 행에서 재생 소스를 만든다 (가사에 연결된 음원은 가사 경로로 재생)
+        function lyricsSource(lyrics) {
+            if (!lyrics) return null;
+            if (lyrics.audio_file_id) {
+                return {
+                    type: 'audio',
+                    audioId: lyrics.audio_file_id,
+                    viaLyricsId: lyrics.id,
+                    name: lyrics.audio_original_filename || '',
+                    durationMs: lyrics.audio_duration_ms || 0
+                };
+            }
+            return lyrics.mr_youtube_video_id
+                ? { type: 'youtube', videoId: lyrics.mr_youtube_video_id }
+                : null;
+        }
+
+        // 음원 재생 화면 채우기 (커버·제목·아티스트·파일명)
+        function renderAudioHost(songTitle, artistName, coverUrl, fileName) {
+            const art = $('#audioHostArt');
+            const backdrop = $('#audioHostBackdrop');
+            const titleEl = $('#audioHostTitle');
+            const artistEl = $('#audioHostArtist');
+            const fileEl = $('#audioHostName');
+
+            if (titleEl) titleEl.textContent = songTitle || '업로드 음원';
+            if (artistEl) {
+                artistEl.textContent = artistName || '';
+                artistEl.style.display = artistName ? '' : 'none';
+            }
+            if (fileEl) {
+                fileEl.textContent = fileName || '';
+                fileEl.style.display = fileName ? '' : 'none';
+            }
+
+            // 커버가 없거나 로드에 실패하면 음표 아이콘으로 남는다
+            if (art) {
+                art.classList.remove('has-art');
+                art.style.backgroundImage = '';
+            }
+            if (backdrop) {
+                backdrop.classList.remove('has-art');
+                backdrop.style.backgroundImage = '';
+            }
+            if (!coverUrl) return;
+
+            const probe = new Image();
+            probe.onload = () => {
+                const css = `url("${encodeURI(coverUrl)}")`;
+                if (art) { art.style.backgroundImage = css; art.classList.add('has-art'); }
+                if (backdrop) { backdrop.style.backgroundImage = css; backdrop.classList.add('has-art'); }
+            };
+            probe.src = coverUrl;
         }
 
         // 중복 검사용 키. videoId 비교만 하면 음원 항목끼리 undefined === undefined 로
@@ -3866,8 +4083,7 @@
                 // 파사드가 준비 전 요청을 내부 대기열에 넣으므로 분기가 필요 없다
                 state.ytPlayer.load(source);
                 if (source.type === 'audio') {
-                    const nameEl = $('#audioHostName');
-                    if (nameEl) nameEl.textContent = source.name || `${songTitle}${artistName ? ' - ' + artistName : ''}`;
+                    renderAudioHost(songTitle, artistName, item.coverImageUrl, source.name);
                 }
                 showPlayer();
             }
@@ -5877,7 +6093,8 @@
                         lyrics.artist_name,
                         lyrics.mr_youtube_video_id,
                         lyrics.title,
-                        lyrics.cover_image_url || ''
+                        lyrics.cover_image_url || '',
+                        { source: lyricsSource(lyrics) }
                     );
                 } catch (e) {
                     console.error('Failed to add lyrics from URL:', e);

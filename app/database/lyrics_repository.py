@@ -595,6 +595,7 @@ class LyricsRepository:
                 a.name as artist_name,
                 l.title,
                 l.mr_youtube_video_id,
+                l.audio_file_id,
                 l.is_verified,
                 l.visibility,
                 l.likes_count,
@@ -609,7 +610,8 @@ class LyricsRepository:
             LEFT JOIN user_lyrics_favorites fav ON l.id = fav.lyrics_id
             WHERE ulf.user_id = %s AND l.deleted_at IS NULL AND {vis_where}
             GROUP BY l.id, l.owner_id, u.name, l.song_id, s.title, s.song_external_id,
-                     a.name, l.title, l.mr_youtube_video_id, l.is_verified, l.visibility,
+                     a.name, l.title, l.mr_youtube_video_id, l.audio_file_id,
+                     l.is_verified, l.visibility,
                      l.likes_count, l.updated_at, ulf.created_at
             ORDER BY ulf.created_at DESC
             LIMIT %s OFFSET %s

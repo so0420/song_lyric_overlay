@@ -820,6 +820,9 @@
         right: 0;
         bottom: 0;
         background: #0f172a;
+        /* display 를 여기 두는 것이 중요하다 — 파사드가 표시할 때 인라인 display 를
+           지워 스타일시트 값으로 되돌리기 때문이다 (media_player.js showHost 참고) */
+        display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
@@ -840,9 +843,9 @@
 
     .audio-host-art {
         flex-shrink: 0;
-        width: 64px;
-        height: 64px;
-        border-radius: 10px;
+        width: 88px;
+        height: 88px;
+        border-radius: 14px;
         background: rgba(255, 255, 255, 0.07);
         display: flex;
         align-items: center;
@@ -851,8 +854,8 @@
     }
 
     .audio-host-art svg {
-        width: 26px;
-        height: 26px;
+        width: 34px;
+        height: 34px;
     }
 
     .audio-host-meta {
@@ -978,6 +981,67 @@
         transform: translate(-50%, -50%);
         opacity: 0;
         transition: opacity 0.15s;
+    }
+
+    .audio-volume {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .audio-vol-btn {
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: none;
+        color: rgba(226, 232, 240, 0.75);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border-radius: 6px;
+    }
+
+    .audio-vol-btn:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .audio-vol-btn svg {
+        width: 17px;
+        height: 17px;
+    }
+
+    .audio-vol-slider {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 72px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.2);
+        outline: none;
+        cursor: pointer;
+    }
+
+    .audio-vol-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        cursor: pointer;
+    }
+
+    .audio-vol-slider::-moz-range-thumb {
+        width: 12px;
+        height: 12px;
+        border: none;
+        border-radius: 50%;
+        background: #fff;
+        cursor: pointer;
     }
 
     .audio-seek:hover .audio-seek-knob,
@@ -1189,6 +1253,18 @@
                         <div class="audio-seek-knob" id="audio-seek-knob"></div>
                     </div>
                     <span class="audio-time" id="audio-time-total">0:00</span>
+                    <div class="audio-volume">
+                        <button type="button" class="audio-vol-btn" id="audio-vol-btn" title="음소거 전환">
+                            <svg id="audio-vol-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                            </svg>
+                        </button>
+                        <input type="range" class="audio-vol-slider" id="audio-vol-slider"
+                            min="0" max="100" step="1" value="100" title="음량">
+                    </div>
                 </div>
 
                 <audio id="audio-el" preload="auto"></audio>
@@ -1886,6 +1962,57 @@
     }
 
     let seekDragging = false;
+    const VOLUME_KEY = 'lyric_editor_volume';
+
+    function applyEditorVolume(vol, muted) {
+        if (!player) return;
+        player.setVolume(vol);
+        if (muted) player.mute(); else player.unMute();
+        const icon = document.getElementById('audio-vol-icon');
+        if (icon) {
+            const waves = muted || vol === 0
+                ? '<line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>'
+                : (vol < 50
+                    ? '<path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>'
+                    : '<path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>');
+            icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>' + waves;
+        }
+        try { localStorage.setItem(VOLUME_KEY, JSON.stringify({ vol, muted })); } catch (e) { /* 무시 */ }
+    }
+
+    function initVolumeUI() {
+        const btn = document.getElementById('audio-vol-btn');
+        const slider = document.getElementById('audio-vol-slider');
+        if (!btn || !slider) return;
+
+        let saved = { vol: 100, muted: false };
+        try {
+            const raw = localStorage.getItem(VOLUME_KEY);
+            if (raw) saved = Object.assign(saved, JSON.parse(raw));
+        } catch (e) { /* 무시 */ }
+        slider.value = saved.vol;
+        applyEditorVolume(saved.vol, saved.muted);
+
+        if (!slider.dataset.bound) {
+            slider.dataset.bound = '1';
+            slider.addEventListener('input', () => {
+                const v = parseInt(slider.value, 10);
+                applyEditorVolume(v, v === 0);
+            });
+        }
+        if (!btn.dataset.bound) {
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', () => {
+                let cur = { vol: parseInt(slider.value, 10), muted: false };
+                try { cur = Object.assign(cur, JSON.parse(localStorage.getItem(VOLUME_KEY) || '{}')); } catch (e) {}
+                const nextMuted = !cur.muted;
+                // 음소거 해제 시 0 이었다면 들리도록 되돌린다
+                const v = (!nextMuted && cur.vol === 0) ? 70 : cur.vol;
+                slider.value = v;
+                applyEditorVolume(v, nextMuted);
+            });
+        }
+    }
 
     function updateAudioTransport() {
         const host = document.getElementById('audio-host');
@@ -1977,6 +2104,7 @@
                 if (e.key === 'ArrowRight') { player.seekTo(player.getCurrentTime() + 5, true); e.preventDefault(); }
             });
         }
+        initVolumeUI();
         if (!window.__audioTransportTimer) {
             window.__audioTransportTimer = setInterval(updateAudioTransport, 200);
         }

@@ -256,7 +256,7 @@
         inset: -12%;
         background-position: center;
         background-size: cover;
-        filter: blur(28px) saturate(140%) brightness(0.5);
+        filter: blur(30px) saturate(125%) brightness(0.38);
         transform: scale(1.1);
         opacity: 0;
         transition: opacity 0.4s;
@@ -264,6 +264,14 @@
 
     .audio-host-backdrop.has-art {
         opacity: 1;
+    }
+
+    /* 커버 색이 밝은 곡에서도 글자가 읽히도록 어두운 막을 한 겹 덧댄다 */
+    .audio-host-backdrop.has-art::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(100deg, rgba(2, 6, 23, 0.72) 0%, rgba(2, 6, 23, 0.42) 55%, rgba(2, 6, 23, 0.6) 100%);
     }
 
     .audio-host-body {

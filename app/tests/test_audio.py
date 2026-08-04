@@ -725,3 +725,28 @@ class TestVerifiedRegressions:
         assert await audio_purge.purge_one(42, "aa/bb/testfile.mp3", repo) is False
         assert blob.exists()
         repo.hard_delete.assert_not_awaited()
+
+    def test_docs_state_upload_time_basis(self):
+        """유예 기간의 기준이 '업로드 후 7일'이라는 사실이 문서와 코드에서 일치해야 한다.
+
+        코드는 created_at 기준인데 방침에 '연결 해제 후 7일'로 적혀 있으면,
+        오래 보관하던 음원이 연결 해제 즉시 지워지는 동작이 문서보다 가혹해진다.
+        (실제로 그렇게 어긋나 있었다)
+        """
+        import inspect
+        from pathlib import Path
+
+        from app.database.audio_repository import AudioRepository
+
+        # 코드: 유예 기간은 created_at 기준
+        sql = inspect.getsource(AudioRepository.find_unlinked)
+        assert "af.created_at < (NOW() - INTERVAL %s DAY)" in sql
+
+        root = Path(__file__).resolve().parents[2]
+        for name in ("terms.html", "privacy.html"):
+            text = (root / "app/templates/pages/legal" / name).read_text(encoding="utf-8")
+            assert "업로드 후 7일" in text, f"{name} 에 '업로드 후 7일' 기준이 없다"
+            assert "연결이 모두 해제되면 <strong>7일</strong> 후" not in text, \
+                f"{name} 에 '해제 후 7일' 이라는 코드와 다른 문구가 남아 있다"
+            assert "연결이 모두 해제된 뒤 7일이 지나면" not in text, \
+                f"{name} 에 '해제 후 7일' 이라는 코드와 다른 문구가 남아 있다"

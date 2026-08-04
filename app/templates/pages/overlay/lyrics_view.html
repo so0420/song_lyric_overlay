@@ -305,7 +305,7 @@
                 <span class="lv-song-artist" id="lvArtist"></span>
             </div>
             <div class="lv-tools">
-                <div class="lv-size" title="이 창에서만 쓰는 글자 크기 배율 (OBS에는 바로 반영되지 않고 URL로 넘어갑니다)">
+                <div class="lv-size" title="가사 글자 크기 (100% = 오버레이 설정 그대로). OBS의 이 가사 화면도 함께 바뀝니다 — 3줄 메인 오버레이는 그대로입니다">
                     <button type="button" class="lv-btn" id="sizeDown">−</button>
                     <span class="lv-size-val" id="sizeVal">100%</span>
                     <button type="button" class="lv-btn" id="sizeUp">+</button>
@@ -388,7 +388,9 @@
             if (fromUrl >= SCALE_MIN && fromUrl <= SCALE_MAX) return fromUrl;
             const saved = parseInt(localStorage.getItem('lyrics_view_scale'), 10);
             if (saved >= SCALE_MIN && saved <= SCALE_MAX) return saved;
-            return showChrome ? 60 : 100;   // 창은 좁으니 기본을 줄여 둔다
+            // 창과 OBS 가 같은 배율을 쓰므로 기본값도 같아야 한다.
+            // (100% = 오버레이 설정의 글자 크기 그대로)
+            return 100;
         }
 
         function readTransparent() {
@@ -674,6 +676,7 @@
                         following: following,
                         centerIndex: following ? -1 : centerLineIndex(),
                         align: align,
+                        scale: scale,
                     },
                 }));
             } catch {}
@@ -683,9 +686,25 @@
             if (isController || !data) return;
             lastControlAt = performance.now();
 
+            // 정렬과 글자 배율은 창에서 고른 값을 그대로 따른다.
+            // (오버레이 설정 자체는 건드리지 않으므로 3줄 메인 오버레이는 영향을 받지 않는다)
+            let looksChanged = false;
+
             if (ALIGNS.includes(data.align) && data.align !== align) {
                 align = data.align;
+                looksChanged = true;
+            }
+
+            const s = parseInt(data.scale, 10);
+            if (s >= SCALE_MIN && s <= SCALE_MAX && s !== scale) {
+                scale = s;
+                looksChanged = true;
+            }
+
+            if (looksChanged) {
                 applyView();
+                // 글자 크기가 바뀌면 줄 위치가 전부 달라진다 — 보던 자리를 다시 맞춘다
+                if (following && lastFocus >= 0) scrollToIndex(lastFocus, false);
             }
 
             if (data.following) {
@@ -966,6 +985,7 @@
                 applyView();
                 syncUrl();
                 if (following && lastFocus >= 0) scrollToIndex(lastFocus, false);
+                sendViewState();   // OBS 가사 화면도 같은 배율로 (3줄 메인 오버레이는 그대로)
             }
 
             document.getElementById('sizeDown').addEventListener('click', () => changeScale(-10));
@@ -987,11 +1007,10 @@
             });
 
             document.getElementById('copyObsUrl').addEventListener('click', async (e) => {
-                // OBS 는 1920 폭이라 창에서 줄여 둔 배율까지 가져가면 너무 작다 —
-                // 배율은 100%(오버레이 설정 그대로)로 넘기고, 정렬·배경만 지금 값을 쓴다.
+                // 지금 보고 있는 모양 그대로 (배율·정렬·배경)
                 const url = `${location.origin}/overlay/lyrics`
                     + `?token=${encodeURIComponent(overlayToken)}`
-                    + `&scale=100&align=${align}&bg=${transparent ? 'transparent' : 'dark'}`;
+                    + `&scale=${scale}&align=${align}&bg=${transparent ? 'transparent' : 'dark'}`;
                 const btn = e.currentTarget;
                 try {
                     await navigator.clipboard.writeText(url);

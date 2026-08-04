@@ -58,13 +58,19 @@ class OverlayConnectionManager:
                     for conn in dead_connections:
                         self.singer_connections[user_id].discard(conn)
 
-    async def broadcast_to_overlays(self, user_id: int, message: dict):
-        """OBS 오버레이 연결에만 메시지 전송"""
+    async def broadcast_to_overlays(self, user_id: int, message: dict, exclude: WebSocket = None):
+        """OBS 오버레이 연결에만 메시지 전송
+
+        exclude: 보낸 연결 자신에게는 되돌려주지 않을 때 지정한다.
+                 (가사 보기 창이 자기 스크롤 상태를 다른 오버레이로 중계하는 경우)
+        """
         if user_id not in self.overlay_connections:
             return
 
         dead_connections = set()
-        for connection in self.overlay_connections[user_id]:
+        for connection in list(self.overlay_connections[user_id]):
+            if connection is exclude:
+                continue
             try:
                 await connection.send_json(message)
             except Exception:

@@ -109,7 +109,9 @@ async def lyrics_view_page(
     if token:
         user_id = await verify_overlay_token_async(token)
         if not user_id:
-            return HTMLResponse(content="<p style='color:white;background:#0f172a;font-family:sans-serif;padding:20px;'>유효하지 않은 오버레이 토큰입니다. 설정 페이지에서 새 URL을 복사해주세요.</p>")
+            # 배경색을 주지 않는다 — OBS 브라우저 소스로 들어가 있으면 화면 전체를 덮는다.
+            # (기존 /overlay/obs 의 오류 응답과 같은 형태)
+            return HTMLResponse(content="<p style='color:white;font-family:sans-serif;padding:20px;'>유효하지 않은 오버레이 토큰입니다. 설정 페이지에서 새 URL을 복사해주세요.</p>")
         overlay_token = token
         show_chrome = False
     else:

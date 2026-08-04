@@ -265,17 +265,21 @@ PONG_TIMEOUT = 60   # 60초 내 pong 미응답 시 연결 종료
 async def overlay_websocket(
     websocket: WebSocket,
     token: str = Query(None),
-    overlay_token: str = Query(None)
+    overlay_token: str = Query(None),
+    control: str = Query(None)
 ):
     """WebSocket 연결 (토큰 인증 필수, Heartbeat 지원)
 
     - token: 일회용 토큰 → singer 연결 (노래하기 페이지)
     - overlay_token: 영구 토큰 → overlay 연결 (OBS)
+    - control: 일회용 토큰. overlay 연결이 다른 오버레이의 표시를 조작하려면 필요하다.
+               (가사 보기 '창'만 받아 갈 수 있다 — 로그인 세션으로 발급받기 때문)
 
     보안: user_id는 URL에 포함하지 않고 토큰에서만 추출합니다.
     """
     verified_user_id = None
     connection_type = None
+    can_control = False
 
     # 1. 일회용 토큰 검증 (노래하기 페이지 → singer)
     if token:
@@ -285,6 +289,12 @@ async def overlay_websocket(
     elif overlay_token:
         verified_user_id = await verify_overlay_token_async(overlay_token)
         connection_type = "overlay"
+
+        # 오버레이 토큰은 방송 화면에 띄우는 주소라 새어나갈 수 있다. 그것만으로
+        # 방송 중인 가사 위치를 남이 움직일 수 있으면 안 되므로, 조작 권한은
+        # 로그인 세션으로만 받을 수 있는 일회용 토큰으로 따로 확인한다.
+        if control and verified_user_id is not None:
+            can_control = await verify_ws_token(control) == verified_user_id
 
     # 검증 실패 - 토큰이 없거나 유효하지 않음
     if verified_user_id is None:
@@ -338,6 +348,13 @@ async def overlay_websocket(
                 elif connection_type == "singer" and msg_type in RELAY_TO_OVERLAY_TYPES:
                     # singer → overlay 중계
                     await overlay_manager.broadcast_to_overlays(verified_user_id, message)
+                elif connection_type == "overlay" and can_control and msg_type == "lyrics_view_scroll":
+                    # 가사 보기 창(운영자가 띄운 창)의 스크롤·따라가기 상태를
+                    # 같은 유저의 다른 오버레이(OBS 브라우저 소스)로 그대로 중계한다.
+                    # 보낸 창 자신에게 되돌아가면 스크롤이 서로를 밀어내므로 제외한다.
+                    await overlay_manager.broadcast_to_overlays(
+                        verified_user_id, message, exclude=websocket
+                    )
             except json.JSONDecodeError:
                 pass
 

@@ -2580,6 +2580,8 @@
             currentArtist: '',
             currentModalSong: null,
             isPlaying: false,
+            // 곡이 끝나 오버레이를 비워 뒀는지 (가사 데이터는 남아 있는 상태)
+            overlayCleared: false,
             animationFrameId: null,
             searchCache: new Map(),
             volume: parseInt(localStorage.getItem('overlay_volume') || '100'),
@@ -2732,6 +2734,7 @@
 
             if (state.isPlaying) {
                 startLyricsSync();
+                state.overlayCleared = false;
                 // 재생/재개(종료 후 다시 재생 포함) 시 전체 가사를 다시 전송한다.
                 // 곡 종료로 OBS 오버레이가 비워졌어도 여기서 lyricsData 가 복원된다.
                 if (state.currentLyrics?.parsedLyrics) {
@@ -4194,6 +4197,10 @@
         // 곡 종료 시: 로컬/OBS 표시만 비우고 로드된 가사 데이터는 유지한다.
         // (같은 곡을 다시 재생하면 PLAYING 전환에서 syncLyricsInit() 로 복원되도록)
         function clearOverlayForSongEnd() {
+            // 가사 데이터는 남겨 두지만 오버레이는 비운 상태다. 이 뒤에 오버레이가 새로
+            // 접속해(request_init) 현재 상태를 다시 보내야 할 때, 끝난 곡의 가사를
+            // 되살려 내보내지 않도록 표시해 둔다.
+            state.overlayCleared = true;
             elements.lyricsDisplay.innerHTML = '<p class="lyrics-display-empty">가사가 여기에 표시됩니다</p>';
             const message = {
                 type: 'lyrics_init',
@@ -4218,7 +4225,9 @@
         function syncLyricsInit() {
             const currentTime = state.isPlayerReady ? state.ytPlayer.getCurrentTime() * 1000 : 0;
             const obsTime = currentTime + state.obsOffset + state.songOffset;
-            const lyrics = state.currentLyrics?.parsedLyrics || null;
+            // 곡이 끝나 오버레이를 비워 둔 상태면 가사를 다시 실어 보내지 않는다.
+            // (그러지 않으면 오버레이가 새로 접속할 때마다 끝난 곡 가사가 방송에 되살아난다)
+            const lyrics = state.overlayCleared ? null : (state.currentLyrics?.parsedLyrics || null);
 
             const message = {
                 type: 'lyrics_init',

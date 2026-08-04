@@ -1678,7 +1678,9 @@ const defaultSettings = {
 // Set overlay URL (토큰 기반 인증)
 let realOverlayUrl = `${baseUrl}/overlay/obs?token=${overlayToken}`;
 // 전체 가사 스크롤 화면 (노래하기의 '새 창에서 가사 보기'와 같은 페이지)
-let realLyricsUrl = `${baseUrl}/overlay/lyrics?token=${overlayToken}`;
+// OBS 브라우저 소스로 쓸 주소라 배경은 투명이어야 한다.
+// (기본값인 어두운 배경으로 들어가면 소스가 화면 전체를 덮는다)
+let realLyricsUrl = `${baseUrl}/overlay/lyrics?token=${overlayToken}&bg=transparent`;
 let isUrlVisible = false;
 
 // 실제 URL을 input에 설정 (블러로 가려짐)
@@ -2184,7 +2186,7 @@ async function regenerateToken() {
             const data = await res.json();
             // 새 토큰으로 URL 업데이트
             realOverlayUrl = `${baseUrl}/overlay/obs?token=${data.token}`;
-            realLyricsUrl = `${baseUrl}/overlay/lyrics?token=${data.token}`;
+            realLyricsUrl = `${baseUrl}/overlay/lyrics?token=${data.token}&bg=transparent`;
             document.getElementById('overlayUrl').value = realOverlayUrl;
             // 블러 상태 유지
             showToast('토큰이 재발급되었습니다. 새 URL을 복사하세요.', 'success');

@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Nanum+Gothic:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+    <script src="/static/js/overlay_fonts.js"></script>
     <style>
         @font-face {
             font-family: 'OngleipParkDahyeon';
@@ -36,11 +37,26 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        /* 글자 모양은 OBS 오버레이 설정을 그대로 따른다.
+           (현재 줄 / 지나간 줄 / 앞으로 부를 줄 = 오버레이의 현재 / 이전 / 다음 줄) */
         :root {
-            --lv-size: 30px;
             --lv-font: 'Pretendard', 'Noto Sans KR', sans-serif;
-            --lv-color: #ffffff;
-            --lv-highlight: #ffe500;
+            --lv-cur-size: 52px;
+            --lv-past-size: 36px;
+            --lv-next-size: 36px;
+            --lv-cur-weight: 800;
+            --lv-past-weight: 600;
+            --lv-next-weight: 600;
+            --lv-cur-color: #ffe500;
+            --lv-past-color: #ffffff;
+            --lv-next-color: #ffffff;
+            --lv-cur-stroke: 0px;
+            --lv-past-stroke: 0px;
+            --lv-next-stroke: 0px;
+            --lv-stroke-c: #000000;
+            --lv-line2-ratio: 0.85;
+            --lv-line3-ratio: 0.85;
+            --lv-align: center;
         }
 
         html, body {
@@ -51,7 +67,7 @@
 
         body {
             background: #0f172a;
-            color: var(--lv-color);
+            color: var(--lv-next-color);
             font-family: var(--lv-font);
         }
 
@@ -185,36 +201,48 @@
         .lv-pad { height: 45vh; }
 
         .lv-line {
-            font-size: var(--lv-size);
-            line-height: 1.45;
-            font-weight: 600;
-            text-align: center;
-            padding: 10px 0;
-            color: var(--lv-color);
-            opacity: 0.45;
-            transition: opacity 0.25s ease, color 0.25s ease, transform 0.25s ease;
+            /* 아직 부르지 않은 줄 = 오버레이의 '다음 가사' 스타일 */
+            font-size: var(--lv-next-size);
+            font-weight: var(--lv-next-weight);
+            color: var(--lv-next-color);
+            line-height: 1.35;
+            text-align: var(--lv-align);
+            padding: 8px 0;
+            opacity: 0.6;
+            transition: opacity 0.25s ease, color 0.25s ease;
             word-break: keep-all;
             overflow-wrap: anywhere;
         }
 
-        /* 이미 부른 줄은 더 흐리게 — 지금 어디인지 한눈에 보이게 */
-        .lv-line.past { opacity: 0.28; }
-
-        .lv-line.current {
-            color: var(--lv-highlight);
-            opacity: 1;
-            font-weight: 800;
-            transform: scale(1.04);
+        /* 이미 부른 줄 = 오버레이의 '이전 가사' 스타일. 지금 위치가 한눈에 보이게 더 흐리다 */
+        .lv-line.past {
+            font-size: var(--lv-past-size);
+            font-weight: var(--lv-past-weight);
+            color: var(--lv-past-color);
+            opacity: 0.35;
         }
 
-        .lv-line .lv-sub { display: block; opacity: 0.85; }
+        .lv-line.current {
+            font-size: var(--lv-cur-size);
+            font-weight: var(--lv-cur-weight);
+            color: var(--lv-cur-color);
+            opacity: 1;
+        }
+
+        /* 외국어 가사의 발음·해석 줄. em 이라 어느 줄에 붙어도 그 줄 크기를 기준으로 줄어든다 */
+        .lv-line .lv-sub { display: block; }
+        .lv-line .lv-l2 { font-size: calc(1em * var(--lv-line2-ratio)); }
+        .lv-line .lv-l3 { font-size: calc(1em * var(--lv-line3-ratio)); }
 
         body.stroke .lv-line {
-            -webkit-text-stroke: var(--lv-stroke-w, 2px) var(--lv-stroke-c, #000);
+            -webkit-text-stroke: var(--lv-next-stroke) var(--lv-stroke-c);
             paint-order: stroke fill;
         }
 
-        body.shadow .lv-line { text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6); }
+        body.stroke .lv-line.past { -webkit-text-stroke: var(--lv-past-stroke) var(--lv-stroke-c); }
+        body.stroke .lv-line.current { -webkit-text-stroke: var(--lv-cur-stroke) var(--lv-stroke-c); }
+
+        body.shadow .lv-line { text-shadow: 0 6px 12px rgba(0, 0, 0, 0.6); }
 
         /* ===== 우상단 '가사 따라가기' ===== */
         .lv-follow {
@@ -243,6 +271,13 @@
         /* 머리말이 있으면 그 아래에 뜨도록 */
         body.has-chrome .lv-follow { top: 56px; }
 
+        /* OBS 화면에는 조작 버튼이 절대 찍히면 안 된다 (스크롤 상태는 창에서 넘어온다) */
+        body.no-chrome .lv-follow { display: none !important; }
+
+        /* 안내·오류 문구도 마찬가지다. 곡 사이나 연결이 끊긴 동안 방송 화면 한가운데에
+           한국어 안내가 찍히면 사고다. (기존 obs_overlay.html 도 같은 이유로 idle 문구를 막아 뒀다) */
+        body.no-chrome .lv-empty { display: none !important; }
+
         /* ===== 빈 상태 ===== */
         .lv-empty {
             position: absolute;
@@ -270,11 +305,12 @@
                 <span class="lv-song-artist" id="lvArtist"></span>
             </div>
             <div class="lv-tools">
-                <div class="lv-size">
-                    <button type="button" class="lv-btn" id="sizeDown" title="글자 작게">−</button>
-                    <span class="lv-size-val" id="sizeVal">30</span>
-                    <button type="button" class="lv-btn" id="sizeUp" title="글자 크게">+</button>
+                <div class="lv-size" title="이 창에서만 쓰는 글자 크기 배율 (OBS에는 바로 반영되지 않고 URL로 넘어갑니다)">
+                    <button type="button" class="lv-btn" id="sizeDown">−</button>
+                    <span class="lv-size-val" id="sizeVal">100%</span>
+                    <button type="button" class="lv-btn" id="sizeUp">+</button>
                 </div>
+                <button type="button" class="lv-btn" id="alignToggle" title="가사 정렬 (OBS에도 바로 반영됩니다)">가운데</button>
                 <button type="button" class="lv-btn" id="bgToggle" title="OBS에 넣을 때는 투명 배경을 쓰세요">배경 투명</button>
                 <button type="button" class="lv-btn" id="copyObsUrl" title="지금 보이는 모양 그대로 OBS 브라우저 소스에 넣을 URL을 복사합니다">OBS URL 복사</button>
                 <span class="lv-status off" id="lvStatus" title="노래하기 연결 상태"></span>
@@ -307,19 +343,27 @@
         // 토큰이 URL에 들어 있으면 OBS 브라우저 소스로 보는 중이라 조작 UI 를 숨긴다.
         const showChrome = {{ 'true' if show_chrome else 'false' }};
 
+        // OBS 오버레이와 같은 글자 설정을 쓴다 (기본값도 오버레이 쪽과 맞춘다)
         const defaultSettings = {
             font_family: 'Pretendard',
-            font_color: '#FFFFFF',
+            font_size: 52,
             highlight_color: '#FFE500',
-            text_stroke: false,
+            current_line_weight: 800,
+            prev_line_weight: 600,
+            next_line_weight: 600,
+            text_stroke: true,
             stroke_color: '#000000',
+            current_line_stroke: 3,
+            prev_line_stroke: 2,
+            next_line_stroke: 2,
             text_shadow: true,
+            lyrics_position: 'bottom-center',
             show_lyrics_line1: true,
             show_lyrics_line2: true,
             show_lyrics_line3: true,
         };
 
-        const settings = { ...defaultSettings, ...(initialSettings || {}) };
+        let settings = { ...defaultSettings, ...(initialSettings || {}) };
 
         const scroller = document.getElementById('lvScroll');
         const linesBox = document.getElementById('lvLines');
@@ -333,14 +377,18 @@
 
         // ===== 보기 설정 (URL > localStorage > 기본값) =====
         const params = new URLSearchParams(location.search);
-        const SIZE_MIN = 14, SIZE_MAX = 72;
+        const SCALE_MIN = 40, SCALE_MAX = 200;
+        const ALIGNS = ['left', 'center', 'right'];
+        const ALIGN_LABEL = { left: '왼쪽', center: '가운데', right: '오른쪽' };
 
-        function readSize() {
-            const fromUrl = parseInt(params.get('size'), 10);
-            if (fromUrl >= SIZE_MIN && fromUrl <= SIZE_MAX) return fromUrl;
-            const saved = parseInt(localStorage.getItem('lyrics_view_size'), 10);
-            if (saved >= SIZE_MIN && saved <= SIZE_MAX) return saved;
-            return 30;
+        // 글자 크기는 오버레이 설정을 그대로 쓰되, 창 크기에 맞춰 배율만 따로 둔다.
+        // (좁은 창에서 52px 는 너무 크고, OBS 는 1920 폭이라 원래 크기가 맞다)
+        function readScale() {
+            const fromUrl = parseInt(params.get('scale'), 10);
+            if (fromUrl >= SCALE_MIN && fromUrl <= SCALE_MAX) return fromUrl;
+            const saved = parseInt(localStorage.getItem('lyrics_view_scale'), 10);
+            if (saved >= SCALE_MIN && saved <= SCALE_MAX) return saved;
+            return showChrome ? 60 : 100;   // 창은 좁으니 기본을 줄여 둔다
         }
 
         function readTransparent() {
@@ -348,36 +396,80 @@
             return localStorage.getItem('lyrics_view_bg') === 'transparent';
         }
 
-        let fontSize = readSize();
+        // 정렬은 오버레이의 가사 위치(bottom-left/center/right)를 기본값으로 삼되
+        // 이 화면에서 따로 고를 수 있다.
+        function readAlign() {
+            const fromUrl = params.get('align');
+            if (ALIGNS.includes(fromUrl)) return fromUrl;
+            const saved = localStorage.getItem('lyrics_view_align');
+            if (ALIGNS.includes(saved)) return saved;
+            const pos = String(settings.lyrics_position || 'bottom-center');
+            if (pos.endsWith('-left')) return 'left';
+            if (pos.endsWith('-right')) return 'right';
+            return 'center';
+        }
+
+        let scale = readScale();
         let transparent = readTransparent();
+        let align = readAlign();
+
+        function px(v) { return Math.max(1, Math.round(v)) + 'px'; }
 
         function applyView() {
-            document.documentElement.style.setProperty('--lv-size', fontSize + 'px');
-            document.documentElement.style.setProperty('--lv-font',
+            const root = document.documentElement.style;
+            const base = (settings.font_size || 52) * scale / 100;
+            const prevRatio = (settings.prev_line_size_ratio || 70) / 100;
+            const nextRatio = (settings.next_line_size_ratio || 70) / 100;
+
+            if (typeof ensureOverlayFont === 'function') ensureOverlayFont(settings.font_family);
+            root.setProperty('--lv-font',
                 `'${settings.font_family}', 'Pretendard', 'Noto Sans KR', sans-serif`);
-            document.documentElement.style.setProperty('--lv-color', settings.font_color);
-            document.documentElement.style.setProperty('--lv-highlight', settings.highlight_color);
-            document.documentElement.style.setProperty('--lv-stroke-c', settings.stroke_color);
-            document.documentElement.style.setProperty('--lv-stroke-w',
-                Math.max(1, Math.round(fontSize / 18)) + 'px');
+
+            root.setProperty('--lv-cur-size', px(base));
+            root.setProperty('--lv-past-size', px(base * prevRatio));
+            root.setProperty('--lv-next-size', px(base * nextRatio));
+
+            root.setProperty('--lv-cur-weight', String(settings.current_line_weight || 800));
+            root.setProperty('--lv-past-weight', String(settings.prev_line_weight || 600));
+            root.setProperty('--lv-next-weight', String(settings.next_line_weight || 600));
+
+            root.setProperty('--lv-cur-color', settings.highlight_color || '#FFE500');
+            root.setProperty('--lv-past-color', settings.prev_line_color || '#FFFFFF');
+            root.setProperty('--lv-next-color', settings.next_line_color || '#FFFFFF');
+
+            // 외곽선 두께도 배율을 따라간다 (작게 줄인 창에서 글자가 뭉개지지 않게)
+            const sw = scale / 100;
+            root.setProperty('--lv-cur-stroke', px((settings.current_line_stroke || 3) * sw));
+            root.setProperty('--lv-past-stroke', px((settings.prev_line_stroke || 2) * sw));
+            root.setProperty('--lv-next-stroke', px((settings.next_line_stroke || 2) * sw));
+            root.setProperty('--lv-stroke-c', settings.stroke_color || '#000000');
+
+            root.setProperty('--lv-line2-ratio', String((settings.lyrics_line2_size_ratio || 85) / 100));
+            root.setProperty('--lv-line3-ratio', String((settings.lyrics_line3_size_ratio || 85) / 100));
+
+            root.setProperty('--lv-align', align);
 
             document.body.classList.toggle('bg-transparent', transparent);
-            // 투명 배경에서는 어떤 영상 위에 올라갈지 알 수 없으므로 외곽선을 강제한다
-            document.body.classList.toggle('stroke', transparent || !!settings.text_stroke);
+            // 외곽선 여부도 오버레이 설정을 그대로 따른다. 투명 배경이라고 강제로 켜면
+            // 외곽선을 꺼 둔 사람에게만 이 화면의 글씨가 달라진다.
+            document.body.classList.toggle('stroke', !!settings.text_stroke);
             document.body.classList.toggle('shadow', settings.text_shadow !== false);
             document.body.classList.toggle('has-chrome', showChrome);
             document.body.classList.toggle('no-chrome', !showChrome);
 
-            if (sizeValEl) sizeValEl.textContent = fontSize;
+            if (sizeValEl) sizeValEl.textContent = scale + '%';
             const bgBtn = document.getElementById('bgToggle');
             if (bgBtn) bgBtn.textContent = transparent ? '배경 어둡게' : '배경 투명';
+            const alignBtn = document.getElementById('alignToggle');
+            if (alignBtn) alignBtn.textContent = ALIGN_LABEL[align];
         }
 
         // 지금 보고 있는 모양을 URL 에 남겨 둔다 (그대로 복사해 OBS 에 붙일 수 있게)
         function syncUrl() {
             const q = new URLSearchParams(location.search);
-            q.set('size', String(fontSize));
+            q.set('scale', String(scale));
             q.set('bg', transparent ? 'transparent' : 'dark');
+            q.set('align', align);
             history.replaceState(null, '', location.pathname + '?' + q.toString());
         }
 
@@ -420,7 +512,10 @@
             for (let i = 0; i < parts.length; i++) {
                 if (i < 3 && !show[i]) continue;
                 const escaped = escapeHtml(parts[i]);
-                visible.push(i === 0 ? escaped : `<span class="lv-sub">${escaped}</span>`);
+                // 2·3번째 줄은 오버레이와 같은 비율로 작게 (lv-l2 / lv-l3)
+                visible.push(i === 0
+                    ? escaped
+                    : `<span class="lv-sub lv-l${Math.min(i + 1, 3)}">${escaped}</span>`);
             }
             return visible.join('') || '&nbsp;';
         }
@@ -512,6 +607,8 @@
 
         function startLoop() {
             stopLoop();
+            // 그릴 가사가 없으면 돌 이유가 없다 (가사 없는 곡을 트는 동안 빈 루프가 돌지 않게)
+            if (!lyricsData || !lyricsData.length) return;
             rafId = requestAnimationFrame(renderLoop);
         }
 
@@ -520,8 +617,10 @@
         }
 
         function setFollowing(on) {
+            const changed = following !== on;
             following = on;
             followBtn.classList.toggle('visible', !on);
+            if (changed) sendViewState();
         }
 
         function onUserScroll() {
@@ -529,6 +628,111 @@
             setFollowing(false);
         }
 
+        // ===== 스크롤 상태를 OBS 쪽 같은 화면으로 중계 =====
+        // 창(조작 UI 가 있는 쪽)만 보내고, OBS 쪽은 받기만 한다. 서로 보내면 스크롤이
+        // 서로를 밀어내므로 방향을 한쪽으로 고정한다.
+        const isController = showChrome;
+        let lastSentAt = 0;
+        let sendTimer = null;
+        // 조작 주체가 살아 있다는 신호. 이게 끊기면 OBS 는 스스로 자동 정렬로 돌아간다.
+        const HEARTBEAT_MS = 3000;
+        const CONTROL_TIMEOUT_MS = 9000;
+        let lastControlAt = 0;
+
+        // 화면 한가운데에 있는 줄. 창과 OBS 는 크기·글자 크기가 달라 픽셀 위치를 그대로
+        // 옮길 수 없으므로 '몇 번째 줄이 가운데인가'로 주고받는다.
+        function centerLineIndex() {
+            if (!lineEls.length) return -1;
+            const mid = scroller.scrollTop + scroller.clientHeight / 2;
+            let best = -1, bestD = Infinity;
+            for (let i = 0; i < lineEls.length; i++) {
+                const el = lineEls[i];
+                const d = Math.abs(el.offsetTop + el.offsetHeight / 2 - mid);
+                if (d < bestD) { bestD = d; best = i; }
+            }
+            return best;
+        }
+
+        function sendViewState() {
+            if (!isController) return;
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+            // 끌고 있는 동안 매 프레임 보내지 않도록 묶어서 보낸다
+            const now = performance.now();
+            const wait = 120 - (now - lastSentAt);
+            if (wait > 0) {
+                if (!sendTimer) sendTimer = setTimeout(() => { sendTimer = null; sendViewState(); }, wait);
+                return;
+            }
+            if (sendTimer) { clearTimeout(sendTimer); sendTimer = null; }
+            lastSentAt = now;
+
+            try {
+                ws.send(JSON.stringify({
+                    type: 'lyrics_view_scroll',
+                    data: {
+                        following: following,
+                        centerIndex: following ? -1 : centerLineIndex(),
+                        align: align,
+                    },
+                }));
+            } catch {}
+        }
+
+        function applyViewState(data) {
+            if (isController || !data) return;
+            lastControlAt = performance.now();
+
+            if (ALIGNS.includes(data.align) && data.align !== align) {
+                align = data.align;
+                applyView();
+            }
+
+            if (data.following) {
+                if (!following) {
+                    setFollowing(true);
+                    const idx = focusIndexFor(getInterpolatedTime());
+                    if (idx >= 0) scrollToIndex(idx, true);
+                }
+                return;
+            }
+
+            setFollowing(false);
+            // 끌고 있는 중이라 자주 들어온다 — 부드러운 스크롤을 쓰면 뒤처지므로 바로 옮긴다
+            if (data.centerIndex >= 0) scrollToIndex(data.centerIndex, false);
+        }
+
+        if (isController) {
+            // 자동 정렬을 멈춰 둔 동안에는 살아 있다는 신호를 계속 보낸다.
+            // 창을 닫거나 죽으면 이 신호가 끊기고 OBS 가 스스로 복구한다.
+            setInterval(() => { if (!following) sendViewState(); }, HEARTBEAT_MS);
+
+            // 창을 닫을 때는 곧바로 조작권을 놓는다(신호가 끊기기를 기다리지 않게).
+            window.addEventListener('pagehide', () => {
+                if (following) return;
+                try {
+                    ws && ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify({
+                        type: 'lyrics_view_scroll',
+                        data: { following: true, centerIndex: -1, align: align, release: true },
+                    }));
+                } catch {}
+            });
+        } else {
+            // OBS 쪽: 조작 주체가 사라졌는데도 멈춘 채로 남으면 곡이 끝날 때까지
+            // 틀린 가사를 방송하게 된다. 신호가 끊기면 자동 정렬로 되돌아간다.
+            setInterval(() => {
+                if (following || !lastControlAt) return;
+                if (performance.now() - lastControlAt < CONTROL_TIMEOUT_MS) return;
+                lastControlAt = 0;
+                setFollowing(true);
+                const idx = focusIndexFor(getInterpolatedTime());
+                if (idx >= 0) scrollToIndex(idx, true);
+            }, 2000);
+        }
+
+        // OBS 쪽 화면은 사람이 손댈 일이 없다. 스크롤 상태는 오직 창에서 받아 적용하므로
+        // 감지 자체를 달지 않는다 (자동 정렬을 사용자 조작으로 오인할 여지를 없앤다).
+        if (isController) {
         scroller.addEventListener('wheel', onUserScroll, { passive: true });
         scroller.addEventListener('touchmove', onUserScroll, { passive: true });
         scroller.addEventListener('scroll', () => {
@@ -548,12 +752,15 @@
                 animActive = false;   // 길 밖으로 튀었다 → 사용자가 끌었다
             }
             onUserScroll();
+            // 끌고 있는 동안에도 OBS 가 같은 자리를 보도록 계속 알린다
+            if (!following) sendViewState();
         }, { passive: true });
 
         document.addEventListener('keydown', (e) => {
             const keys = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '];
             if (keys.includes(e.key)) onUserScroll();
         });
+        }   // isController
 
         followBtn.addEventListener('click', () => {
             setFollowing(true);
@@ -580,8 +787,15 @@
             updateSongInfo(data.songTitle, data.artist);
 
             const lyrics = data.lyrics && data.lyrics.length ? data.lyrics : null;
+            // 곡이 바뀌었는지 판정하는 열쇠. 제목·줄수·첫 줄만 보면 같은 곡의 다른 가사
+            // (자동 가사를 다른 후보로 바꾼 경우 등)를 놓치므로 내용 길이와 끝도 함께 본다.
             const key = lyrics
-                ? [data.songTitle || '', data.artist || '', lyrics.length, lyrics[0].start, lyrics[0].text].join('|')
+                ? [
+                    data.songTitle || '', data.artist || '', lyrics.length,
+                    lyrics[0].start, lyrics[0].text,
+                    lyrics[lyrics.length - 1].end,
+                    lyrics.reduce((n, l) => n + (l.text ? l.text.length : 0), 0),
+                ].join('|')
                 : null;
 
             const songChanged = key !== songKey;
@@ -617,6 +831,10 @@
 
             updateTo(getInterpolatedTime(), true);
             if (isPlaying) startLoop(); else stopLoop();
+
+            // OBS 브라우저 소스가 새로 붙으면 노래하기 화면이 lyrics_init 을 다시 보낸다.
+            // 그 신호를 빌려 지금 보고 있는 위치도 함께 알려 준다 (새로 붙은 쪽이 맞춰지도록).
+            sendViewState();
         }
 
         function handleTimeSync(data) {
@@ -660,15 +878,30 @@
             statusEl.classList.toggle('off', !on);
         }
 
-        function connect() {
+        async function connect() {
             const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(
-                `${proto}//${location.host}/api/v1/overlay/ws?overlay_token=${encodeURIComponent(overlayToken)}`
-            );
+            let url = `${proto}//${location.host}/api/v1/overlay/ws`
+                + `?overlay_token=${encodeURIComponent(overlayToken)}`;
+
+            // 조작 권한은 로그인 세션으로만 받을 수 있다. OBS 쪽(토큰 URL)은 세션이 없어
+            // 이 요청이 실패하고, 받기만 하는 연결이 된다.
+            if (isController) {
+                try {
+                    const resp = await fetch('/api/v1/overlay/ws-token');
+                    if (resp.ok) {
+                        const { token } = await resp.json();
+                        if (token) url += `&control=${encodeURIComponent(token)}`;
+                    }
+                } catch {}
+            }
+
+            ws = new WebSocket(url);
 
             ws.onopen = () => {
                 if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
                 setStatus(true);
+                // 끊겨 있는 동안 OBS 는 자동 정렬로 돌아갔을 수 있다. 멈춰 둔 상태였다면 다시 알린다.
+                if (isController && !following) sendViewState();
             };
 
             ws.onmessage = (event) => {
@@ -684,6 +917,22 @@
                         break;
                     case 'lyrics_time_sync':
                         handleTimeSync(msg.data || {});
+                        break;
+                    case 'lyrics_view_scroll':
+                        applyViewState(msg.data);
+                        break;
+                    case 'settings_update':
+                        // 오버레이 설정을 저장하면 글자 모양이 곧바로 따라 바뀐다
+                        settings = { ...defaultSettings, ...(msg.settings || {}) };
+                        applyView();
+                        // 발음·해석 줄 표시 여부는 줄 내용 자체를 바꾸므로 다시 그려야 한다
+                        if (lyricsData && lyricsData.length) {
+                            renderAllLines();
+                            const t = getInterpolatedTime();
+                            lastCur = -2;
+                            lastFocus = -2;
+                            updateTo(t, true);
+                        }
                         break;
                     case 'clear':
                     case 'song_change':
@@ -711,20 +960,23 @@
 
         // ===== 머리말 조작 =====
         if (showChrome) {
-            document.getElementById('sizeDown').addEventListener('click', () => {
-                fontSize = Math.max(SIZE_MIN, fontSize - 2);
-                localStorage.setItem('lyrics_view_size', String(fontSize));
+            function changeScale(delta) {
+                scale = Math.min(SCALE_MAX, Math.max(SCALE_MIN, scale + delta));
+                localStorage.setItem('lyrics_view_scale', String(scale));
                 applyView();
                 syncUrl();
                 if (following && lastFocus >= 0) scrollToIndex(lastFocus, false);
-            });
+            }
 
-            document.getElementById('sizeUp').addEventListener('click', () => {
-                fontSize = Math.min(SIZE_MAX, fontSize + 2);
-                localStorage.setItem('lyrics_view_size', String(fontSize));
+            document.getElementById('sizeDown').addEventListener('click', () => changeScale(-10));
+            document.getElementById('sizeUp').addEventListener('click', () => changeScale(10));
+
+            document.getElementById('alignToggle').addEventListener('click', () => {
+                align = ALIGNS[(ALIGNS.indexOf(align) + 1) % ALIGNS.length];
+                localStorage.setItem('lyrics_view_align', align);
                 applyView();
                 syncUrl();
-                if (following && lastFocus >= 0) scrollToIndex(lastFocus, false);
+                sendViewState();   // OBS 쪽 정렬도 함께 바꾼다
             });
 
             document.getElementById('bgToggle').addEventListener('click', () => {
@@ -735,9 +987,11 @@
             });
 
             document.getElementById('copyObsUrl').addEventListener('click', async (e) => {
+                // OBS 는 1920 폭이라 창에서 줄여 둔 배율까지 가져가면 너무 작다 —
+                // 배율은 100%(오버레이 설정 그대로)로 넘기고, 정렬·배경만 지금 값을 쓴다.
                 const url = `${location.origin}/overlay/lyrics`
                     + `?token=${encodeURIComponent(overlayToken)}`
-                    + `&size=${fontSize}&bg=${transparent ? 'transparent' : 'dark'}`;
+                    + `&scale=100&align=${align}&bg=${transparent ? 'transparent' : 'dark'}`;
                 const btn = e.currentTarget;
                 try {
                     await navigator.clipboard.writeText(url);

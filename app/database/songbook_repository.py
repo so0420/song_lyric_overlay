@@ -28,10 +28,11 @@ _SONGBOOK_SELECT = """
 
 # 정렬 옵션 → ORDER BY 절 (화이트리스트; 항상 마지막에 sb.id 로 안정 정렬)
 # recent_request_count 는 _SONGBOOK_SELECT 의 별칭이라 ORDER BY 에서 참조 가능
+# sort_order 는 추가 시 MAX+1 로만 매겨지므로 DESC = 최근에 추가한 곡이 위
 _SORT_ORDERS = {
-    "default": "sb.sort_order ASC, sb.id DESC",
-    "requests": "recent_request_count DESC, sb.sort_order ASC, sb.id DESC",
-    "requests_asc": "recent_request_count ASC, sb.sort_order ASC, sb.id DESC",
+    "default": "sb.sort_order DESC, sb.id DESC",
+    "requests": "recent_request_count DESC, sb.sort_order DESC, sb.id DESC",
+    "requests_asc": "recent_request_count ASC, sb.sort_order DESC, sb.id DESC",
 }
 
 
@@ -77,7 +78,7 @@ class SongbookRepository:
     ) -> List[Dict[str, Any]]:
         """노래책 수록곡 목록 조회 (검색어/태그/가사보유 필터, 정렬, 페이지네이션)
 
-        sort: default=등록/정렬순, requests=최근 1달 신청 많은 순, requests_asc=적은 순
+        sort: default=최근 추가순, requests=최근 1달 신청 많은 순, requests_asc=적은 순
         """
         filter_sql, filter_params = _build_filters(q, tags, has_lyrics)
         order_by = _SORT_ORDERS.get(sort, _SORT_ORDERS["default"])

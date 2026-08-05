@@ -108,7 +108,7 @@ async def get_public_songbook(
     sort: str = Query(
         "default",
         pattern="^(default|requests|requests_asc)$",
-        description="정렬 (default=기본순, requests=최근 1달 신청 많은 순, requests_asc=적은 순)",
+        description="정렬 (default=최근 추가순, requests=최근 1달 신청 많은 순, requests_asc=적은 순)",
     ),
     limit: int = Query(500, ge=1, le=500),
     offset: int = Query(0, ge=0),

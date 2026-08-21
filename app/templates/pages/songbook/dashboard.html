@@ -1226,7 +1226,29 @@ function coverHtml(url, extraClass = '') {
         return `<img class="row-cover ${extraClass}" src="${escapeHtml(url)}" alt=""
                      onerror="this.removeAttribute('src'); this.classList.add('cover-ph')">`;
     }
+    return coverPhHtml(extraClass);
+}
+
+// 커버가 없을 때의 기본 배지 (음표 플레이스홀더).
+// 함수로 두는 이유는 reqCoverPh 와 같다 — 인라인 onerror 안의 따옴표 중첩 회피.
+function coverPhHtml(extraClass = '') {
     return `<div class="row-cover cover-ph ${extraClass}"></div>`;
+}
+
+// 내 프로필 사진을 커버 자리에 넣는다. 사진이 없으면 음표 배지.
+function myPictureCoverHtml(extraClass = '') {
+    const picture = profile && profile.picture;
+    if (!picture) return coverPhHtml(extraClass);
+    return `<img class="row-cover ${extraClass}" src="${escapeHtml(picture)}" alt="" loading="lazy"
+                 onerror="this.outerHTML=coverPhHtml()">`;
+}
+
+// 내 노래책 수록곡용 커버 — 앨범 커버가 없거나 못 불러오면 내 프로필 사진으로 채운다.
+// (공개 노래책 페이지의 coverFallbackHtml 과 같은 규칙)
+function entryCoverHtml(url, extraClass = '') {
+    if (!url) return myPictureCoverHtml(extraClass);
+    return `<img class="row-cover ${extraClass}" src="${escapeHtml(url)}" alt="" loading="lazy"
+                 onerror="this.outerHTML=myPictureCoverHtml()">`;
 }
 
 function difficultyBadgeHtml(d) {
@@ -1455,7 +1477,7 @@ function tagChipsHtml(tags) {
 function songbookRowHtml(item) {
     return `
         <div class="list-row" data-entry-id="${item.entry_id}">
-            ${coverHtml(item.cover_image_url)}
+            ${entryCoverHtml(item.cover_image_url)}
             <div class="row-info">
                 <div class="row-title">${escapeHtml(item.title)}</div>
                 <div class="row-artist">${escapeHtml(item.artist_name || '알 수 없음')}</div>
@@ -1780,7 +1802,7 @@ function enterDetailStep() {
 
     // 선택 곡 헤더
     document.getElementById('detailSongHeader').innerHTML = `
-        ${coverHtml(detail.song.cover_image_url)}
+        ${entryCoverHtml(detail.song.cover_image_url)}
         <div class="row-info">
             <div class="row-title">${escapeHtml(detail.song.title)}</div>
             <div class="row-artist">${escapeHtml(detail.song.artist_name || '알 수 없음')}</div>

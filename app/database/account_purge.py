@@ -7,7 +7,7 @@
 
 지우는 항목 (개인정보 처리방침의 파기 조항과 같아야 한다):
     users 행에서 비우는 값
-        이메일, 이름, 비밀번호 해시, 프로필 이미지 URL,
+        이메일, 이름, 비밀번호 해시, 프로필 사진(디스크의 파일과 URL),
         최근 로그인 IP, 최근 로그인 일시, 오버레이 토큰
     통째로 지우는 행
         소셜 계정 연결, 가사 즐겨찾기, 가사별 개인 메모, 재생목록,
@@ -26,7 +26,7 @@
 import anyio
 
 from app.database.mariadb import db_handler
-from app.utils import audio_storage
+from app.utils import audio_storage, image_storage
 from app.utils.log import logger
 
 # 탈퇴 후 이 기간이 지나면 파기한다
@@ -69,6 +69,7 @@ _PURGE_USER_SQL = """
            name = NULL,
            password_hash = NULL,
            picture = NULL,
+           picture_path = NULL,
            ip = NULL,
            last_login = NULL,
            overlay_token = NULL,
@@ -107,6 +108,12 @@ async def purge_account(user_id: int) -> bool:
         audio_rows = await tx.fetch_all(
             "SELECT storage_path FROM audio_files WHERE owner_id = %s", (user_id,)
         )
+
+        # 프로필 사진도 같은 이유로 경로를 미리 확보한다 (아래 _PURGE_USER_SQL 이 컬럼을 비운다)
+        picture_row = await tx.fetch_one(
+            "SELECT picture_path FROM users WHERE id = %s", (user_id,)
+        )
+        picture_path = picture_row.get("picture_path") if picture_row else None
         await tx.execute_query("DELETE FROM audio_files WHERE owner_id = %s", (user_id,))
 
         for table, column in _PURGE_TABLES:
@@ -121,6 +128,13 @@ async def purge_account(user_id: int) -> bool:
             await anyio.to_thread.run_sync(lambda p=path: p.unlink(missing_ok=True))
         except Exception as e:
             logger.error(f"[account_purge] 음원 파일 삭제 실패: {row['storage_path']} — {e}")
+
+    if picture_path:
+        try:
+            path = image_storage.resolve_profile_image_path(picture_path)
+            await anyio.to_thread.run_sync(lambda p=path: p.unlink(missing_ok=True))
+        except Exception as e:
+            logger.error(f"[account_purge] 프로필 사진 삭제 실패: {picture_path} — {e}")
 
     logger.info(f"[account_purge] 계정 {user_id} 개인정보 파기 완료 (음원 {len(audio_rows)}건 포함)")
     return True

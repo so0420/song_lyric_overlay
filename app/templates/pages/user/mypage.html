@@ -18,6 +18,90 @@
     text-align: center;
 }
 
+/* 프로필 사진 */
+.profile-avatar-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.profile-avatar-wrap {
+    position: relative;
+    width: 120px;
+    height: 120px;
+}
+
+.profile-avatar,
+.profile-avatar-fallback {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    display: block;
+}
+
+.profile-avatar {
+    object-fit: cover;
+    background: var(--bg-main);
+}
+
+.profile-avatar-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 2.6rem;
+    font-weight: 800;
+    user-select: none;
+}
+
+.avatar-edit-btn {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid white;
+    background: var(--accent);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: transform 0.15s;
+}
+
+.avatar-edit-btn:hover { transform: scale(1.08); }
+.avatar-edit-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+.avatar-actions {
+    display: flex;
+    gap: 16px;
+}
+
+.avatar-link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent);
+    cursor: pointer;
+}
+
+.avatar-link-btn.danger { color: #ef4444; }
+.avatar-link-btn:disabled { color: var(--text-dim); cursor: default; }
+
+.avatar-hint {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin: 0;
+}
+
 .user-info-grid {
     display: grid;
     gap: 20px;
@@ -244,6 +328,25 @@
     <!-- Profile Tab -->
     <div id="tab-profile" class="tab-content active">
         <div class="profile-section">
+            <div class="profile-avatar-block">
+                <div class="profile-avatar-wrap">
+                    <img id="profileAvatarImg" class="profile-avatar" alt="" style="display: none;">
+                    <div id="profileAvatarFallback" class="profile-avatar-fallback">{{ (user.get('name') or '?')[:1] }}</div>
+                    <button type="button" class="avatar-edit-btn" id="avatarEditBtn" title="프로필 사진 변경" onclick="pickAvatarFile()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                        </svg>
+                    </button>
+                </div>
+                <input type="file" id="avatarFileInput" accept="image/png,image/jpeg,image/webp,image/gif" style="display: none;" onchange="onAvatarSelected(event)">
+                <div class="avatar-actions">
+                    <button type="button" class="avatar-link-btn" id="avatarPickBtn" onclick="pickAvatarFile()">사진 변경</button>
+                    <button type="button" class="avatar-link-btn danger" id="avatarRemoveBtn" onclick="removeAvatar()" style="display: none;">사진 삭제</button>
+                </div>
+                <p class="avatar-hint" id="avatarHint">노래책에서 앨범 커버가 없는 곡에는 이 사진이 대신 들어갑니다.</p>
+            </div>
+
             <h1 style="font-size: 2rem; letter-spacing: -1px; margin-bottom: 8px;">{{ user.get('name') }}님, 안녕하세요!</h1>
             <p style="color: var(--text-sub);">{{ user.get('email') }}</p>
 
@@ -329,7 +432,85 @@
     </div>
 </div>
 
+<script src="/static/js/profile_image.js"></script>
 <script>
+    // ===== 프로필 사진 =====
+    // 세션이 아니라 DB 값을 서버가 렌더에 실어 준다 (app/web/user.py 참고).
+    let currentPicture = {{ (picture or '') | tojson }};
+
+    function setAvatar(url) {
+        const img = document.getElementById('profileAvatarImg');
+        const fallback = document.getElementById('profileAvatarFallback');
+        const removeBtn = document.getElementById('avatarRemoveBtn');
+
+        currentPicture = url || '';
+        if (currentPicture) {
+            img.src = currentPicture;
+            img.style.display = 'block';
+            fallback.style.display = 'none';
+            removeBtn.style.display = '';
+        } else {
+            img.removeAttribute('src');
+            img.style.display = 'none';
+            fallback.style.display = 'flex';
+            removeBtn.style.display = 'none';
+        }
+    }
+
+    // 사진 파일이 지워졌는데 users.picture 만 남은 경우 등 — 이니셜로 되돌린다
+    document.getElementById('profileAvatarImg').addEventListener('error', function () {
+        this.style.display = 'none';
+        document.getElementById('profileAvatarFallback').style.display = 'flex';
+    });
+
+    function setAvatarBusy(busy, message) {
+        ['avatarEditBtn', 'avatarPickBtn', 'avatarRemoveBtn'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = busy;
+        });
+        const hint = document.getElementById('avatarHint');
+        hint.textContent = message || '노래책에서 앨범 커버가 없는 곡에는 이 사진이 대신 들어갑니다.';
+    }
+
+    function pickAvatarFile() {
+        document.getElementById('avatarFileInput').click();
+    }
+
+    async function onAvatarSelected(event) {
+        const file = event.target.files && event.target.files[0];
+        // 같은 파일을 연달아 고를 수 있도록 값을 비운다 (안 그러면 change 가 안 뜬다)
+        event.target.value = '';
+        if (!file) return;
+
+        setAvatarBusy(true, '사진을 다듬는 중…');
+        try {
+            const result = await ProfileImage.handleFile(file, {
+                onPhase: (phase, detail) => setAvatarBusy(true, detail),
+                onProgress: (ratio) => setAvatarBusy(true, `업로드하는 중… ${Math.round(ratio * 100)}%`)
+            });
+            setAvatar(result.picture);
+            setAvatarBusy(false, '프로필 사진이 변경되었습니다.');
+        } catch (e) {
+            setAvatarBusy(false);
+            alert(e.message || '사진을 올리지 못했습니다.');
+        }
+    }
+
+    async function removeAvatar() {
+        if (!confirm('프로필 사진을 삭제하시겠습니까?')) return;
+        setAvatarBusy(true, '삭제하는 중…');
+        try {
+            await ProfileImage.remove();
+            setAvatar('');
+            setAvatarBusy(false, '프로필 사진이 삭제되었습니다.');
+        } catch (e) {
+            setAvatarBusy(false);
+            alert(e.message || '사진을 삭제하지 못했습니다.');
+        }
+    }
+
+    setAvatar(currentPicture);
+
     function showTab(tabName) {
         document.querySelectorAll('.tab-content').forEach(content => {
             content.classList.remove('active');

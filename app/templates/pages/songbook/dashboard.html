@@ -247,6 +247,97 @@
     background: #eef2f7 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'%3E%3Cpath d='M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z'/%3E%3C/svg%3E") no-repeat center / 22px;
 }
 
+/* 커버 이미지 올리기 (곡 추가/수정 모달) — 클릭·드래그&드롭·붙여넣기 모두 이 상자로 들어온다 */
+.cover-drop {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px;
+    background: #f8fafc;
+    border: 1.5px dashed var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.cover-drop:hover,
+.cover-drop:focus-visible {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    outline: none;
+}
+
+.cover-drop.dragover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.cover-drop .row-cover {
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
+}
+
+.cover-drop-text {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.85rem;
+}
+
+.cover-drop-text strong {
+    display: block;
+    font-size: 0.87rem;
+    margin-bottom: 3px;
+}
+
+.cover-drop-hint {
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+/* 수록곡별 곡 표기(제목/가수) 입력 */
+.entry-name-fields {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.entry-name-fields .form-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.entry-origin-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 7px 2px 0;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+}
+
+.entry-origin-note .link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--accent);
+    cursor: pointer;
+}
+
+/* 모달 제목 옆 부연 (대문자 변환/자간을 되돌린다) */
+.modal-body-title .title-note {
+    font-weight: 400;
+    font-size: 0.82rem;
+    color: var(--text-sub);
+    text-transform: none;
+    letter-spacing: 0;
+}
+
 .row-info {
     flex: 1;
     min-width: 0;
@@ -299,7 +390,10 @@
     cursor: pointer;
     padding: 7px;
     color: var(--text-sub);
+    /* <a> 로도 쓰므로 정렬을 명시한다 (button 은 기본으로 가운데 정렬되지만 a 는 아니다) */
     display: inline-flex;
+    align-items: center;
+    text-decoration: none;
     transition: all 0.15s;
 }
 
@@ -380,6 +474,8 @@
 .chip-web { background: #ecfeff; color: #0e7490; }
 .chip-manual { background: #f5f3ff; color: #6d28d9; }
 .chip-added { background: #dcfce7; color: #16a34a; }
+/* 검색 결과가 원곡이 아니라 '내 노래책 표기'로 보이고 있다는 표시 */
+.chip-mine { background: #ede9fe; color: #7c3aed; }
 .chip-count { background: var(--accent-light); color: var(--accent); }
 
 .lv-badge {
@@ -860,6 +956,10 @@ input:checked + .toggle-slider:before { transform: translateX(22px); }
 @media (max-width: 640px) {
     .row-badges { display: none; }
     .requester-cell { max-width: 90px; }
+    /* 행 버튼이 4개라 좁은 화면에서는 조금 좁힌다 */
+    .row-actions { gap: 4px; }
+    .row-actions .icon-btn { padding: 6px; }
+    .entry-name-fields { flex-direction: column; }
 }
 </style>
 {% endblock %}
@@ -1127,7 +1227,22 @@ input:checked + .toggle-slider:before { transform: translateX(22px); }
 
             <!-- 2단계: 상세 입력 -->
             <div id="detailStep" style="display: none;">
-                <div class="search-result-item" style="cursor: default;" id="detailSongHeader"></div>
+                <!-- 커버·제목·가수는 이 노래책의 이 수록곡에만 붙는다 (songs 테이블 = 전체 곡은 건드리지 않는다) -->
+                <div class="modal-body-title">곡 정보 <span class="title-note">(내 노래책·오버레이에만 적용 — 전체 곡 정보는 그대로예요)</span></div>
+                <div class="cover-drop" id="coverDrop" tabindex="0" role="button" aria-label="커버 이미지 올리기">
+                    <div id="coverPreview"></div>
+                    <div class="cover-drop-text">
+                        <strong>이미지를 끌어다 놓거나 붙여넣기 (Ctrl+V)</strong>
+                        <span class="cover-drop-hint" id="coverHint">눌러서 파일을 고를 수도 있어요.</span>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" id="coverRemoveBtn" style="display: none; flex-shrink: 0;">지우기</button>
+                </div>
+                <input type="file" id="coverFileInput" accept="image/png,image/jpeg,image/webp,image/gif" style="display: none;">
+                <div class="entry-name-fields">
+                    <input type="text" id="detailTitleInput" class="form-input" maxlength="512" placeholder="곡 제목">
+                    <input type="text" id="detailArtistInput" class="form-input" maxlength="512" placeholder="가수">
+                </div>
+                <p class="entry-origin-note" id="detailOriginNote"></p>
 
                 <div class="modal-body-title">난이도 <span style="font-weight:400;color:var(--text-sub);font-size:0.82rem;">(선택)</span></div>
                 <div class="difficulty-row">
@@ -1171,6 +1286,7 @@ input:checked + .toggle-slider:before { transform: translateX(22px); }
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="/static/js/cover_image.js"></script>
 <script>
 // ===== 공통 유틸 =====
 const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
@@ -1491,6 +1607,24 @@ function songbookRowHtml(item) {
             </div>
             ${difficultyBadgeHtml(item.difficulty)}
             <div class="row-actions">
+                <a class="icon-btn" href="/lyrics?external_id=${encodeURIComponent(item.song_external_id || '')}"
+                   target="_blank" rel="noopener" title="가사 만들기 (편집기 새 탭)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="8" y1="13" x2="15" y2="13"></line>
+                        <line x1="8" y1="17" x2="13" y2="17"></line>
+                    </svg>
+                </a>
+                <button class="icon-btn" data-action="queue" title="노래하기 재생목록에 추가">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="3" y1="6" x2="15" y2="6"></line>
+                        <line x1="3" y1="12" x2="15" y2="12"></line>
+                        <line x1="3" y1="18" x2="11" y2="18"></line>
+                        <line x1="18" y1="14" x2="18" y2="20"></line>
+                        <line x1="15" y1="17" x2="21" y2="17"></line>
+                    </svg>
+                </button>
                 <button class="icon-btn" data-action="edit" title="수정">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -1534,7 +1668,9 @@ document.getElementById('songbookList').addEventListener('click', async (e) => {
     const entry = songbookItems.find(it => it.entry_id === entryId);
     if (!entry) return;
 
-    if (btn.dataset.action === 'edit') {
+    if (btn.dataset.action === 'queue') {
+        await queueEntryToPlaylist(entry, btn);
+    } else if (btn.dataset.action === 'edit') {
         openEditModal(entry);
     } else if (btn.dataset.action === 'delete') {
         if (!confirm(`'${entry.title}' 곡을 노래책에서 삭제할까요?`)) return;
@@ -1587,6 +1723,8 @@ function openSongModal(mode) {
 
 function closeSongModal() {
     document.getElementById('songModal').classList.remove('active');
+    // 미리보기로 만든 objectURL 은 여기서만 정리된다 (detail 을 버리면 주소를 잃는다)
+    if (detail && detail.coverPreviewUrl) URL.revokeObjectURL(detail.coverPreviewUrl);
     detail = null;
 }
 
@@ -1617,7 +1755,14 @@ async function runSongSearch(q) {
     try {
         const data = await api(`/api/v1/songs/search?q=${encodeURIComponent(q)}&limit=20`);
         if (requestId !== songSearchRequestId) return;
-        const items = data.items || [];
+        // 내 노래책에서 붙인 표기가 있으면 그 이름으로 보여준다 (원곡 표기는 따로 들고 있는다 —
+        // 상세 단계가 '덮어썼는지'를 판단하는 기준이라 잃어버리면 저장할 때 표기가 지워진다)
+        const items = (data.items || []).map(s => Object.assign({}, s, {
+            title: s.my_songbook_title || s.title,
+            artist_name: s.my_songbook_artist_name || s.artist_name,
+            original_title: s.title,
+            original_artist_name: s.artist_name,
+        }));
         if (!items.length) {
             box.innerHTML = '<div class="sb-empty" style="padding: 30px 10px;">검색 결과가 없습니다.</div>';
             return;
@@ -1630,6 +1775,7 @@ async function runSongSearch(q) {
                     <div class="row-artist">${escapeHtml(s.artist_name || '알 수 없음')}</div>
                 </div>
                 <div class="row-badges">
+                    ${(s.my_songbook_title || s.my_songbook_artist_name) ? `<span class="chip chip-mine" title="원곡: ${escapeHtml(s.original_title)} - ${escapeHtml(s.original_artist_name || '알 수 없음')}">내 표기</span>` : ''}
                     ${s.lyrics_count > 0 ? `<span class="chip chip-count">가사 ${s.lyrics_count}개</span>` : ''}
                     ${songbookExtIds.has(s.song_external_id) ? '<span class="chip chip-added">추가됨</span>' : ''}
                 </div>
@@ -1666,14 +1812,22 @@ async function selectSearchResult(song) {
     // 이미 노래책에 있는 곡이면 기존 메타데이터를 불러와 수정 형태로 진입
     // (POST가 ON DUPLICATE UPDATE로 동작하므로 기존 값을 보존하기 위함)
     const existing = await findExistingEntry(song.song_external_id);
+    // 뒤로 갔다가 다른 곡을 고른 경우 — 앞서 만든 미리보기 주소를 여기서 놓아준다
+    if (detail && detail.coverPreviewUrl) URL.revokeObjectURL(detail.coverPreviewUrl);
     detail = {
         entryId: null, // add 모드에서는 POST 사용
         song: {
             song_external_id: song.song_external_id,
-            title: song.title,
-            artist_name: song.artist_name,
-            cover_image_url: song.cover_image_url,
+            // 이미 노래책에 있는 곡이면 그 노래책의 표기·커버를 그대로 보여준다
+            // (검색 결과는 원곡 정보라, 덮어써 둔 값이 있으면 그게 지워진 것처럼 보인다)
+            title: existing ? existing.title : song.title,
+            artist_name: existing ? existing.artist_name : song.artist_name,
+            // 검색 결과도 원곡 표기를 함께 실어 보낸다 (커스텀 등록 등 직접 만든 객체는 없으므로 폴백)
+            original_title: existing ? existing.original_title : (song.original_title || song.title),
+            original_artist_name: existing ? existing.original_artist_name : (song.original_artist_name || song.artist_name),
+            cover_image_url: existing ? existing.cover_image_url : song.cover_image_url,
         },
+        hasUploadedCover: !!(existing && existing.has_uploaded_cover),
         difficulty: existing ? existing.difficulty : null,
         tags: new Set(existing ? existing.tags : []),
         memo: existing ? (existing.memo || '') : '',
@@ -1749,7 +1903,10 @@ async function submitManualRequest(song) {
     });
 }
 
-async function postManualRequest(fields) {
+// 수동 신청 생성 (스트리머 본인 전용 경로 — 서버가 노래책 주인인지 확인한다).
+// options.successMessage: 완료 토스트 문구 교체
+// options.closeModal:     false 면 모달을 건드리지 않는다 (목록 행에서 부를 때)
+async function postManualRequest(fields, options = {}) {
     try {
         await api('/api/v1/song-requests/', {
             method: 'POST',
@@ -1760,11 +1917,45 @@ async function postManualRequest(fields) {
                 ...fields,
             }),
         });
-        showToast('신청 목록에 추가했습니다.', 'success');
-        closeSongModal();
-        loadRequests();
+        showToast(options.successMessage || '신청 목록에 추가했습니다.', 'success');
+        if (options.closeModal !== false) closeSongModal();
+        // 신청 탭이 보이고 있지 않으면 스피너 없이 조용히 갱신한다
+        loadRequests(currentTab !== 'requests');
+        return true;
     } catch (e) {
         showToast(e.message, 'error');
+        return false;
+    }
+}
+
+// 수록곡을 노래하기 재생목록으로 보낸다.
+//
+// 이 서비스에서 '재생목록에 넣기'는 곧 '수동 신청'이다. 신청이 생기면 노래하기
+// 페이지로 WS 푸시가 가서 재생목록에 올라가고(설정: 신청 곡 재생목록 자동 추가),
+// 그때 페이지가 닫혀 있었더라도 다음에 열 때 미전달분(playlist-pending)으로
+// 합류한다. 반대로 노래하기 페이지에서 곡을 직접 추가할 때도 신청을 만들어 두므로,
+// 두 목록은 어느 쪽에서 넣든 같은 상태로 맞춰진다.
+// => 재생목록(user_playlists)에 서버가 직접 써넣지 않는다. 그 값은 노래하기 페이지가
+//    통째로 저장하는 것이라, 서버가 끼어들면 페이지의 다음 저장에 덮인다.
+async function queueEntryToPlaylist(entry, btn) {
+    btn.disabled = true;
+    try {
+        const autoPlaylist = !!(profile && profile.request_auto_playlist);
+        await postManualRequest(
+            {
+                song_id: entry.song_id,
+                title: entry.title,
+                artist: entry.artist_name || null,
+            },
+            {
+                closeModal: false,
+                successMessage: autoPlaylist
+                    ? `"${entry.title}" 재생목록에 추가했어요.`
+                    : `"${entry.title}" 신청 목록에 넣었어요. 설정에서 '신청 곡 재생목록 자동 추가'를 켜면 재생목록에도 올라갑니다.`,
+            },
+        );
+    } finally {
+        btn.disabled = false;
     }
 }
 
@@ -1777,8 +1968,11 @@ function openEditModal(entry) {
             song_external_id: entry.song_external_id,
             title: entry.title,
             artist_name: entry.artist_name,
+            original_title: entry.original_title,
+            original_artist_name: entry.original_artist_name,
             cover_image_url: entry.cover_image_url,
         },
+        hasUploadedCover: !!entry.has_uploaded_cover,
         difficulty: entry.difficulty,
         tags: new Set(entry.tags || []),
         memo: entry.memo || '',
@@ -1800,14 +1994,16 @@ function enterDetailStep() {
     document.getElementById('detailStep').style.display = 'block';
     document.getElementById('detailBackBtn').style.display = modalMode === 'edit' ? 'none' : '';
 
-    // 선택 곡 헤더
-    document.getElementById('detailSongHeader').innerHTML = `
-        ${entryCoverHtml(detail.song.cover_image_url)}
-        <div class="row-info">
-            <div class="row-title">${escapeHtml(detail.song.title)}</div>
-            <div class="row-artist">${escapeHtml(detail.song.artist_name || '알 수 없음')}</div>
-        </div>
-    `;
+    // 검색 안내 문구가 상세 단계까지 남아 있지 않게 (뒤로 가면 다시 세운다)
+    document.getElementById('songModalSubtitle').textContent = '';
+
+    // 커버 이미지 (고른 이미지/삭제 표시를 초기화하고 현재 커버를 보여준다)
+    resetCoverPicker();
+
+    // 곡 표기 (이 노래책에서만 쓰는 제목/가수)
+    document.getElementById('detailTitleInput').value = detail.song.title || '';
+    document.getElementById('detailArtistInput').value = detail.song.artist_name || '';
+    renderOriginNote();
 
     // 난이도 (선택 — null 이면 '없음')
     setupDifficultyUI();
@@ -2016,6 +2212,200 @@ async function searchMr() {
     }
 }
 
+// ===== 수록곡 곡 표기 (제목/가수) =====
+// 덮어쓴 값은 streamer_songbooks 에만 들어가고 songs/artists(= 전체 곡)는 그대로다.
+// 입력값이 원곡과 같거나 비어 있으면 덮어쓰기를 지운다(= 원곡 표기 사용).
+function customNameValue(inputId, originalKey) {
+    const v = document.getElementById(inputId).value.trim();
+    if (!v || v === (detail.song[originalKey] || '')) return null;
+    return v;
+}
+
+function renderOriginNote() {
+    const note = document.getElementById('detailOriginNote');
+    if (!detail) return;
+    const origTitle = detail.song.original_title || '';
+    const origArtist = detail.song.original_artist_name || '';
+    const overridden = customNameValue('detailTitleInput', 'original_title') !== null
+                    || customNameValue('detailArtistInput', 'original_artist_name') !== null;
+
+    if (!overridden) {
+        note.textContent = '비워두면 원곡 표기를 그대로 씁니다.';
+        return;
+    }
+    note.innerHTML = `원곡: ${escapeHtml(origTitle)} — ${escapeHtml(origArtist || '알 수 없음')}`
+        + ` <button type="button" class="link-btn" id="detailOriginResetBtn">원곡 표기로 되돌리기</button>`;
+    document.getElementById('detailOriginResetBtn').addEventListener('click', () => {
+        document.getElementById('detailTitleInput').value = origTitle;
+        document.getElementById('detailArtistInput').value = origArtist;
+        renderOriginNote();
+    });
+}
+
+['detailTitleInput', 'detailArtistInput'].forEach(id => {
+    document.getElementById(id).addEventListener('input', renderOriginNote);
+});
+
+// ===== 수록곡 커버 이미지 =====
+// 커버는 '이 노래책의 이 수록곡'에만 붙는다 — songs(전체 곡)는 건드리지 않으므로
+// 남의 노래책이나 곡 검색 결과에는 영향이 없다.
+//
+// 곡 추가 흐름에는 아직 수록곡 id 가 없어서 바로 올릴 수 없다. 그래서 고른 이미지는
+// blob 으로 들고 있다가, 저장으로 id 가 생긴 뒤에 올린다 (삭제도 저장 시점에 반영).
+// 축소는 브라우저에서 끝낸다 — /static/js/cover_image.js 참고.
+const COVER_DEFAULT_HINT = '눌러서 파일을 고를 수도 있어요.';
+
+function resetCoverPicker() {
+    if (!detail) return;
+    if (detail.coverPreviewUrl) URL.revokeObjectURL(detail.coverPreviewUrl);
+    detail.coverBlob = null;
+    detail.coverPreviewUrl = null;
+    detail.coverRemove = false;
+    document.getElementById('coverFileInput').value = '';
+    document.getElementById('coverDrop').classList.remove('dragover');
+    renderCoverPicker();
+}
+
+function renderCoverPicker() {
+    if (!detail) return;
+    const box = document.getElementById('coverPreview');
+    const hint = document.getElementById('coverHint');
+    const removeBtn = document.getElementById('coverRemoveBtn');
+
+    if (detail.coverPreviewUrl) {
+        // 방금 고른 이미지 — 아직 서버에 올리지 않았다
+        box.innerHTML = `<img class="row-cover" src="${escapeHtml(detail.coverPreviewUrl)}" alt="">`;
+        hint.textContent = '저장을 누르면 올라갑니다.';
+    } else if (detail.coverRemove) {
+        // 올려둔 커버를 지우면 곡 자체의 커버로 되돌아간다 — 그 값은 저장 후에야 알 수 있다
+        box.innerHTML = entryCoverHtml(null);
+        hint.textContent = '저장하면 올린 커버가 지워집니다.';
+    } else {
+        box.innerHTML = entryCoverHtml(detail.song.cover_image_url);
+        hint.textContent = COVER_DEFAULT_HINT;
+    }
+
+    // 되돌릴 게 있을 때만 버튼을 낸다 (지금 고른 이미지 또는 이미 올려둔 커버)
+    const canRemove = !!detail.coverBlob || (detail.hasUploadedCover && !detail.coverRemove);
+    removeBtn.style.display = canRemove ? '' : 'none';
+}
+
+async function applyCoverFile(file) {
+    if (!file || !detail) return;
+    const hint = document.getElementById('coverHint');
+    hint.textContent = '이미지를 다듬는 중…';
+    try {
+        const prepared = await CoverImage.prepare(file);
+        if (!detail) {           // 다듬는 사이에 모달이 닫힌 경우
+            URL.revokeObjectURL(prepared.previewUrl);
+            return;
+        }
+        if (detail.coverPreviewUrl) URL.revokeObjectURL(detail.coverPreviewUrl);
+        detail.coverBlob = prepared.blob;
+        detail.coverPreviewUrl = prepared.previewUrl;
+        detail.coverRemove = false;
+    } catch (e) {
+        showToast(e.message, 'error');
+    }
+    renderCoverPicker();
+}
+
+// 저장(POST/PATCH) 뒤에 커버를 반영한다. 곡 저장 자체는 이미 끝난 뒤라
+// 여기서 실패해도 곡은 남는다 — 그래서 예외를 되던지지 않고 메시지로 돌려준다.
+async function applyCoverChanges(entryId) {
+    if (!entryId || !detail) return null;
+    try {
+        if (detail.coverBlob) {
+            await CoverImage.upload(entryId, detail.coverBlob);
+        } else if (detail.coverRemove && detail.hasUploadedCover) {
+            await CoverImage.remove(entryId);
+        }
+        return null;
+    } catch (e) {
+        return e.message;
+    }
+}
+
+(function setupCoverPicker() {
+    const drop = document.getElementById('coverDrop');
+    const input = document.getElementById('coverFileInput');
+    const modal = document.getElementById('songModal');
+
+    // 커버를 받을 수 있는 상태인지 (상세 입력 단계가 열려 있을 때만)
+    function coverPickerOpen() {
+        return modal.classList.contains('active') &&
+               document.getElementById('detailStep').style.display !== 'none';
+    }
+
+    // --- 파일 선택 ---
+    drop.addEventListener('click', () => input.click());
+    drop.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }
+    });
+    input.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        // 같은 파일을 연달아 고를 수 있도록 값을 비운다 (안 그러면 change 가 안 뜬다)
+        e.target.value = '';
+        applyCoverFile(file);
+    });
+
+    document.getElementById('coverRemoveBtn').addEventListener('click', (e) => {
+        e.stopPropagation();   // 드롭존 클릭(= 파일 선택)으로 번지지 않게
+        if (!detail) return;
+        if (detail.coverBlob) {
+            // 방금 고른 이미지만 취소한다 — 서버에 올려둔 커버는 그대로 둔다
+            URL.revokeObjectURL(detail.coverPreviewUrl);
+            detail.coverBlob = null;
+            detail.coverPreviewUrl = null;
+        } else {
+            detail.coverRemove = true;
+        }
+        renderCoverPicker();
+    });
+
+    // --- 드래그 & 드롭 ---
+    // 모달 안 어디에 떨어뜨려도 받는다 (드롭존을 정확히 맞히게 하지 않는다).
+    ['dragenter', 'dragover'].forEach(type => {
+        modal.addEventListener(type, (e) => {
+            if (!coverPickerOpen() || !CoverImage.hasFiles(e.dataTransfer)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            drop.classList.add('dragover');
+        });
+    });
+    modal.addEventListener('dragleave', (e) => {
+        // 모달 내부 요소 사이를 옮겨다닐 때도 dragleave 가 뜬다 — 진짜로 나갈 때만 끈다
+        if (e.relatedTarget && modal.contains(e.relatedTarget)) return;
+        drop.classList.remove('dragover');
+    });
+    modal.addEventListener('drop', (e) => {
+        if (!coverPickerOpen() || !CoverImage.hasFiles(e.dataTransfer)) return;
+        e.preventDefault();
+        drop.classList.remove('dragover');
+        const file = CoverImage.pickImageFile(e.dataTransfer);
+        if (file) applyCoverFile(file);
+        else showToast('이미지 파일만 올릴 수 있어요.', 'error');
+    });
+
+    // 살짝 빗나간 드롭으로 브라우저가 이미지를 열어 작업 중인 화면을 잃지 않도록,
+    // 파일 드롭의 기본 동작은 문서 전체에서 막는다.
+    ['dragover', 'drop'].forEach(type => {
+        document.addEventListener(type, (e) => {
+            if (CoverImage.hasFiles(e.dataTransfer)) e.preventDefault();
+        });
+    });
+
+    // --- 붙여넣기 (Ctrl+V) ---
+    // 클립보드에 이미지가 있을 때만 가로챈다 — 메모 칸에 텍스트를 붙여넣는 건 그대로 둔다.
+    document.addEventListener('paste', (e) => {
+        if (!coverPickerOpen()) return;
+        const file = CoverImage.pickImageFile(e.clipboardData);
+        if (!file) return;
+        e.preventDefault();
+        applyCoverFile(file);
+    });
+})();
+
 document.getElementById('mrSearchBtn').addEventListener('click', searchMr);
 document.getElementById('mrSearchInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); searchMr(); }
@@ -2024,6 +2414,7 @@ document.getElementById('mrSearchInput').addEventListener('keydown', (e) => {
 document.getElementById('detailBackBtn').addEventListener('click', () => {
     document.getElementById('detailStep').style.display = 'none';
     document.getElementById('searchStep').style.display = 'block';
+    document.getElementById('songModalSubtitle').textContent = '노래책에 넣을 곡을 검색해주세요.';
 });
 
 // 저장 (add: POST / edit: PATCH)
@@ -2037,23 +2428,39 @@ document.getElementById('detailSaveBtn').addEventListener('click', async () => {
         tags: Array.from(detail.tags),
         difficulty: detail.difficulty,
         memo: memo || null,
-        cover_image_url: detail.song.cover_image_url || null,
+        // null 명시 = 덮어쓰기 해제(원곡 표기 사용)
+        custom_title: customNameValue('detailTitleInput', 'original_title'),
+        custom_artist: customNameValue('detailArtistInput', 'original_artist_name'),
     };
+    // 커버 URL 칸에는 http(s) 주소만 들어간다. 지금 보이는 커버가 '올린 커버'면
+    // 그 값은 우리 서빙 경로(/api/v1/songbook/cover-image/...)라 URL 칸에 넣을 값이
+    // 아니다 — 그냥 보내지 않는다 (어차피 올린 커버가 우선한다).
+    if (/^https?:\/\//i.test(detail.song.cover_image_url || '')) {
+        body.cover_image_url = detail.song.cover_image_url;
+    }
     try {
+        let entryId = detail.entryId;
         if (modalMode === 'edit') {
             await api(`/api/v1/songbook/${detail.entryId}`, {
                 method: 'PATCH',
                 body: JSON.stringify(body),
             });
-            showToast('수정되었습니다.', 'success');
         } else {
             body.song_external_id = detail.song.song_external_id;
-            await api('/api/v1/songbook/', {
+            const created = await api('/api/v1/songbook/', {
                 method: 'POST',
                 body: JSON.stringify(body),
             });
+            entryId = created.entry_id;
             songbookExtIds.add(detail.song.song_external_id);
-            showToast('노래책에 추가했습니다.', 'success');
+        }
+
+        // 커버는 수록곡 id 가 있어야 붙일 수 있어서 저장 뒤에 반영한다
+        const coverError = await applyCoverChanges(entryId);
+        if (coverError) {
+            showToast(`곡은 저장했지만 커버는 반영하지 못했어요 — ${coverError}`, 'error');
+        } else {
+            showToast(modalMode === 'edit' ? '수정되었습니다.' : '노래책에 추가했습니다.', 'success');
         }
         closeSongModal();
         loadSongbook(true);

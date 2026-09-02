@@ -1,12 +1,21 @@
 from app.database.mariadb import db_handler
+from app.database.songbook_repository import (
+    SONGBOOK_ARTIST_EXPR,
+    SONGBOOK_COVER_EXPR,
+    SONGBOOK_TITLE_EXPR,
+)
 from typing import Optional, Dict, Any, List
 
 
 # 공통 SELECT: 신청 + 참조 노래/아티스트/노래책 수록 정보/연결 가사 메타데이터
 # (soft delete 된 가사는 JOIN 조건으로 걸러 ref_lyrics_id 가 NULL 로 나온다)
-_REQUEST_SELECT = """
-    SELECT r.*, s.title AS ref_song_title, s.song_external_id, a.name AS ref_artist_name,
-           COALESCE(sb.cover_image_url, s.cover_image_url) AS ref_song_cover,
+# 제목/가수/커버는 노래책과 같은 규칙으로 고른다 — 노래책 주인이 수록곡에 덮어쓴 값이
+# 있으면 신청 목록·노래하기 재생목록에서도 그 표기로 보여야 한다.
+_REQUEST_SELECT = f"""
+    SELECT r.*, s.song_external_id,
+           {SONGBOOK_TITLE_EXPR} AS ref_song_title,
+           {SONGBOOK_ARTIST_EXPR} AS ref_artist_name,
+           {SONGBOOK_COVER_EXPR} AS ref_song_cover,
            sb.mr_youtube_video_id AS sb_mr_video_id, sb.audio_file_id AS sb_audio_file_id,
            l.id AS ref_lyrics_id, l.title AS ref_lyrics_title, l.mr_youtube_video_id AS lyrics_mr_video_id,
            l.audio_file_id AS lyrics_audio_file_id,

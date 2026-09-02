@@ -85,6 +85,9 @@ class Settings(BaseSettings):
     # 업로드 프로필 사진 저장 루트 — 비어있으면 <리포지토리 루트>/storage/profile
     profile_image_root: str = ""
 
+    # 업로드 노래책 커버 이미지 저장 루트 — 비어있으면 <리포지토리 루트>/storage/cover
+    song_cover_root: str = ""
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": False,

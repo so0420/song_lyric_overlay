@@ -1,11 +1,14 @@
+import re
+
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Form, Request, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from app.core.auth import get_current_user, get_current_user_api, require_admin
 from typing import Optional
 from app.services.song_service import SongService, get_song_service
 from app.database.mariadb import db_handler
 from app.database.meilisearch.meilisearch import meilisearch_handler
 from app.database.lyrics_repository import get_lyrics_repository
+from app.database.songbook_repository import SONGBOOK_COVER_EXPR
 from app.integrations.itunes_search import search_itunes
 from app.utils.csrf import verify_csrf
 from app.utils.rate_limit import limiter, RATE_LIMITS
@@ -17,7 +20,41 @@ class SongUpdateSchema(BaseModel):
     artist: Optional[str] = None
     cover_image_url: Optional[str] = None
 
+    @field_validator("cover_image_url")
+    @classmethod
+    def validate_cover_image_url(cls, v: Optional[str]) -> Optional[str]:
+        """커버 이미지 URL 은 http(s) 주소만 (빈 문자열은 '지우기' 뜻이라 그대로 통과).
+
+        노래책 수록곡에 올린 커버는 우리 서빙 경로(/api/v1/songbook/cover-image/...)
+        로 내려간다. 그 값이 이 API 로 되돌아와 songs.cover_image_url 에 박히면
+        한 사람이 자기 노래책에 올린 커버가 전체 곡의 커버가 되어 버린다.
+        상대 경로를 막아 그 경로를 끊는다 (속성 주입 차단도 겸한다).
+        """
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return ""
+        if len(v) > 1000:
+            raise ValueError("커버 이미지 URL이 너무 깁니다.")
+        if not re.match(r"^https?://", v, re.IGNORECASE):
+            raise ValueError("커버 이미지 URL은 http(s) 주소만 사용할 수 있습니다.")
+        return v
+
 router = APIRouter()
+
+# artists.name / songs.title 은 VARCHAR(512) (migration_song_title_length.sql).
+# iTunes 표기가 그보다 길게 오는 경우까지 있어, 삽입 전에 잘라주지 않으면
+# "Data too long" 으로 해당 곡 등록이 통째로 실패한다.
+_NAME_MAX_LEN = 512
+
+
+def _fit(value: Optional[str], max_len: int = _NAME_MAX_LEN) -> Optional[str]:
+    """DB 컬럼 길이에 맞춰 문자열을 자른다. 값이 비어 있으면 None."""
+    if not value:
+        return None
+    value = value.strip()
+    return value[:max_len] if value else None
 
 
 async def register_itunes_results(itunes_results: list) -> list:
@@ -27,8 +64,10 @@ async def register_itunes_results(itunes_results: list) -> list:
     meilisearch_docs = []
 
     for item in itunes_results:
-        itunes_artist = item["artist_name"]
-        itunes_title = item["track_name"]
+        itunes_artist = _fit(item["artist_name"])
+        itunes_title = _fit(item["track_name"])
+        if not itunes_artist or not itunes_title:
+            continue
         artist_ext_id = f"custom_it_{item['artist_id']}"
         song_ext_id = f"custom_it_{item['track_id']}"
 
@@ -93,10 +132,99 @@ async def register_itunes_results(itunes_results: list) -> list:
     return formatted
 
 
+# 내 노래책 표기를 한 번에 가져올 최대 건수. 검색 한 번에 딸려가는 부수 질의라
+# 상한을 둔다 (표기를 붙인 곡이 이보다 많으면 검색어에 걸린 것부터 채워진다).
+_MY_SONGBOOK_NAME_LIMIT = 100
+
+
+def _nospace_contains(query: str, *names) -> bool:
+    """공백/대소문자를 무시한 부분 일치. 아래 SQL 의 LIKE 조건과 같은 판정을 파이썬에서 한다.
+
+    (REPLACE(...) LIKE %nospace% 가 공백 포함 LIKE 를 포함하므로 이 하나로 충분하다)
+    """
+    nq = query.replace(" ", "").lower()
+    if not nq:
+        return False
+    return any(n and nq in n.replace(" ", "").lower() for n in names)
+
+
+async def _my_songbook_names(user, q: str, external_ids: list) -> dict:
+    """로그인 사용자가 **자기** 노래책에서 곡에 붙인 표기 → {song_external_id: {...}}
+
+    전체 곡 검색(Meilisearch)은 원곡 표기만 알고 있다. 그런데 노래책 주인에게는
+    자기가 붙인 이름이 곧 그 곡의 이름이라, 그 이름으로도 찾히고 그 이름으로 보여야
+    노래책·오버레이·재생목록이 서로 어긋나지 않는다.
+
+    한 질의로 두 가지를 가져온다:
+      ① 지금 결과에 들어 있는 곡의 표기 — 결과 라벨을 내 표기로 바꾸기 위해
+      ② 검색어가 내 표기에만 걸리는 곡 — 결과에 없으면 덧붙이기 위해 (matched=True)
+
+    다른 사람의 표기는 st.user_id 조건에서 배제되므로 남의 노래책 표기가
+    전체 곡 검색에 섞이는 일은 없다.
+    """
+    if not user or not user.get("id"):
+        return {}
+
+    like = f"%{q}%"
+    nospace = f"%{q.replace(' ', '')}%"
+    conds = [
+        "sb.custom_title LIKE %s", "sb.custom_artist LIKE %s",
+        "REPLACE(sb.custom_title, ' ', '') LIKE %s",
+        "REPLACE(sb.custom_artist, ' ', '') LIKE %s",
+    ]
+    params = [user["id"], like, like, nospace, nospace]
+    if external_ids:
+        placeholders = ", ".join(["%s"] * len(external_ids))
+        conds.append(f"s.song_external_id IN ({placeholders})")
+        params.extend(external_ids)
+    params.append(_MY_SONGBOOK_NAME_LIMIT)
+
+    sql = f"""
+        SELECT s.song_external_id, sb.custom_title, sb.custom_artist,
+               s.title AS original_title, a.name AS original_artist_name,
+               {SONGBOOK_COVER_EXPR} AS cover_image_url
+        FROM streamer_songbooks sb
+        JOIN streamers st ON sb.streamer_id = st.id
+        JOIN songs s ON sb.song_id = s.id
+        LEFT JOIN artists a ON s.artist_id = a.id
+        WHERE st.user_id = %s
+          AND (sb.custom_title IS NOT NULL OR sb.custom_artist IS NOT NULL)
+          AND ({' OR '.join(conds)})
+        LIMIT %s
+    """
+    try:
+        rows = await db_handler.fetch_all(sql, tuple(params))
+    except Exception as e:
+        # 부수 기능이므로 실패해도 검색 자체는 그대로 돌려준다
+        logger.warning(f"내 노래책 표기 조회 실패: {e}")
+        return {}
+
+    result = {}
+    for row in rows:
+        ext_id = row["song_external_id"]
+        if not ext_id:
+            continue
+        row = dict(row)
+        # IN 절로 딸려온 것과 검색어에 실제로 걸린 것을 구분한다 (덧붙일지 판단용)
+        row["matched"] = _nospace_contains(q, row.get("custom_title"), row.get("custom_artist"))
+        result[ext_id] = row
+    return result
+
+
 @router.get("/search")
 @limiter.limit(RATE_LIMITS["search"])
-async def search_songs(request: Request, q: str, offset: int = 0, limit: int = 20):
-    """노래 검색: iTunes 보강 + Meilisearch/DB 통합"""
+async def search_songs(
+    request: Request,
+    q: str,
+    offset: int = 0,
+    limit: int = 20,
+    user=Depends(get_current_user),
+):
+    """노래 검색: iTunes 보강 + Meilisearch/DB 통합
+
+    로그인 사용자에게는 자기 노래책에서 붙인 표기도 함께 검색·노출된다
+    (my_songbook_title / my_songbook_artist_name — _my_songbook_names 참고).
+    """
     if not q or len(q.strip()) < 1:
         return {"items": [], "total": 0, "offset": offset, "limit": limit, "has_more": False}
 
@@ -222,7 +350,35 @@ async def search_songs(request: Request, q: str, offset: int = 0, limit: int = 2
                 existing_ext_ids.add(item["song_external_id"])
                 total += 1
 
-    # 4단계: 가사 개수 조회 → 가사 있는 노래 우선 정렬
+    # 4단계: 내 노래책 표기 반영 (로그인 사용자 본인 것만)
+    #  - 결과에 있는 곡: 내가 붙인 이름을 함께 내려준다 (라벨 교체 여부는 화면이 정한다)
+    #  - 내 표기에만 걸린 곡: 결과에 없으면 덧붙인다 (iTunes 병합과 같이 첫 페이지에서만
+    #    — 매 페이지마다 덧붙이면 페이지를 넘길 때 같은 곡이 반복된다)
+    my_names = await _my_songbook_names(user, q, [r["song_external_id"] for r in formatted_results])
+    if my_names:
+        existing_ext_ids = {r["song_external_id"] for r in formatted_results}
+        for r in formatted_results:
+            info = my_names.get(r["song_external_id"])
+            if info:
+                r["my_songbook_title"] = info["custom_title"]
+                r["my_songbook_artist_name"] = info["custom_artist"]
+        if offset == 0:
+            for ext_id, info in my_names.items():
+                if ext_id in existing_ext_ids or not info["matched"]:
+                    continue
+                formatted_results.append({
+                    "id": ext_id,
+                    "song_external_id": ext_id,
+                    "title": info["original_title"] or "",
+                    "artist_name": info["original_artist_name"] or "",
+                    "cover_image_url": info["cover_image_url"],
+                    "my_songbook_title": info["custom_title"],
+                    "my_songbook_artist_name": info["custom_artist"],
+                })
+                existing_ext_ids.add(ext_id)
+                total += 1
+
+    # 5단계: 가사 개수 조회 → 가사 있는 노래 우선 정렬
     if formatted_results:
         lyrics_repo = get_lyrics_repository()
         external_ids = [r["song_external_id"] for r in formatted_results]

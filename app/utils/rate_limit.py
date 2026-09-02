@@ -53,4 +53,8 @@ RATE_LIMITS = {
     "song_request": "10/minute",  # 노래 신청 (비로그인 시청자 포함)
     "upload_minute": "3/minute",  # 음원 업로드 (연타 방지)
     "upload_hour": "20/hour",     # 음원 업로드 (하루치 폭주 방지)
+    # 커버 이미지 업로드 — 곡을 여러 개 등록하며 연달아 올리는 흐름이 정상이라
+    # 음원보다 넉넉하다. 대신 파일이 작고(브라우저가 640px 로 줄여 보낸다) 서버 한도가 있다.
+    "cover_upload_minute": "20/minute",
+    "cover_upload_hour": "300/hour",
 }

@@ -512,6 +512,34 @@
     background: var(--accent-hover);
 }
 
+/* 카드 오른쪽 버튼 묶음 (노래하기 / 신청) */
+.sb-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* '노래하기 재생목록에 추가' — 오버레이 사용 승인을 받은 이용자에게만 보인다 */
+.sb-sing-btn {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 100px;
+    background: white;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sb-sing-btn:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+}
+
 /* 로딩 / 빈 상태 */
 .sb-loading,
 .sb-empty {
@@ -861,6 +889,10 @@
             MR 영상 보기
         </a>
 
+        {% if is_approved %}
+        <button type="button" class="sb-modal-action" id="sbModalSingBtn" style="display: none;" onclick="singSelectedSong()">🎤 내 노래하기 재생목록에 추가</button>
+        {% endif %}
+
         {% if user %}
         <a class="sb-modal-action" id="sbModalLyricsBtn" href="#">✏️ 이 곡 가사 만들기</a>
         {% endif %}
@@ -912,6 +944,9 @@ const STREAMER = {{ streamer | tojson }};
 const USER_NAME = {{ (user.name if user else '') | tojson }};
 const IS_LOGGED_IN = {{ (user is not none) | tojson }};
 const IS_ADMIN = {{ (is_admin | default(false)) | tojson }};
+// 오버레이(노래하기) 사용 승인 여부 / 이 노래책의 주인인지
+const IS_APPROVED = {{ (is_approved | default(false)) | tojson }};
+const IS_OWNER = {{ (is_owner | default(false)) | tojson }};
 const NICKNAME_STORAGE_KEY = 'songbook_requester_name';
 
 let allSongs = [];          // 전체 수록곡 (서버 정렬 순서 유지)
@@ -1095,6 +1130,13 @@ function renderSongCard(s) {
         });
     }
 
+    // 오른쪽 버튼 묶음 (노래하기 / 신청) — 둘 다 없으면 빈 칸도 만들지 않는다
+    const actionBtns = [
+        canSing(s) ? '<button type="button" class="sb-sing-btn" title="내 노래하기 재생목록에 추가" aria-label="내 노래하기 재생목록에 추가">🎤</button>' : '',
+        canRequest ? '<button type="button" class="sb-request-btn">신청</button>' : '',
+    ].join('');
+    const actions = actionBtns ? `<div class="sb-card-actions">${actionBtns}</div>` : '';
+
     card.innerHTML = `
         ${cover}
         <div class="sb-song-info">
@@ -1102,11 +1144,42 @@ function renderSongCard(s) {
             <div class="sb-song-artist">${escapeHtml(s.artist_name || '알 수 없음')}</div>
             <div class="sb-song-meta">${badges.join('')}</div>
         </div>
-        ${canRequest ? '<button type="button" class="sb-request-btn">신청</button>' : ''}
+        ${actions}
     `;
+
+    // 카드 전체는 곡 상세 모달을 열지만, 노래하기 버튼은 곧바로 재생목록으로 보낸다
+    const singBtn = card.querySelector('.sb-sing-btn');
+    if (singBtn) {
+        singBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            singSong(s);
+        });
+    }
 
     card.addEventListener('click', () => openRequestModal(s));
     return card;
+}
+
+// ===== 노래하기 재생목록에 추가 (오버레이 사용 승인자 전용) =====
+// 부를 거리가 있는 곡만 대상으로 한다 — 가사도 MR도 없으면 노래하기 화면에서 할 게 없다.
+// 업로드 음원만 있는 곡은 노래책 주인만 재생할 수 있어(소유자 전용 경로) 주인에게만 연다.
+function canSing(song) {
+    if (!IS_APPROVED || !song) return false;
+    return !!(song.lyrics_id || song.mr_youtube_video_id || (IS_OWNER && song.has_audio));
+}
+
+// 가사가 연결된 곡은 가사 목록의 '재생목록에 추가'와 똑같은 경로(?lyrics_id)로 보낸다.
+// 가사가 없는 곡은 수록곡 자체(제목/커버/MR/음원)를 노래하기 페이지가 서버에서 다시
+// 읽어 담는다 — 재생목록에 들어갈 값을 이 페이지가 URL 로 정하지 않게 하기 위해서다.
+function singSong(song) {
+    if (!canSing(song)) return;
+    window.location.href = song.lyrics_id
+        ? `/overlay?lyrics_id=${encodeURIComponent(song.lyrics_id)}`
+        : `/overlay?songbook_id=${encodeURIComponent(STREAMER.id)}&entry_id=${encodeURIComponent(song.entry_id)}`;
+}
+
+function singSelectedSong() {
+    singSong(selectedSong);
 }
 
 function renderSongsAppend(items, reset) {
@@ -1180,6 +1253,10 @@ function openRequestModal(song) {
             : '/lyrics';
     }
 
+    // '노래하기 재생목록에 추가' 버튼 (승인된 이용자에게만 존재)
+    const singBtn = document.getElementById('sbModalSingBtn');
+    if (singBtn) singBtn.style.display = canSing(song) ? '' : 'none';
+
     // 관리자 곡 정보 수정 영역: 모달 열 때마다 접어두고 현재 값으로 채운다
     if (IS_ADMIN) {
         const editArea = document.getElementById('sbAdminEditArea');
@@ -1189,9 +1266,9 @@ function openRequestModal(song) {
         if (editToggle) editToggle.style.display = canEdit ? '' : 'none';
         if (editArea) {
             editArea.style.display = 'none';
-            document.getElementById('sbEditTitle').value = song.title || '';
-            document.getElementById('sbEditArtist').value = song.artist_name || '';
-            document.getElementById('sbEditCover').value = song.cover_image_url || '';
+            document.getElementById('sbEditTitle').value = songOriginalName(song, 'title');
+            document.getElementById('sbEditArtist').value = songOriginalName(song, 'artist');
+            document.getElementById('sbEditCover').value = songCoverUrlValue(song);
         }
     }
 
@@ -1217,6 +1294,25 @@ function closeRequestModal() {
 }
 
 // ===== 관리자: 곡 정보 수정 =====
+// 곡 정보 수정 칸에 넣을 커버 URL — 이 노래책에서 올린 커버는 제외한다.
+// 그 커버는 우리 서빙 경로(/api/v1/songbook/cover-image/...)로 내려오는데,
+// 이 화면이 고치는 건 songs(= 전체 곡)의 커버라서 그 값이 넘어가면 한 사람의
+// 노래책 커버가 모두의 커버가 된다. (서버도 http(s) 가 아니면 거부한다)
+// 곡 정보 수정 칸에 넣을 제목/가수 — 이 노래책에서 덮어쓴 표기가 아니라 원곡 값이다.
+// 화면에 보이는 title/artist_name 은 수록곡에 덮어쓴 값일 수 있는데(그건 이 노래책
+// 전용이다), 그걸 그대로 저장하면 한 사람의 표기가 전체 곡 제목이 되어 버린다.
+function songOriginalName(song, key) {
+    if (!song) return '';
+    const original = song[key === 'title' ? 'original_title' : 'original_artist_name'];
+    // 원곡 값을 못 받은 경우에만 표시값으로 폴백한다 (구버전 응답 대비)
+    return (original !== undefined && original !== null) ? original : (song[key === 'title' ? 'title' : 'artist_name'] || '');
+}
+
+function songCoverUrlValue(song) {
+    const url = (song && song.cover_image_url) || '';
+    return /^https?:\/\//i.test(url) ? url : '';
+}
+
 function toggleAdminEdit() {
     const area = document.getElementById('sbAdminEditArea');
     if (!area) return;
@@ -1237,9 +1333,9 @@ async function saveSongEdit() {
 
     // 변경된 필드만 전송 (가수명 변경은 같은 아티스트의 모든 곡에 영향 → 불필요한 재인덱싱 방지)
     const body = {};
-    if (title !== (selectedSong.title || '')) body.title = title;
-    if (artist !== (selectedSong.artist_name || '')) body.artist = artist;
-    if (cover !== (selectedSong.cover_image_url || '')) body.cover_image_url = cover;
+    if (title !== songOriginalName(selectedSong, 'title')) body.title = title;
+    if (artist !== songOriginalName(selectedSong, 'artist')) body.artist = artist;
+    if (cover !== songCoverUrlValue(selectedSong)) body.cover_image_url = cover;
 
     if (Object.keys(body).length === 0) {
         showToast('변경된 내용이 없습니다.');
@@ -1265,28 +1361,39 @@ async function saveSongEdit() {
         }
         const updated = await res.json();
 
-        // 가수명이 바뀌었다면 같은 가수의 로드된 곡들도 함께 갱신
-        const oldArtist = selectedSong.artist_name;
+        // 가수명이 바뀌었다면 같은 원곡 가수의 로드된 곡들도 함께 갱신
+        const oldArtist = songOriginalName(selectedSong, 'artist');
         const artistChanged = 'artist' in body && updated.artist_name !== oldArtist;
 
-        // 선택된 곡(= allSongs 내 참조) 갱신
-        selectedSong.title = updated.title;
-        selectedSong.artist_name = updated.artist_name;
-        selectedSong.cover_image_url = updated.cover_image_url;
+        // 선택된 곡(= allSongs 내 참조) 갱신.
+        // 이 수록곡이 덮어쓴 표기·올린 커버가 있으면 그게 계속 우선이므로 응답값으로 덮지 않는다.
+        const hadCustomTitle = selectedSong.original_title !== undefined
+            && selectedSong.original_title !== selectedSong.title;
+        const hadCustomArtist = selectedSong.original_artist_name !== undefined
+            && selectedSong.original_artist_name !== selectedSong.artist_name;
+
+        selectedSong.original_title = updated.title;
+        selectedSong.original_artist_name = updated.artist_name;
+        if (!hadCustomTitle) selectedSong.title = updated.title;
+        if (!hadCustomArtist) selectedSong.artist_name = updated.artist_name;
+        if (!selectedSong.has_uploaded_cover) selectedSong.cover_image_url = updated.cover_image_url;
 
         if (artistChanged) {
             allSongs.forEach(s => {
-                if (s !== selectedSong && s.artist_name === oldArtist) {
-                    s.artist_name = updated.artist_name;
-                }
+                if (s === selectedSong) return;
+                if (songOriginalName(s, 'artist') !== oldArtist) return;
+                const sHadCustomArtist = s.original_artist_name !== undefined
+                    && s.original_artist_name !== s.artist_name;
+                s.original_artist_name = updated.artist_name;
+                if (!sHadCustomArtist) s.artist_name = updated.artist_name;
             });
         }
 
         // 모달 표시 갱신
-        document.getElementById('sbModalTitle').textContent = updated.title || '';
-        document.getElementById('sbModalArtist').textContent = updated.artist_name || '알 수 없음';
-        document.getElementById('sbModalCoverWrap').innerHTML = updated.cover_image_url
-            ? `<img src="${escapeHtml(updated.cover_image_url)}" class="sb-song-cover" alt="" onerror="this.outerHTML=coverFallbackHtml()">`
+        document.getElementById('sbModalTitle').textContent = selectedSong.title || '';
+        document.getElementById('sbModalArtist').textContent = selectedSong.artist_name || '알 수 없음';
+        document.getElementById('sbModalCoverWrap').innerHTML = selectedSong.cover_image_url
+            ? `<img src="${escapeHtml(selectedSong.cover_image_url)}" class="sb-song-cover" alt="" onerror="this.outerHTML=coverFallbackHtml()">`
             : coverFallbackHtml();
 
         // 그리드 카드 다시 그리기 (로드된 곡 기준)

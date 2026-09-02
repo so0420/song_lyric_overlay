@@ -98,6 +98,16 @@ class OverlaySettingsSchema(BaseModel):
     playlist_highlight_color: str = "#FFE500"
     playlist_show_thumbnail: bool = True
     playlist_show_artist: bool = True
+    # 안내 문구 — 재생목록과 같은 쪽 열에 위/아래로 붙는 자유 문구
+    # (노래 신청 방법, 현재 상태 등). 재생목록을 꺼도 단독으로 뜬다.
+    show_notice: bool = False
+    notice_text: str = Field("", max_length=500)
+    notice_position: str = "below"      # above | below (재생목록 기준)
+    notice_font_size: int = 16
+    notice_text_color: str = "#FFFFFF"
+    notice_text_align: str = "left"     # left | center | right
+    notice_bg_color: str = "#000000"
+    notice_bg_opacity: float = 0.7
 
 
 class OverlayPresetCreateSchema(BaseModel):

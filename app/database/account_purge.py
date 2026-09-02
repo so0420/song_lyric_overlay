@@ -13,7 +13,8 @@
         소셜 계정 연결, 가사 즐겨찾기, 가사별 개인 메모, 재생목록,
         오버레이 설정·프리셋, 노래 타임라인 기록, 치지직 채널 연동,
         노래책 프로필(수록곡·노래 신청 내역·신청 통계가 CASCADE 로 함께 삭제된다),
-        업로드한 음원 파일 (디스크의 파일과 audio_files 기록)
+        업로드한 음원 파일 (디스크의 파일과 audio_files 기록),
+        노래책 수록곡에 올린 커버 이미지 파일
 
 남기는 항목:
     users.id, 가입 일시, 탈퇴 일시, 파기 일시, 관리자/승인 플래그
@@ -114,6 +115,18 @@ async def purge_account(user_id: int) -> bool:
             "SELECT picture_path FROM users WHERE id = %s", (user_id,)
         )
         picture_path = picture_row.get("picture_path") if picture_row else None
+
+        # 노래책 수록곡에 올린 커버 이미지도 마찬가지 — streamers 를 지우면
+        # streamer_songbooks 가 CASCADE 로 함께 사라져 경로를 알 수 없게 된다.
+        cover_rows = await tx.fetch_all(
+            """
+            SELECT sb.cover_image_path
+              FROM streamer_songbooks sb
+              JOIN streamers st ON sb.streamer_id = st.id
+             WHERE st.user_id = %s AND sb.cover_image_path IS NOT NULL
+            """,
+            (user_id,),
+        )
         await tx.execute_query("DELETE FROM audio_files WHERE owner_id = %s", (user_id,))
 
         for table, column in _PURGE_TABLES:
@@ -136,7 +149,17 @@ async def purge_account(user_id: int) -> bool:
         except Exception as e:
             logger.error(f"[account_purge] 프로필 사진 삭제 실패: {picture_path} — {e}")
 
-    logger.info(f"[account_purge] 계정 {user_id} 개인정보 파기 완료 (음원 {len(audio_rows)}건 포함)")
+    for row in cover_rows:
+        try:
+            path = image_storage.resolve_song_cover_path(row["cover_image_path"])
+            await anyio.to_thread.run_sync(lambda p=path: p.unlink(missing_ok=True))
+        except Exception as e:
+            logger.error(f"[account_purge] 커버 이미지 삭제 실패: {row['cover_image_path']} — {e}")
+
+    logger.info(
+        f"[account_purge] 계정 {user_id} 개인정보 파기 완료 "
+        f"(음원 {len(audio_rows)}건, 커버 {len(cover_rows)}건 포함)"
+    )
     return True
 
 

@@ -849,6 +849,13 @@
         color: var(--text-sub);
     }
 
+    /* 검색 결과를 내 노래책 표기로 보여줄 때 병기하는 원곡 표기 */
+    .song-origin {
+        font-size: 0.75rem;
+        color: var(--text-dim);
+        margin-top: 2px;
+    }
+
     .song-lyrics-count {
         font-size: 0.75rem;
         color: var(--accent);
@@ -1457,6 +1464,7 @@
     .oc-btn--violet { background: #8b5cf6; }
     .oc-btn--slate { background: #64748b; }
     .oc-btn--emerald { background: #059669; }
+    .oc-btn--amber { background: #d97706; }
 
     .oc-toggle {
         display: flex;
@@ -2544,6 +2552,7 @@
                     <div class="offset-actions">
                         <button class="offset-reset" id="offsetReset" title="모든 오프셋 초기화">초기화</button>
                         <button type="button" id="changeVideoBtn" class="oc-btn oc-btn--blue" title="현재 재생 곡의 영상 변경">영상 변경</button>
+                        <button type="button" id="makeLyricsBtn" class="oc-btn oc-btn--amber" title="지금 부르는 곡의 가사를 편집기에서 새로 만듭니다. 재생 중이면 작은 창으로 열려 노래는 계속됩니다">가사 만들기</button>
                         <button type="button" id="openLyricsViewBtn" class="oc-btn oc-btn--emerald" title="전체 가사를 스크롤해서 보는 창을 엽니다. 재생 중에는 현재 가사가 가운데로 따라옵니다. (OBS 브라우저 소스로도 쓸 수 있습니다)">새 창에서 가사 보기</button>
                         <a href="https://chromewebstore.google.com/detail/dhmalklebhljlmfbbpiojdilckgnjiio?utm_source=item-share-cb" target="_blank" class="oc-btn oc-btn--violet" title="크롬 확장으로 노래 키 조절">노래 키 조절</a>
                     </div>
@@ -3122,11 +3131,15 @@
                 const data = await response.json();
                 if (requestId !== searchRequestId) return; // 더 새로운 검색이 있으면 결과 폐기
                 const rawItems = data.items || [];
+                // 내 노래책에서 붙인 표기가 있으면 그 이름으로 다룬다 — 재생목록·OBS 가
+                // 노래책과 같은 이름을 쓰게 된다. 원곡 표기는 검색 결과에 병기한다.
                 const items = rawItems.map(item => ({
                     id: item.id,
                     song_external_id: item.song_external_id,
-                    title: item.title,
-                    artist_name: item.artist_name,
+                    title: item.my_songbook_title || item.title,
+                    artist_name: item.my_songbook_artist_name || item.artist_name,
+                    original_title: item.title,
+                    original_artist_name: item.artist_name,
                     cover_image_url: item.cover_image_url,
                     lyrics_count: item.lyrics_count,
                 }));
@@ -3178,6 +3191,8 @@
                 <div class="song-info">
                     <div class="song-title">${escapeHtml(song.title)}</div>
                     <div class="song-artist">${escapeHtml(song.artist_name || '알 수 없음')}</div>
+                    ${(song.original_title && song.title !== song.original_title) || (song.original_artist_name && song.artist_name !== song.original_artist_name)
+                        ? `<div class="song-origin">원곡: ${escapeHtml(song.original_title)} - ${escapeHtml(song.original_artist_name || '알 수 없음')}</div>` : ''}
                 </div>
                 ${song.lyrics_count ? `<span class="song-lyrics-count">가사 ${song.lyrics_count}개</span>` : ''}
             </div>
@@ -3236,7 +3251,7 @@
                         </svg>
                         가사 없이 추가
                     </button>
-                    <a href="/lyrics?external_id=${encodeURIComponent(songExternalId)}" class="btn-select">가사 만들기</a>
+                    <a href="${lyricEditorUrl(songExternalId)}" class="btn-select">가사 만들기</a>
                 </div>
             </div>
         `;
@@ -3413,6 +3428,44 @@
                 return;
             }
             openVideoReplace(index);
+        }
+
+        // ---------------------------------------------------------------
+        // 노래하기 화면을 떠나지 않고 사이트 안 다른 페이지를 연다
+        // ---------------------------------------------------------------
+        // 재생 중이면 작은 창(PiP)으로 띄운다 — 그래야 부르던 MR 과 OBS 연결이 끊기지 않는다.
+        // 링크 클릭 가로채기(initPipMode)와 '가사 만들기' 버튼이 같은 규칙을 쓰도록 여기 한 곳에 둔다.
+        function openInternalPage(url) {
+            let pathname = url;
+            try {
+                pathname = new URL(url, location.href).pathname;
+            } catch (e) { /* 상대 경로 그대로 판정 */ }
+
+            if (isVideoLoaded() && isPipEligible(pathname)) {
+                // 모달(예: 가사 선택)이 열려 있으면 패널과 작은 창을 통째로 덮는다 → 먼저 닫는다
+                $$('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+                pipOpen(url);
+            } else {
+                location.href = url;
+            }
+        }
+
+        // 곡 하나에 대한 가사 편집기 주소. videoId 를 주면 그 영상이 MR 로 미리 채워진다.
+        function lyricEditorUrl(songExternalId, videoId) {
+            const params = new URLSearchParams({ external_id: songExternalId });
+            if (videoId) params.set('video_id', videoId);
+            return `/lyrics?${params.toString()}`;
+        }
+
+        // '가사 만들기' 버튼 — 지금 재생 중인 곡을 MR 까지 그대로 편집기로 넘긴다.
+        // 재생목록/즐겨찾기 어느 쪽에서 틀었든 맞도록 인덱스가 아니라 재생 중인 곡 정보를 쓴다.
+        // (업로드 음원으로 부르는 중이면 videoId 가 없으니 MR 은 편집기에서 고른다)
+        function openLyricEditorForCurrent() {
+            if (state.currentPlayingIndex < 0 || !state.currentSongExternalId) {
+                showToast('먼저 재생할 곡을 선택해주세요', 'info');
+                return;
+            }
+            openInternalPage(lyricEditorUrl(state.currentSongExternalId, state.currentVideoId));
         }
 
         // 교체 모드: 기존 재생목록 항목의 영상만 바꾼다
@@ -3704,17 +3757,20 @@
             </div>
         `).join('');
 
-            // 가사 없이 추가 옵션
+            // 가사 없이 추가 / 직접 가사 만들기 옵션
             html += `
             <div style="border-top: 1px solid var(--border-color); margin-top: 16px; padding-top: 16px; text-align: center;">
-                <button class="btn-select" id="addWithoutLyricsBtn" style="background: #6b7280;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    가사 없이 추가
-                </button>
-                <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 8px;">YouTube에서 MR 영상을 검색하여 추가합니다</p>
+                <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                    <button class="btn-select" id="addWithoutLyricsBtn" style="background: #6b7280;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        가사 없이 추가
+                    </button>
+                    <a href="${lyricEditorUrl(songExternalId)}" class="btn-select">가사 만들기</a>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 8px;">「가사 없이 추가」는 YouTube에서 MR 영상을 검색해 추가합니다. 마음에 드는 가사가 없으면 직접 만들 수 있습니다.</p>
             </div>
         `;
 
@@ -4411,6 +4467,18 @@
                 return { type: 'audio', audioId: data.audio_file_id, viaLyricsId: null };
             }
             return data.mr_video_id ? { type: 'youtube', videoId: data.mr_video_id } : null;
+        }
+
+        // 수록곡 응답(GET /api/v1/songbook/{id}/entry/{id}) → 재생 소스 서술자.
+        // audio_file_id 는 노래책 주인 본인에게만 내려오고, 수록곡 전용 음원이므로
+        // 가사를 경유하지 않는 소유자 전용 경로로 재생한다 (requestSource 와 같은 규칙).
+        function songbookEntrySource(entry) {
+            if (entry.audio_file_id) {
+                return { type: 'audio', audioId: entry.audio_file_id, viaLyricsId: null };
+            }
+            return entry.mr_youtube_video_id
+                ? { type: 'youtube', videoId: entry.mr_youtube_video_id }
+                : null;
         }
 
         // WS 푸시(song_request_new) 수신 처리
@@ -5482,6 +5550,7 @@
             elements.lyricsDisplay.addEventListener('mouseleave', hideAutoTooltip);
             elements.offsetReset.addEventListener('click', resetOffsets);
             document.getElementById('changeVideoBtn').addEventListener('click', openVideoReplaceForCurrent);
+            document.getElementById('makeLyricsBtn').addEventListener('click', openLyricEditorForCurrent);
             document.getElementById('openLyricsViewBtn').addEventListener('click', openLyricsView);
 
             // Initialize offset display
@@ -5940,10 +6009,7 @@
                 if (!isVideoLoaded()) return;   // 재생 중이 아니면 원래대로 이동
 
                 e.preventDefault();
-                // 모달 안 앵커(예: 가사 선택 모달의 '가사 만들기')로 열면 모달이 남아
-                // 패널과 작은 창을 통째로 덮는다 → 먼저 닫는다
-                $$('.modal-overlay.active').forEach(m => m.classList.remove('active'));
-                pipOpen(url.pathname + url.search);
+                openInternalPage(url.pathname + url.search);
             });
 
             // ← : 패널을 닫고 노래하기 화면으로 복귀
@@ -6079,6 +6145,40 @@
             const fromPip = typeof searchStr === 'string';
             const params = new URLSearchParams(fromPip ? searchStr : window.location.search);
             const lyricsId = params.get('lyrics_id');
+            const songbookId = params.get('songbook_id');
+            const entryId = params.get('entry_id');
+
+            // 노래책(공개 페이지)의 '내 재생목록에 담기' — 가사가 없는 수록곡으로 들어온다.
+            // 가사가 연결된 수록곡은 가사 목록과 같은 ?lyrics_id 로 오므로 아래 분기가 처리한다.
+            if (!lyricsId && songbookId && entryId) {
+                if (!fromPip) window.history.replaceState({}, '', '/overlay');
+
+                try {
+                    const res = await fetch(
+                        `/api/v1/songbook/${encodeURIComponent(songbookId)}/entry/${encodeURIComponent(entryId)}`
+                    );
+                    if (!res.ok) {
+                        showToast('곡 정보를 불러올 수 없습니다', 'error');
+                        return;
+                    }
+                    const entry = await res.json();
+
+                    addToPlaylist(
+                        entry.lyrics_id || null,
+                        entry.song_external_id,
+                        entry.title,
+                        entry.artist_name,
+                        entry.mr_youtube_video_id || null,
+                        entry.lyrics_title || null,
+                        entry.cover_image_url || '',
+                        { source: songbookEntrySource(entry) }
+                    );
+                } catch (e) {
+                    console.error('Failed to add songbook entry from URL:', e);
+                    showToast('곡 추가에 실패했습니다', 'error');
+                }
+                return;
+            }
 
             if (lyricsId) {
                 // URL에서 파라미터 제거 (뒤로가기 시 중복 추가 방지)

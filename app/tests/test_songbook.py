@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 from fastapi import FastAPI
+from pydantic import ValidationError
 
 from app.api.v1.streamers import router as streamers_router
 from app.api.v1.songbook import router as songbook_router
@@ -24,6 +25,8 @@ from app.database.songbook_repository import get_songbook_repository
 from app.database.song_request_repository import SongRequestRepository, get_song_request_repository
 from app.database.song_repository import get_song_repository
 from app.database.lyrics_repository import get_lyrics_repository
+from app.api.v1.songs import _my_songbook_names, _nospace_contains
+from app.schemas.songbook import SongbookEntryUpdateSchema
 
 
 # ===============================================================
@@ -455,6 +458,7 @@ class TestSongbookOwnership:
             streamer_id=10, song_id=45, lyrics_id=None, mr_youtube_video_id=None,
             audio_file_id=None,
             tags=["발라드"], difficulty=7, memo=None, cover_image_url=None,
+            custom_title=None, custom_artist=None,
         )
 
 
@@ -533,6 +537,258 @@ class TestPublicSongbookGet:
         items = response.json()["items"]
         assert items[0]["recent_request_count"] == 5
         assert items[1]["recent_request_count"] == 0
+
+
+# ===============================================================
+# 2-b. 공개 노래책 수록곡 단건 조회 (노래하기 재생목록 담기)
+# ===============================================================
+def make_public_entry_row(**over):
+    """get_songbook_entry 결과 형태의 row (목록과 같은 필드 구성)"""
+    row = {
+        "entry_id": 5, "song_id": 45, "song_external_id": "custom_it_1",
+        "title": "노래", "artist_name": "가수", "cover_image_url": None,
+        "cover_image_path": None, "original_title": "노래", "original_artist_name": "가수",
+        "mr_youtube_video_id": "abcdefghijk", "audio_file_id": 77,
+        "lyrics_id": None, "lyrics_title": None, "lyrics_mr_video_id": None,
+        "lyrics_audio_file_id": None, "has_lyrics": False, "tags": [],
+        "difficulty": None, "memo": None, "recent_request_count": 0,
+    }
+    row.update(over)
+    return row
+
+
+class TestPublicSongbookEntryGet:
+    @pytest.mark.asyncio
+    async def test_unknown_streamer_404(self):
+        """미승인/탈퇴 스트리머 → 404 (수록곡 조회까지 가지 않는다)"""
+        repos = make_repos()
+        repos.streamer.get_public_by_external_id.return_value = None
+
+        async with api_client(repos) as client:
+            response = await client.get(f"/api/v1/songbook/{STREAMER_UUID}/entry/5")
+
+        assert response.status_code == 404
+        repos.songbook.get_songbook_entry.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_entry_of_other_songbook_404(self):
+        """다른 노래책의 수록곡 id → 404 (streamer_id 를 함께 걸어 조회)"""
+        repos = make_repos()
+        repos.streamer.get_public_by_external_id.return_value = make_streamer_row()
+        repos.songbook.get_songbook_entry.return_value = None
+
+        async with api_client(repos) as client:
+            response = await client.get(f"/api/v1/songbook/{STREAMER_UUID}/entry/5")
+
+        assert response.status_code == 404
+        repos.songbook.get_songbook_entry.assert_awaited_once_with(10, 5)
+
+    @pytest.mark.asyncio
+    async def test_audio_file_id_hidden_from_others(self):
+        """남의 노래책(비로그인 포함) → 업로드 음원 id 미노출, 보유 여부만"""
+        repos = make_repos()
+        repos.streamer.get_public_by_external_id.return_value = make_streamer_row()
+        repos.songbook.get_songbook_entry.return_value = make_public_entry_row()
+
+        async with api_client(repos, user=OTHER_USER) as client:
+            response = await client.get(f"/api/v1/songbook/{STREAMER_UUID}/entry/5")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "audio_file_id" not in data
+        assert data["has_audio"] is True
+        assert data["mr_youtube_video_id"] == "abcdefghijk"
+
+    @pytest.mark.asyncio
+    async def test_audio_file_id_exposed_to_owner(self):
+        """노래책 주인 본인 → 소유자 전용 경로로 재생할 수 있게 음원 id 를 함께 준다"""
+        repos = make_repos()
+        repos.streamer.get_public_by_external_id.return_value = make_streamer_row()
+        repos.songbook.get_songbook_entry.return_value = make_public_entry_row()
+
+        async with api_client(repos, user=APPROVED_USER) as client:
+            response = await client.get(f"/api/v1/songbook/{STREAMER_UUID}/entry/5")
+
+        assert response.status_code == 200
+        assert response.json()["audio_file_id"] == 77
+
+
+# ===============================================================
+# 2-c. 수록곡별 곡 표기 덮어쓰기 (custom_title / custom_artist)
+# ===============================================================
+class TestCustomSongName:
+    def test_display_name_prefers_override(self):
+        """조회 식은 덮어쓴 값 > 원곡 순서로 COALESCE 한다"""
+        from app.database.songbook_repository import (
+            SONGBOOK_ARTIST_EXPR, SONGBOOK_TITLE_EXPR,
+        )
+        assert SONGBOOK_TITLE_EXPR.index("sb.custom_title") < SONGBOOK_TITLE_EXPR.index("s.title")
+        assert SONGBOOK_ARTIST_EXPR.index("sb.custom_artist") < SONGBOOK_ARTIST_EXPR.index("a.name")
+
+    def test_search_filter_matches_both_names(self):
+        """검색은 덮어쓴 이름과 원곡 이름을 모두 대상으로 한다"""
+        from app.database.songbook_repository import _build_filters
+
+        sql, params = _build_filters("나비", None)
+        for column in ("sb.custom_title", "sb.custom_artist", "s.title", "a.name"):
+            assert f"{column} LIKE" in sql, column
+        assert params == ["%나비%"] * 4
+
+    @pytest.mark.parametrize("raw,expected", [
+        ("  나비  ", "나비"),   # 앞뒤 공백 제거
+        ("", None),             # 빈 값 = 덮어쓰기 해제
+        ("   ", None),          # 공백뿐인 값도 해제
+        (None, None),
+    ])
+    def test_blank_override_means_use_original(self, raw, expected):
+        """빈 문자열을 저장하지 않는다 — 저장하면 화면에 빈 제목이 나온다"""
+        payload = SongbookEntryUpdateSchema(custom_title=raw)
+        assert payload.custom_title == expected
+
+    def test_rejects_over_column_length(self):
+        """원본 컬럼(VARCHAR(512))보다 긴 값은 거부"""
+        with pytest.raises(ValidationError):
+            SongbookEntryUpdateSchema(custom_title="가" * 513)
+
+    @pytest.mark.asyncio
+    async def test_patch_passes_override_to_repository(self):
+        """PATCH 로 넘긴 덮어쓰기 값이 그대로 update_entry 에 전달된다"""
+        repos = make_repos()
+        repos.songbook.get_entry.return_value = make_entry_row()
+
+        async with api_client(repos, user=APPROVED_USER) as client:
+            response = await client.patch(
+                "/api/v1/songbook/5",
+                json={"custom_title": "나비 (Acoustic)", "custom_artist": "윤도현"},
+            )
+
+        assert response.status_code == 200
+        kwargs = repos.songbook.update_entry.call_args.kwargs
+        assert kwargs["custom_title"] == "나비 (Acoustic)"
+        assert kwargs["custom_artist"] == "윤도현"
+
+    @pytest.mark.asyncio
+    async def test_patch_null_clears_override(self):
+        """null 을 명시하면 덮어쓰기가 지워진다 (= 원곡 표기로 되돌림)"""
+        repos = make_repos()
+        repos.songbook.get_entry.return_value = make_entry_row(custom_title="나비")
+
+        async with api_client(repos, user=APPROVED_USER) as client:
+            response = await client.patch(
+                "/api/v1/songbook/5", json={"custom_title": None},
+            )
+
+        assert response.status_code == 200
+        kwargs = repos.songbook.update_entry.call_args.kwargs
+        assert "custom_title" in kwargs and kwargs["custom_title"] is None
+
+    @pytest.mark.asyncio
+    async def test_response_exposes_original_name(self):
+        """수정 화면이 '되돌릴 대상'을 알 수 있도록 원곡 표기도 함께 내려준다"""
+        repos = make_repos()
+        repos.streamer.get_public_by_external_id.return_value = make_streamer_row()
+        repos.songbook.get_songbook.return_value = [{
+            "entry_id": 1, "song_id": 45, "song_external_id": "custom_it_1",
+            "title": "나비 (Acoustic)", "artist_name": "윤도현",
+            "original_title": "나비", "original_artist_name": "YB",
+            "cover_image_url": None, "mr_youtube_video_id": None, "lyrics_id": None,
+            "lyrics_title": None, "has_lyrics": False, "tags": [],
+            "difficulty": None, "memo": None,
+        }]
+        repos.songbook.count_songbook.return_value = 1
+
+        async with api_client(repos) as client:
+            response = await client.get(f"/api/v1/songbook/{STREAMER_UUID}")
+
+        item = response.json()["items"][0]
+        assert item["title"] == "나비 (Acoustic)"
+        assert item["original_title"] == "나비"
+        assert item["original_artist_name"] == "YB"
+
+
+# ===============================================================
+# 2-d. 전체 곡 검색에 내 노래책 표기 태우기 (_my_songbook_names)
+# ===============================================================
+class TestSongSearchMyNames:
+    @staticmethod
+    def _rows(*rows):
+        db = AsyncMock()
+        db.fetch_all.return_value = list(rows)
+        return db
+
+    @staticmethod
+    def _row(**over):
+        row = {
+            "song_external_id": "custom_it_1",
+            "custom_title": "토끼체조",
+            "custom_artist": None,
+            "original_title": "회전하는 하늘토끼",
+            "original_artist_name": "Orangestar",
+            "cover_image_url": None,
+        }
+        row.update(over)
+        return row
+
+    @pytest.mark.parametrize("query,name,expected", [
+        ("토끼체조", "토끼체조", True),
+        ("토끼 체조", "토끼체조", True),      # 검색어의 공백 무시
+        ("토끼체조", "토끼 체조", True),      # 후보의 공백 무시
+        ("TOKKI", "tokki 체조", True),        # 대소문자 무시
+        ("하늘토끼", "토끼체조", False),
+        ("", "토끼체조", False),              # 빈 검색어는 매칭 아님
+        ("토끼", None, False),
+    ])
+    def test_nospace_contains(self, query, name, expected):
+        assert _nospace_contains(query, name) is expected
+
+    @pytest.mark.asyncio
+    async def test_anonymous_gets_nothing(self, monkeypatch):
+        """비로그인에는 어떤 노래책 표기도 붙지 않는다 (질의도 하지 않는다)"""
+        import app.api.v1.songs as songs_module
+        db = self._rows(self._row())
+        monkeypatch.setattr(songs_module, "db_handler", db)
+
+        assert await _my_songbook_names(None, "토끼체조", []) == {}
+        assert await _my_songbook_names({}, "토끼체조", []) == {}
+        db.fetch_all.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_scoped_to_requesting_user(self, monkeypatch):
+        """조회는 요청자 본인의 노래책으로 한정된다 (남의 표기가 섞이면 안 된다)"""
+        import app.api.v1.songs as songs_module
+        db = self._rows()
+        monkeypatch.setattr(songs_module, "db_handler", db)
+
+        await _my_songbook_names({"id": 23}, "토끼체조", ["custom_it_1"])
+
+        sql, params = db.fetch_all.call_args.args
+        assert "st.user_id = %s" in sql
+        assert params[0] == 23
+        assert "custom_it_1" in params   # 결과에 있는 곡의 라벨 보강용 IN 절
+
+    @pytest.mark.asyncio
+    async def test_marks_query_hits_as_matched(self, monkeypatch):
+        """검색어에 걸린 곡만 matched — IN 절로 딸려온 곡은 라벨만 바꾸고 덧붙이지 않는다"""
+        import app.api.v1.songs as songs_module
+        monkeypatch.setattr(songs_module, "db_handler", self._rows(
+            self._row(song_external_id="hit", custom_title="토끼체조"),
+            self._row(song_external_id="pulled", custom_title="전혀다른표기"),
+        ))
+
+        names = await _my_songbook_names({"id": 23}, "토끼체조", ["pulled"])
+
+        assert names["hit"]["matched"] is True
+        assert names["pulled"]["matched"] is False
+
+    @pytest.mark.asyncio
+    async def test_db_failure_does_not_break_search(self, monkeypatch):
+        """부수 기능이므로 실패해도 검색 자체는 살아 있어야 한다"""
+        import app.api.v1.songs as songs_module
+        db = AsyncMock()
+        db.fetch_all.side_effect = RuntimeError("db down")
+        monkeypatch.setattr(songs_module, "db_handler", db)
+
+        assert await _my_songbook_names({"id": 23}, "토끼체조", []) == {}
 
 
 # ===============================================================

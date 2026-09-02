@@ -23,6 +23,23 @@ def _validate_cover_image_url(v: Optional[str]) -> Optional[str]:
     return v
 
 
+def _validate_custom_song_field(v: Optional[str]) -> Optional[str]:
+    """수록곡별 곡 정보 덮어쓰기 값: 빈 값은 None(= 원곡 표기 사용)
+
+    빈 문자열을 저장하지 않는 이유는 조회가 COALESCE 하나로 끝나야 하기 때문이다.
+    '덮어썼지만 비어 있는' 중간 상태가 생기면 화면에 빈 제목이 나온다.
+    길이는 원본 컬럼(songs.title / artists.name = VARCHAR(512))에 맞춘다.
+    """
+    if v is None:
+        return None
+    v = v.strip()
+    if not v:
+        return None
+    if len(v) > 512:
+        raise ValueError("512자를 넘을 수 없습니다.")
+    return v
+
+
 class SocialLinkSchema(BaseModel):
     """스트리머 소셜 링크 항목"""
     name: str = Field(..., min_length=1, max_length=50, description="링크 이름")
@@ -70,8 +87,11 @@ class SongbookEntryCreateSchema(BaseModel):
     difficulty: Optional[int] = Field(None, ge=1, le=10, description="난이도 (1~10, 없으면 미설정)")
     memo: Optional[str] = Field(None, max_length=255, description="노래 설명/메모")
     cover_image_url: Optional[str] = Field(None, description="커버 이미지 URL")
+    custom_title: Optional[str] = Field(None, description="이 노래책에서만 쓸 곡 제목 (비우면 원곡 제목)")
+    custom_artist: Optional[str] = Field(None, description="이 노래책에서만 쓸 가수 이름 (비우면 원곡 가수)")
 
     _validate_cover = field_validator("cover_image_url")(_validate_cover_image_url)
+    _validate_custom = field_validator("custom_title", "custom_artist")(_validate_custom_song_field)
 
 
 class SongbookEntryUpdateSchema(BaseModel):
@@ -85,8 +105,11 @@ class SongbookEntryUpdateSchema(BaseModel):
     difficulty: Optional[int] = Field(None, ge=1, le=10, description="난이도 (1~10)")
     memo: Optional[str] = Field(None, max_length=255, description="노래 설명/메모")
     cover_image_url: Optional[str] = Field(None, description="커버 이미지 URL")
+    custom_title: Optional[str] = Field(None, description="이 노래책에서만 쓸 곡 제목 (null/빈 값 명시 시 원곡 제목으로 되돌림)")
+    custom_artist: Optional[str] = Field(None, description="이 노래책에서만 쓸 가수 이름 (null/빈 값 명시 시 원곡 가수로 되돌림)")
 
     _validate_cover = field_validator("cover_image_url")(_validate_cover_image_url)
+    _validate_custom = field_validator("custom_title", "custom_artist")(_validate_custom_song_field)
 
 
 class SongRequestCreateSchema(BaseModel):

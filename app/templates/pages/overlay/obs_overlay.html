@@ -211,17 +211,63 @@
             display: block;
         }
 
-        /* 재생목록 */
-        .playlist-box {
+        /* 재생목록과 안내 문구가 함께 놓이는 세로 열.
+           둘을 한 열에 쌓아야 '재생목록 바로 위/아래'라는 위치가 성립한다.
+           재생목록만 켠 경우의 위치·크기는 예전(독립 배치)과 동일하다. */
+        .side-stack {
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
             width: 360px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .side-stack.left {
+            left: 40px;
+        }
+
+        .side-stack.right {
+            right: 40px;
+        }
+
+        /* 안내 문구를 재생목록 위로 (기본은 아래) */
+        .side-stack.notice-above .notice-box {
+            order: -1;
+        }
+
+        /* 숨긴 상자는 열에서 자리까지 비워야 남은 상자가 화면 가운데에 온다 */
+        .side-stack > .hidden {
+            display: none;
+        }
+
+        /* 안내 문구 (노래 신청 방법, 현재 상태 등) */
+        .notice-box {
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 18px;
+            padding: 16px 20px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1.45;
+            white-space: pre-wrap;     /* 적어 둔 줄바꿈 그대로 */
+            overflow-wrap: break-word;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .notice-box.visible {
+            opacity: 1;
+        }
+
+        /* 재생목록 */
+        .playlist-box {
             background: rgba(0, 0, 0, 0.7);
             border-radius: 18px;
             padding: 20px;
             opacity: 0;
-            transition: all 0.4s ease;
+            transition: opacity 0.4s ease;
         }
 
         /* 자동 스크롤 루프 컨테이너 */
@@ -247,14 +293,6 @@
 
         .playlist-box.visible {
             opacity: 1;
-        }
-
-        .playlist-box.left {
-            left: 40px;
-        }
-
-        .playlist-box.right {
-            right: 40px;
         }
 
         .playlist-header {
@@ -395,20 +433,23 @@
         <!-- 대기 메시지 
         <p class="idle-message visible" id="idleMessage">노래하기 페이지에서 재생을 시작하세요</p>-->
 
-        <!-- 재생목록 -->
-        <div class="playlist-box right" id="playlistBox">
-            <div class="playlist-header">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="8" y1="6" x2="21" y2="6"></line>
-                    <line x1="8" y1="12" x2="21" y2="12"></line>
-                    <line x1="8" y1="18" x2="21" y2="18"></line>
-                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                </svg>
-                재생목록
+        <!-- 재생목록 + 안내 문구 (같은 열에 세로로 쌓인다) -->
+        <div class="side-stack right" id="sideStack">
+            <div class="playlist-box hidden" id="playlistBox">
+                <div class="playlist-header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                    재생목록
+                </div>
+                <div class="playlist-items" id="playlistItems"></div>
             </div>
-            <div class="playlist-items" id="playlistItems"></div>
+            <div class="notice-box hidden" id="noticeBox"></div>
         </div>
     </div>
 
@@ -462,7 +503,16 @@
             playlist_text_color: "#FFFFFF",
             playlist_highlight_color: "#FFE500",
             playlist_show_thumbnail: true,
-            playlist_show_artist: true
+            playlist_show_artist: true,
+            // 안내 문구
+            show_notice: false,
+            notice_text: "",
+            notice_position: "below",
+            notice_font_size: 16,
+            notice_text_color: "#FFFFFF",
+            notice_text_align: "left",
+            notice_bg_color: "#000000",
+            notice_bg_opacity: 0.7
         };
 
         let settings = { ...defaultSettings, ...initialSettings };
@@ -482,6 +532,8 @@
         const idleMessage = document.getElementById('idleMessage');
         const connectionStatus = document.getElementById('connectionStatus');
         const nowBadge = document.querySelector('.now-badge');
+        const sideStack = document.getElementById('sideStack');
+        const noticeBox = document.getElementById('noticeBox');
         const playlistBox = document.getElementById('playlistBox');
         const playlistItems = document.getElementById('playlistItems');
 
@@ -530,16 +582,18 @@
             const shadowStyle = settings.text_shadow ? '0 6px 12px rgba(0,0,0,0.6)' : 'none';
 
             if (settings.text_stroke) {
-                currentLine.style.webkitTextStroke = `${settings.current_line_stroke || 3}px ${sc}`;
-                prevLine.style.webkitTextStroke = `${settings.prev_line_stroke || 2}px ${sc}`;
-                nextLine.style.webkitTextStroke = `${settings.next_line_stroke || 2}px ${sc}`;
-                songTitleEl.style.webkitTextStroke = `${settings.song_title_stroke || 3}px ${sc}`;
-                artistNameEl.style.webkitTextStroke = `${settings.artist_stroke || 2}px ${sc}`;
+                currentLine.style.webkitTextStroke = `${settings.current_line_stroke ?? 3}px ${sc}`;
+                prevLine.style.webkitTextStroke = `${settings.prev_line_stroke ?? 2}px ${sc}`;
+                nextLine.style.webkitTextStroke = `${settings.next_line_stroke ?? 2}px ${sc}`;
             } else {
-                [currentLine, prevLine, nextLine, songTitleEl, artistNameEl].forEach(el => {
+                [currentLine, prevLine, nextLine].forEach(el => {
                     el.style.webkitTextStroke = '0px';
                 });
             }
+
+            // 현재곡(노래 제목/가수)은 가사 외곽선 토글과 무관하게 각자 두께로만 적용
+            songTitleEl.style.webkitTextStroke = `${settings.song_title_stroke ?? 3}px ${sc}`;
+            artistNameEl.style.webkitTextStroke = `${settings.artist_stroke ?? 2}px ${sc}`;
 
             // Apply paint-order and shadow to all text elements
             [currentLine, prevLine, nextLine, songTitleEl, artistNameEl].forEach(el => {
@@ -565,8 +619,14 @@
 
             updateSongInfoDisplay();
 
+            // 재생목록·안내 문구가 놓일 열의 위치 (둘이 같은 열을 쓴다)
+            applySideStackPosition();
+
             // 재생목록 설정 적용
             applyPlaylistSettings();
+
+            // 안내 문구 적용
+            applyNoticeSettings();
 
             // 설정 변경 시 현재 인덱스 강제 재렌더 (hide_adj, formatLyrics 즉시 반영)
             if (lyricsData && lastRenderedIndex >= -1) {
@@ -574,22 +634,66 @@
             }
         }
 
-        function applyPlaylistSettings() {
-            if (!settings.show_playlist) {
-                playlistBox.classList.remove('visible');
+        // #RRGGBB + 투명도 → rgba()
+        function hexToRgba(hex, opacity) {
+            const h = String(hex || '#000000').replace('#', '');
+            const r = parseInt(h.slice(0, 2), 16) || 0;
+            const g = parseInt(h.slice(2, 4), 16) || 0;
+            const b = parseInt(h.slice(4, 6), 16) || 0;
+            return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        }
+
+        // 세로 열에서는 숨긴 상자가 자리를 차지하면 남은 상자가 가운데에서 밀린다.
+        // 그래서 display 까지 끄는데, 그러면 같은 프레임의 opacity 전환이 씹히므로
+        // 한 프레임 뒤에 .visible 을 붙여 페이드인을 살린다.
+        function setBoxVisible(el, visible) {
+            if (!visible) {
+                el.classList.remove('visible');
+                el.classList.add('hidden');
+                return;
+            }
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+                requestAnimationFrame(() => el.classList.add('visible'));
+            } else {
+                el.classList.add('visible');
+            }
+        }
+
+        // 재생목록·안내 문구는 한 열을 공유한다. 열의 좌/우는 재생목록 위치 설정을 따르고,
+        // 열 안에서 안내 문구가 위로 갈지 아래로 갈지는 notice_position 이 정한다.
+        function applySideStackPosition() {
+            sideStack.classList.remove('left', 'right', 'notice-above');
+            sideStack.classList.add(settings.playlist_position === 'left' ? 'left' : 'right');
+            if ((settings.notice_position || 'below') === 'above') {
+                sideStack.classList.add('notice-above');
+            }
+        }
+
+        function applyNoticeSettings() {
+            const text = (settings.notice_text || '').trim();
+            if (!settings.show_notice || !text) {
+                setBoxVisible(noticeBox, false);
                 return;
             }
 
-            // 위치 설정
-            playlistBox.classList.remove('left', 'right');
-            playlistBox.classList.add(settings.playlist_position || 'right');
+            // 방송자가 적어 둔 문구 — HTML 로 해석하지 않고 글자 그대로 둔다
+            noticeBox.textContent = text;
+            noticeBox.style.fontSize = (settings.notice_font_size || 16) + 'px';
+            noticeBox.style.color = settings.notice_text_color || '#FFFFFF';
+            noticeBox.style.textAlign = settings.notice_text_align || 'left';
+            noticeBox.style.background = hexToRgba(settings.notice_bg_color, settings.notice_bg_opacity ?? 0.7);
+            setBoxVisible(noticeBox, true);
+        }
+
+        function applyPlaylistSettings() {
+            if (!settings.show_playlist) {
+                setBoxVisible(playlistBox, false);
+                return;
+            }
 
             // 배경 색상 및 투명도
-            const bgColor = settings.playlist_bg_color || '#000000';
-            const r = parseInt(bgColor.slice(1, 3), 16);
-            const g = parseInt(bgColor.slice(3, 5), 16);
-            const b = parseInt(bgColor.slice(5, 7), 16);
-            playlistBox.style.background = `rgba(${r}, ${g}, ${b}, ${settings.playlist_bg_opacity || 0.7})`;
+            playlistBox.style.background = hexToRgba(settings.playlist_bg_color, settings.playlist_bg_opacity ?? 0.7);
 
             // 폰트 크기
             playlistBox.style.fontSize = (settings.playlist_font_size || 16) + 'px';
@@ -600,7 +704,7 @@
 
         function renderPlaylist() {
             if (!settings.show_playlist || currentPlaylist.length === 0) {
-                playlistBox.classList.remove('visible');
+                setBoxVisible(playlistBox, false);
                 return;
             }
 
@@ -644,7 +748,7 @@
             }).join('');
 
             playlistItems.innerHTML = `<div class="playlist-scroll"><div class="playlist-copy">${itemsHtml}</div></div>`;
-            playlistBox.classList.add('visible');
+            setBoxVisible(playlistBox, true);
 
             // 렌더 후 높이 측정 → 넘치면 끊김 없는 세로 루프 시작
             requestAnimationFrame(() => setupPlaylistScroll());

@@ -1,20 +1,15 @@
-import os
-
-import anyio
 from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import FileResponse
 from app.database.mariadb import db_handler
 from app.core.auth import get_current_user_api
 from app.utils.csrf import verify_csrf
-from app.utils.image_sniff import ALLOWED_IMAGE, SNIFF_BYTES, detect_image_mime
+from app.utils.image_sniff import ALLOWED_IMAGE
 from app.utils.image_storage import (
-    FILE_MODE,
     MAX_PROFILE_IMAGE_BYTES,
-    ensure_dir,
-    new_storage_path,
     new_temp_path,
     resolve_profile_image_path,
 )
+from app.utils.image_upload import receive_image, unlink_image
 from app.utils.log import logger
 from app.utils.mailer import send_email
 from app.utils.otp import otp_manager
@@ -32,32 +27,10 @@ PROFILE_IMAGE_URL_PREFIX = "/api/v1/users/profile-image/"
 # 여기서 되짚어도 클라이언트 신고값을 신뢰하는 게 아니다.
 _MIME_BY_EXTENSION = {ext: mime for mime, ext in ALLOWED_IMAGE.items()}
 
-# 413 을 돌려줄 때 클라이언트가 응답을 받을 수 있도록 남은 본문을 조금 더 읽어준다.
-# (본문을 안 읽고 끊으면 브라우저가 JSON 오류 대신 연결 초기화를 보게 된다)
-_DRAIN_LIMIT_BYTES = 2 * MAX_PROFILE_IMAGE_BYTES
-
-
-async def _drain(request: Request) -> None:
-    """오류 응답 전에 남은 요청 본문을 버린다 (상한 있음)."""
-    dropped = 0
-    try:
-        async for chunk in request.stream():
-            dropped += len(chunk)
-            if dropped > _DRAIN_LIMIT_BYTES:
-                break
-    except Exception:
-        pass
-
 
 async def _unlink_profile_image(storage_path: str | None) -> None:
     """옛 프로필 사진 파일을 지운다. 실패해도 요청을 실패시키지는 않는다."""
-    if not storage_path:
-        return
-    try:
-        path = resolve_profile_image_path(storage_path)
-        await anyio.to_thread.run_sync(lambda: path.unlink(missing_ok=True))
-    except Exception as e:
-        logger.warning(f"[profile-image] 옛 사진 삭제 실패: {storage_path} — {e}")
+    await unlink_image(storage_path, resolve_profile_image_path, "profile-image")
 
 
 @router.post("/me/email-otp")
@@ -249,89 +222,41 @@ async def upload_my_picture(
 ):
     """프로필 사진 업로드. **요청 본문 = 이미지 바이트 원본** (멀티파트 아님).
 
-    멀티파트를 쓰지 않는 이유는 app/api/v1/audio.py 의 upload_audio 와 같다:
-    본문 파라미터를 선언해야 FastAPI 가 본문을 건드리지 않아서, '읽는 도중
-    한도에서 끊기'와 '본문을 읽기 전에 verify_csrf 실행'이 둘 다 가능해진다.
-    => 이 시그니처를 UploadFile 로 '단순화'하지 말 것.
+    본문 수신·검증·배치는 app/utils/image_upload.py 의 receive_image 가 맡는다
+    (멀티파트를 쓰지 않는 이유도 그 모듈 주석 참고).
 
     브라우저는 올리기 전에 512px 정사각형 JPEG 으로 줄여서 보내지만
     (app/static/js/profile_image.js), 서버는 그 전제를 믿지 않고 크기와
     매직바이트를 다시 확인한다.
     """
-    # 1) 값싼 사전 차단. Content-Length 는 신뢰하지 않지만 맞다면 빨리 끝낼 수 있다.
-    declared = request.headers.get("content-length")
-    if declared and declared.isdigit() and int(declared) > MAX_PROFILE_IMAGE_BYTES:
-        raise HTTPException(status_code=413, detail="프로필 사진은 5MB 를 넘을 수 없습니다.")
+    stored = await receive_image(
+        request,
+        max_bytes=MAX_PROFILE_IMAGE_BYTES,
+        temp_factory=new_temp_path,
+        resolver=resolve_profile_image_path,
+        oversize_detail="프로필 사진은 5MB 를 넘을 수 없습니다.",
+    )
 
-    tmp_path = new_temp_path()
-    fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, FILE_MODE)
+    picture_url = PROFILE_IMAGE_URL_PREFIX + stored.storage_path
 
-    head = b""
-    total = 0
-    oversize = False
-
+    # 옛 사진 경로를 먼저 확보한 뒤 갈아끼운다 (갱신 후에는 알 수 없다)
+    previous = await db_handler.fetch_one(
+        "SELECT picture_path FROM users WHERE id = %s", (user['id'],)
+    )
     try:
-        with os.fdopen(fd, "wb") as f:
-            async for chunk in request.stream():
-                if not chunk:
-                    continue
-                total += len(chunk)
-                if total > MAX_PROFILE_IMAGE_BYTES:
-                    oversize = True
-                    break
-                if len(head) < SNIFF_BYTES:
-                    head += chunk[: SNIFF_BYTES - len(head)]
-                await anyio.to_thread.run_sync(f.write, chunk)
-            if not oversize:
-                await anyio.to_thread.run_sync(f.flush)
-                await anyio.to_thread.run_sync(os.fsync, f.fileno())
-
-        if oversize:
-            await _drain(request)
-            raise HTTPException(status_code=413, detail="프로필 사진은 5MB 를 넘을 수 없습니다.")
-
-        if total == 0:
-            raise HTTPException(status_code=400, detail="빈 파일은 업로드할 수 없습니다.")
-
-        # 2) 매직바이트 검사 — 클라이언트가 보낸 Content-Type 은 참고하지 않는다
-        mime = detect_image_mime(head)
-        if mime is None:
-            raise HTTPException(
-                status_code=415,
-                detail="지원하지 않는 이미지 형식입니다. (jpg, png, webp, gif)",
-            )
-
-        # 3) 원자적 배치 — 여기까지 와야 파일이 보이는 위치로 이동한다
-        rel_path = new_storage_path(ALLOWED_IMAGE[mime])
-        final_path = resolve_profile_image_path(rel_path)
-        ensure_dir(final_path.parent)
-        os.replace(tmp_path, final_path)
-        os.chmod(final_path, FILE_MODE)
-        tmp_path = None  # 아래 finally 에서 지우지 않도록
-
-        picture_url = PROFILE_IMAGE_URL_PREFIX + rel_path
-
-        # 4) 옛 사진 경로를 먼저 확보한 뒤 갈아끼운다 (갱신 후에는 알 수 없다)
-        previous = await db_handler.fetch_one(
-            "SELECT picture_path FROM users WHERE id = %s", (user['id'],)
+        await db_handler.execute_query(
+            "UPDATE users SET picture = %s, picture_path = %s WHERE id = %s",
+            (picture_url, stored.storage_path, user['id']),
         )
-        try:
-            await db_handler.execute_query(
-                "UPDATE users SET picture = %s, picture_path = %s WHERE id = %s",
-                (picture_url, rel_path, user['id']),
-            )
-        except Exception:
-            # DB 기록 실패 — 아무도 참조하지 못하는 고아 파일을 남기지 않는다
-            final_path.unlink(missing_ok=True)
-            raise
+    except Exception:
+        # DB 기록 실패 — 아무도 참조하지 못하는 고아 파일을 남기지 않는다
+        stored.path.unlink(missing_ok=True)
+        raise
 
-        await _unlink_profile_image(previous.get("picture_path") if previous else None)
+    await _unlink_profile_image(previous.get("picture_path") if previous else None)
 
-        logger.info(f"[profile-image] 업로드 완료 user={user['id']} {mime} {total}B")
-        return {"success": True, "picture": picture_url}
-    finally:
-        if tmp_path is not None:
-            tmp_path.unlink(missing_ok=True)
+    logger.info(f"[profile-image] 업로드 완료 user={user['id']} {stored.mime} {stored.byte_size}B")
+    return {"success": True, "picture": picture_url}
 
 
 @router.delete("/me/picture", dependencies=[Depends(verify_csrf)])

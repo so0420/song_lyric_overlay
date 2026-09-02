@@ -10,6 +10,7 @@ import re
 from app.utils.log import logger
 from app.database.streamer_repository import StreamerRepository
 from app.database.song_request_repository import SongRequestRepository
+from app.database.songbook_repository import SONGBOOK_ARTIST_EXPR, SONGBOOK_TITLE_EXPR
 from app.database.meilisearch.meilisearch import meilisearch_handler
 from app.database.mariadb import db_handler
 from app.core.song_request_push import broadcast_new_request
@@ -153,6 +154,11 @@ class ChzzkEventHandler:
 
         Meilisearch(곡 제목/가수 퍼지) 후보 + 노래책의 곡제목/가수/연결 가사제목 DB 검색을
         합쳐 후보를 만들고, 관련성 필터로 '전혀 다른 결과'를 배제한다.
+
+        노래책 주인이 수록곡 표기를 덮어썼으면(streamer_songbooks.custom_title/artist)
+        그 표기로도 찾을 수 있어야 한다 — 시청자가 공개 노래책에서 보는 이름이 그것이다.
+        Meilisearch 색인은 전체 곡(원곡 표기)이라 덮어쓴 이름을 모르므로, 그쪽은
+        DB LIKE 조건이 받아준다. 원곡 표기로도 계속 찾을 수 있게 조건을 '더한다'.
         """
         # Meilisearch 퍼지 후보 (문서 id = song_external_id)
         meili_ext_ids = []
@@ -167,18 +173,27 @@ class ChzzkEventHandler:
 
         like = f"%{query}%"
         nospace = f"%{query.replace(' ', '')}%"
+        # custom_* 는 NULL 이면 LIKE 결과도 NULL 이라 자연히 매칭에서 빠진다
         conds = [
             "s.title LIKE %s", "a.name LIKE %s", "l.title LIKE %s",
             "REPLACE(s.title, ' ', '') LIKE %s", "REPLACE(l.title, ' ', '') LIKE %s",
+            "sb.custom_title LIKE %s", "sb.custom_artist LIKE %s",
+            "REPLACE(sb.custom_title, ' ', '') LIKE %s",
         ]
-        params = [streamer_internal_id, like, like, like, nospace, nospace]
+        params = [streamer_internal_id, like, like, like, nospace, nospace, like, like, nospace]
         if meili_ext_ids:
             placeholders = ", ".join(["%s"] * len(meili_ext_ids))
             conds.append(f"s.song_external_id IN ({placeholders})")
             params.extend(meili_ext_ids)
 
+        # 제목/가수는 '이 노래책에서 보이는 표기'로 돌려준다 — 신청 목록·노래하기에
+        # 시청자가 부른 이름 그대로 남는다. 관련성 판정에는 원곡 표기도 함께 쓴다.
         sql = f"""
-            SELECT sb.song_id, s.song_external_id, s.title, a.name AS artist_name, l.title AS lyrics_title
+            SELECT sb.song_id, s.song_external_id,
+                   {SONGBOOK_TITLE_EXPR} AS title,
+                   {SONGBOOK_ARTIST_EXPR} AS artist_name,
+                   s.title AS original_title, a.name AS original_artist_name,
+                   l.title AS lyrics_title
             FROM streamer_songbooks sb
             JOIN songs s ON sb.song_id = s.id
             LEFT JOIN artists a ON s.artist_id = a.id
@@ -193,7 +208,10 @@ class ChzzkEventHandler:
         # 관련성 필터 + Meilisearch 매칭곡 우선
         relevant = [
             c for c in candidates
-            if _is_relevant(query, c.get("title"), c.get("artist_name"), c.get("lyrics_title"))
+            if _is_relevant(
+                query, c.get("title"), c.get("artist_name"),
+                c.get("original_title"), c.get("original_artist_name"), c.get("lyrics_title"),
+            )
         ]
         if not relevant:
             return None

@@ -61,12 +61,23 @@ async def public_songbook_page(
     if not streamer:
         raise HTTPException(status_code=404, detail="노래책을 찾을 수 없습니다.")
 
+    # 오버레이(노래하기) 사용 승인 여부 — 승인된 이용자에게만 '내 재생목록에 담기'
+    # 버튼을 보여준다. 실제 권한은 /overlay 진입과 API 에서 다시 확인한다.
+    is_approved = False
+    if user:
+        access_repo = get_access_request_repository()
+        is_approved = await access_repo.is_user_approved(user["id"])
+
     # 템플릿에는 외부 UUID 만 노출 (내부 id 미노출).
     # social_links/tags 는 repository 가 이미 파싱된 list 로 반환한다.
     return templates.TemplateResponse("pages/songbook/songbook_view.html", {
         "request": request,
         "user": user,
         "is_admin": admin is not None,  # 관리자에게만 곡 정보 수정 UI 노출 (실제 권한은 API에서 재검증)
+        "is_approved": is_approved,
+        # 노래책 주인 본인 여부 — 업로드 음원만 있는 수록곡은 주인만 재생할 수 있어
+        # '노래하기 재생목록에 추가' 버튼 노출 판단에 쓴다.
+        "is_owner": bool(user and streamer.get("user_id") == user.get("id")),
         "streamer": {
             "id": streamer["streamer_id"],
             "slug": streamer["slug"],

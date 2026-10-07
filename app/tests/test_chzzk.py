@@ -4,6 +4,7 @@
 - 통합 API: status / disconnect (채널 매핑)
 - OAuth: login 리다이렉트(account-interlock, state 세션 저장) / callback(uid 저장, state 검증)
 - 릴레이 이벤트 핸들러: message(CHAT/DONATION) → !신청 처리
+- 릴레이 클라이언트: 'all' 1회 구독 + 연동 채널만 처리
 - 채널 저장소: 쿼리 검증
 """
 import pytest
@@ -313,6 +314,61 @@ class TestEventHandler:
 # ===============================================================
 # 채널 저장소
 # ===============================================================
+class TestRelayClient:
+    """V3 릴레이는 소켓당 채널 8개·동시 구독 1개라, 마스터 토큰 'all' 한 번만 구독한다."""
+
+    def make(self, channels=("uid1", "uid2")):
+        from app.integrations.chzzk_connection import chzzk_connection_client as mod
+        c = mod.ChzzkConnectionClient()
+        c._channel_repo = AsyncMock()
+        c._channel_repo.get_all_channel_ids.return_value = list(channels)
+        c.sio.emit = AsyncMock()
+        return mod, c
+
+    def handler(self, c, event):
+        return c.sio.handlers["/"][event]
+
+    @pytest.mark.asyncio
+    async def test_connect_subscribes_all_once(self):
+        mod, c = self.make()
+        c.sio.connected = True
+        with patch.object(mod.settings, "chzzk_relay_token", "tok"):
+            await self.handler(c, "connect")()
+        c.sio.emit.assert_awaited_once_with("subscribe", {"streamerUid": "all", "token": "tok"})
+
+    @pytest.mark.asyncio
+    async def test_only_linked_channels_are_handled(self):
+        mod, c = self.make()
+        await c._refresh_channels()
+        with patch.object(mod, "chzzk_event_handler") as h:
+            h.handle_message = AsyncMock()
+            on_message = self.handler(c, "message")
+            await on_message(chat_msg(streamer_uid="uid1"))
+            await on_message(chat_msg(streamer_uid="other"))
+            await on_message("garbage")
+        h.handle_message.assert_awaited_once()
+        assert h.handle_message.await_args.args[0]["streamerUid"] == "uid1"
+
+    @pytest.mark.asyncio
+    async def test_subscribed_ack_tracks_state(self):
+        _, c = self.make()
+        on_subscribed = self.handler(c, "subscribed")
+        await on_subscribed({"success": False, "message": "Too many requests."})
+        assert c._subscribed is False
+        await on_subscribed({"streamerUid": "all", "success": True})
+        assert c._subscribed is True
+        await self.handler(c, "disconnect")()
+        assert c._subscribed is False
+
+    @pytest.mark.asyncio
+    async def test_refresh_failure_keeps_previous_channels(self):
+        _, c = self.make()
+        await c._refresh_channels()
+        c._channel_repo.get_all_channel_ids.side_effect = RuntimeError("db down")
+        await c._refresh_channels()
+        assert c._channels == {"uid1", "uid2"}
+
+
 class FakeCursor:
     def __init__(self):
         self.rowcount = 1

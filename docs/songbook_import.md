@@ -2,7 +2,7 @@
 
 songstudio.live(외부 SongStudio)에 공개된 노래책을 보고, 우리 서비스의 특정 사용자
 노래책(`streamers` / `streamer_songbooks`)에 같은 곡들을 등록하는 운영 절차.
-지금까지 kone(꿍), nag, aru, 귀털 → ㅇㅇ 이관에 이 방식을 썼다.
+지금까지 kone(꿍), nag, aru, ㅇㅇ(원본 귀털) 이관에 이 방식을 썼다. 최근 예시 스크립트: `temp/gwitul_import/`.
 
 > 운영 DB에 직접 쓰는 작업이다. 반드시 **스냅샷 → 계획 파일 → 단일 트랜잭션 적용 → 검증**
 > 순서로 하고, 계획(JSON)을 사람이 검토한 뒤에만 적용한다.
@@ -79,6 +79,10 @@ l.deleted_at IS NULL AND (
 - 가사 선택 순서: 공개 우선 → `is_verified` → `likes_count` (앱의
   `get_best_public_lyrics_id_for_song`과 같은 기준). 번안/키 변경 가사(예: “한국어버전”,
   “여자키”)는 원본이 그 버전을 가리킬 때만 고른다.
+- 원본 제목이 애니/작품명인 경우도 있다(예: `위치 워치 / 요아소비` → OP `Watch me!`).
+- 예외: **공개** 가사가 다른 사용자 소유 커스텀 곡에 달려 있으면 그 곡을 그대로 쓴다
+  (가사 우선. 계정 파기 시에도 곡 행은 남는다 — `app/database/account_purge.py`).
+  2·3단계에서는 타인 소유 커스텀 곡을 쓰지 않는다.
 
 ### 2차: 다른 사람 노래책에 있는 같은 곡
 
@@ -91,8 +95,17 @@ l.deleted_at IS NULL AND (
 
 ### 3차: iTunes 검색 (후보 100개까지 직접 검증)
 
-- `app.integrations.itunes_search._search_sync(term, country, 100)` 사용.
-  국가는 곡에 맞게 `KR` / `JP` / `US`를 바꿔 가며 검색어(원제, 영문 표기, 가수만 등)를 여러 번 시도.
+- 검색 엔드포인트는 앱과 같은 `https://itunes.apple.com/search`(curl_cffi, `impersonate='chrome'`).
+  앱의 `_search_sync`는 앨범명·발매일을 버리므로, 버전 비교를 위해 원본 응답 전체
+  (`collectionName`, `releaseDate`, `trackTimeMillis`)를 저장하는 스크립트를 직접 쓰는 편이 낫다.
+- **국가별 주의**:
+  - `KR` 스토어는 한국어 검색어로 결과가 거의 안 나오고, `entity=song`을 붙이면 0건이 된다.
+  - 한국 곡은 **`US` 스토어 + `entity=song` + 영문 가수명**(예: `Lee Jin Ah`, `Humming Urban Stereo`)이
+    가장 잘 나온다. 단 US 스토어는 한국 곡을 영어 제목으로 표기하기도 한다(`또또또` → `Again and Again`).
+  - 일본 곡은 `JP` 스토어 + 원어 제목/가수. 한국어 번역 제목은 원제로 바꿔 검색한다.
+- 제목 유사도로 안 잡히면 해당 가수 쿼리 결과 100개를 **전부 펼쳐 직접** 대조한다.
+  영어 제목 후보는 `lookup?id=…&country=KR`로 한글 원제를 확인한다(KR lookup은 정상 동작).
+  번역 제목을 모르겠으면 수록 앨범을 `lookup?id=<collectionId>&entity=song&country=JP`로 펼친다.
 - **rate limit**: 요청 사이 최소 3초 이상(지금까지 3.2초) 쉬고, 응답은 `search-*.json` /
   `extra-*.json`으로 저장해 재실행 시 다시 부르지 않는다. 403/429가 나면 길게 쉬었다 재개.
 - 후보를 사람이 직접 비교해 고른다. 고를 때 확인할 것:
@@ -100,8 +113,12 @@ l.deleted_at IS NULL AND (
   - 버전: 라이브·Inst·MR·리믹스·Acoustic·Sped up·커버·가라오케 대신 **정규 음원**
   - 언어: 한국어 번안곡을 일본어 원곡으로, 또는 그 반대로 바꾸지 않는다.
   - Clean/Explicit 등은 원본 표기에 맞춘다.
-- 이미 카탈로그에 같은 `custom_it_<trackId>`가 있으면 그 곡을 재사용, 없으면 새로 만든다
+- 이미 카탈로그에 같은 `custom_it_<trackId>`(또는 구형식 `custom_<trackId>`)가 있으면 그 곡을
+  재사용, 없으면 새로 만든다
   (`artists`에 `custom_it_<artistId>` upsert → `songs`에 `custom_it_<trackId>` insert, 커버 = artwork).
+- 신규 곡 표기: US 스토어에서 찾은 곡은 KR lookup 표기에 한글이 있으면 그 표기(기존 카탈로그
+  관례, 예: `또또또 / 이진아`), JP 스토어에서 찾은 일본 곡은 원어 표기를 쓴다.
+- 기존 곡 재사용이든 신규든, 접근 가능한 가사(같은 제목+가수 형제 곡 포함)가 있으면 연결한다.
 
 ### 4차: 커스텀 등록
 
@@ -115,7 +132,9 @@ l.deleted_at IS NULL AND (
   `itunes_new` / `custom_new`), `song_id`, `lyrics_id`, 근거를 기록한다.
 - **노래책 표시명은 원본 표기 보존**: `custom_title` = 원본 제목, `custom_artist` = 원본 가수.
 - 노래책은 사용자당 `song_id`가 유일하다. 원본에 같은 곡이 중복(표기만 다른 경우 포함)으로
-  있으면 하나의 수록곡으로 합치고 보고서에 원본 ID 목록을 적는다.
+  있으면 하나의 수록곡으로 합치고 보고서에 원본 ID 목록을 적는다. 원본 가수 표기가 틀렸지만
+  같은 곡이 이미 목록에 있는 경우(예: `フォニイ / B코마치` = ツミキ `フォニイ`)도 합친다.
+- 리믹스만 있고 정규 음원이 없는 곡은 리믹스로 연결하지 않고 커스텀으로 둔다.
 - 미해결 0개, 원본 ID 전부가 계획에 포함되는지 assert.
 
 ## 5. 적용 (`import_final.py`) — 단일 트랜잭션
